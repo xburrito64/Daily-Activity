@@ -149,19 +149,27 @@ t('a merge keeps the surviving block in its original place in the order', () => 
   assert.deepStrictEqual(out.map((x) => x.tag), ['game', 'dgg'], 'game must not jump to the end')
 })
 
-t('dragging a block over another tucks it underneath', () => {
-  // music sits before dgg in the list, then is dragged right across it
+t('dragging a lone block onto another tucks it underneath', () => {
+  // nothing is stacked with music yet, so it has no height to keep
   const start = [b('m', 'music', 0, 8), b('d', 'dgg', 20, 30)]
   const out = applyResize(start, 'm', 0, 24)
-  assert.deepStrictEqual(out.map((x) => x.id), ['d', 'm'], 'the dragged block moves last')
   assert.deepStrictEqual(lanesAt(layoutLanes(out), 22), { d: 0, m: 1 })
 })
 
-t('dragging a block that is already underneath leaves it there', () => {
-  const start = [b('g', 'game', 0, 12), b('r', 'reading', 4, 6)]
-  const out = applyResize(start, 'r', 4, 10)
-  assert.deepStrictEqual(out.map((x) => x.id), ['g', 'r'])
-  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { g: 0, r: 1 })
+t('dragging a block that sits underneath keeps it underneath', () => {
+  // music is under game; dragged right across dgg it must stay the lower one
+  const start = [b('g', 'game', 0, 12), b('m', 'music', 8, 20), b('d', 'dgg', 30, 40)]
+  const out = applyResize(start, 'm', 8, 34)
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 10), { g: 0, m: 1 }, 'still under game')
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 32), { d: 0, m: 1 }, 'and under dgg too')
+})
+
+t('dragging a block that sits on top keeps it on top', () => {
+  // game is over music; dragged right across dgg it must stay the upper one
+  const start = [b('g', 'game', 0, 12), b('m', 'music', 8, 20), b('d', 'dgg', 30, 40)]
+  const out = applyResize(start, 'g', 0, 34)
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 10), { g: 0, m: 1 }, 'still over music')
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 32), { g: 0, d: 1 }, 'and over dgg too')
 })
 
 t('painting the same tag over itself merges', () => {

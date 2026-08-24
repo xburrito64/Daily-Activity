@@ -551,26 +551,42 @@ ${b.note}` : ''}`}
                 )
               })}
 
-              {/* Handles sit on the bar, not inside a piece, so the grab strip
-                  is the full height of the bar even where the block is only
-                  showing as a half. */}
-              {isDay && !day?.malformed && blocks.map((b) => {
+              {/* Handles are drawn over the blocks so they are never buried,
+                  but only as tall as the block is at that edge — a full-height
+                  strip would reach into whatever is stacked above or below and
+                  steal its clicks. */}
+              {isDay && !day?.malformed && pieces.map((piece) => {
+                const b = piece.block
                 const widthPx = ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth
                 if (widthPx < 18) return null // no room for two grab strips
+                if (!piece.isFirst && !piece.isLast) return null
+
+                const lane = {
+                  top: piece.lane === 0
+                    ? 'var(--block-inset)'
+                    : `${(piece.lane / piece.lanes) * 100}%`,
+                  height: `calc(${100 / piece.lanes}%`
+                    + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
+                    + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
+                }
                 return (
-                  <span key={`h${b.id}`}>
-                    <span
-                      className="handle start"
-                      data-block-id={b.id}
-                      data-handle="start"
-                      style={{ left: `${pct(b.startSlot)}%` }}
-                    />
-                    <span
-                      className="handle end"
-                      data-block-id={b.id}
-                      data-handle="end"
-                      style={{ left: `${pct(b.endSlot)}%` }}
-                    />
+                  <span key={`h${b.id}:${piece.from}`}>
+                    {piece.isFirst && (
+                      <span
+                        className="handle start"
+                        data-block-id={b.id}
+                        data-handle="start"
+                        style={{ left: `${pct(b.startSlot)}%`, ...lane }}
+                      />
+                    )}
+                    {piece.isLast && (
+                      <span
+                        className="handle end"
+                        data-block-id={b.id}
+                        data-handle="end"
+                        style={{ left: `${pct(b.endSlot)}%`, ...lane }}
+                      />
+                    )}
                   </span>
                 )
               })}

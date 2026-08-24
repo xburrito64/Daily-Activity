@@ -46,14 +46,31 @@ export function applyPaint(blocks, painted) {
 
 /**
  * Move one block's edges. Neighbours are left alone; overlaps just stack.
- * The block moves to the end of the list, so dragging one over another tucks
- * it underneath — the same as painting it there would.
+ *
+ * Dragging keeps the block at the height it is already drawn at. A block
+ * sitting on top of another stays on top of whatever it reaches; one sitting
+ * underneath stays underneath. A block that isn't overlapping anything yet has
+ * no height to keep, so it behaves like painting and tucks under.
  */
 export function applyResize(blocks, id, startSlot, endSlot) {
   if (endSlot <= startSlot) return blocks
   const target = blocks.find((b) => b.id === id)
   if (!target) return blocks
-  return [...blocks.filter((b) => b.id !== id), { ...target, startSlot, endSlot }]
+
+  const drawn = layoutLanes(blocks).filter((p) => p.block.id === id)
+  const sharesWithAnything = drawn.some((p) => p.lanes > 1)
+  const lowestLane = drawn.reduce((low, p) => Math.max(low, p.lane), 0)
+  const onTop = sharesWithAnything && lowestLane === 0
+
+  const moved = { ...target, startSlot, endSlot }
+  const rest = blocks.filter((b) => b.id !== id)
+  if (!onTop) return [...rest, moved]
+
+  // Ahead of everything the new extent touches, so it stays the upper one.
+  const first = rest.findIndex((b) => b.startSlot < endSlot && b.endSlot > startSlot)
+  return first === -1
+    ? [...rest, moved]
+    : [...rest.slice(0, first), moved, ...rest.slice(first)]
 }
 
 export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)

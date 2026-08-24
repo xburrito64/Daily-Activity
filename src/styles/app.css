@@ -334,12 +334,10 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   stroke-linejoin: round;
 }
 
-/* Full height of the bar, positioned on the block's edge rather than inside
-   whichever piece happens to be drawn there. */
+/* Positioned on the block's edge. top and height come from the block's lane,
+   set inline, so the strip never covers a neighbouring lane. */
 .handle {
   position: absolute;
-  top: 0;
-  bottom: 0;
   width: var(--handle-width);
   cursor: ew-resize;
 }
