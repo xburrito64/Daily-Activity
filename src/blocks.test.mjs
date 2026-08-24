@@ -149,6 +149,52 @@ t('a merge keeps the surviving block in its original place in the order', () => 
   assert.deepStrictEqual(out.map((x) => x.tag), ['game', 'dgg'], 'game must not jump to the end')
 })
 
+// Painting says where it goes: `at` is the slot the pointer went down on and
+// the lane that height came out as.
+t('painting in the upper half puts the new block on top', () => {
+  const out = applyPaint([b('g', 'game', 0, 12)], b('m', 'music', 4, 8), { slot: 4, lane: 0 })
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { m: 0, g: 1 })
+})
+
+t('painting in the lower half puts the new block underneath', () => {
+  const out = applyPaint([b('g', 'game', 0, 12)], b('m', 'music', 4, 8), { slot: 4, lane: 1 })
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { g: 0, m: 1 })
+})
+
+t('painting at the seam between two blocks lands between them', () => {
+  const out = applyPaint(
+    [b('g', 'game', 0, 12), b('d', 'dgg', 0, 12)],
+    b('m', 'music', 4, 8),
+    { slot: 4, lane: 1 },
+  )
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { g: 0, m: 1, d: 2 })
+})
+
+t('a block painted on top stays on top when it is dragged wider', () => {
+  const painted = applyPaint(
+    [b('g', 'game', 0, 12), b('d', 'dgg', 16, 24)],
+    b('m', 'music', 4, 8),
+    { slot: 4, lane: 0 },
+  )
+  const out = applyResize(painted, 'm', 4, 20)
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { m: 0, g: 1 }, 'still over game')
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 18), { m: 0, d: 1 }, 'and over dgg too')
+})
+
+t('where you painted it survives a save and reload', () => {
+  const painted = applyPaint([b('g', 'game', 0, 12)], b('m', 'music', 4, 8), { slot: 4, lane: 0 })
+  const reloaded = deserialise(serialise(painted))
+  assert.deepStrictEqual(reloaded.map((x) => x.tag), ['music', 'game'])
+})
+
+t('a block wedged between two others keeps its place when resized', () => {
+  const start = [
+    b('a', 'game', 0, 20), b('n', 'music', 0, 20), b('c', 'dgg', 0, 20), b('d', 'anime', 24, 28),
+  ]
+  const out = applyResize(start, 'n', 0, 30)
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { a: 0, n: 1, c: 2 }, 'still the middle one')
+})
+
 t('dragging a lone block onto another tucks it underneath', () => {
   // nothing is stacked with music yet, so it has no height to keep
   const start = [b('m', 'music', 0, 8), b('d', 'dgg', 20, 30)]
@@ -219,7 +265,7 @@ t('a block with nothing around it is its own cluster', () => {
   assert.deepStrictEqual(overlapCluster(blocks, 'a').map((x) => x.id), ['a'])
 })
 
-t('the note owner is the earliest starting block', () => {
+t('the cluster reads in time order, not list order', () => {
   const blocks = [b('late', 'dgg', 4, 8), b('early', 'game', 0, 12)]
   assert.strictEqual(overlapCluster(blocks, 'late')[0].id, 'early')
 })

@@ -9,25 +9,45 @@ const byStart = (a, b) =>
 const overlaps = (a, b) => a.startSlot < b.endSlot && a.endSlot > b.startSlot
 
 /*
- * Lane order is the order blocks were added, so whatever you paint last sits
- * underneath what was already there. That can't be worked out from the times
- * — a block painted later may be longer, shorter, earlier or later — so the
- * list is kept in the order things were created and saved that way. Read the
- * file back and the order, and therefore the stacking, is unchanged.
+ * Lane order is list order: the first block in the list is drawn in the top
+ * lane wherever things overlap. Which one that should be can't be worked out
+ * from the times — a block painted later may be longer, shorter, earlier or
+ * later — so the list is kept in whatever order things end up in and saved
+ * that way. Read the file back and the stacking is unchanged.
  */
+
+/**
+ * Where a block has to sit in the list to be drawn in `lane` at `atSlot`.
+ * List order is stacking order, so this is the one place that decides it.
+ *
+ * A single list can only ever approximate this: the top and bottom lanes are
+ * exact, but a block wedged between two others is placed by the company it
+ * keeps at `atSlot` and takes its chances everywhere else.
+ */
+function placeFor(blocks, atSlot, lane) {
+  const covering = blocks.filter((b) => b.startSlot <= atSlot && b.endSlot > atSlot)
+  if (lane <= 0) return 0 // above everything
+  if (lane >= covering.length) return blocks.length // below everything
+  return blocks.indexOf(covering[lane - 1]) + 1
+}
 
 /**
  * Add a painted range. Different tags are allowed to overlap — they stack in
  * lanes when drawn. Painting a tag over itself merges instead of stacking,
  * since one activity can't run alongside itself.
+ *
+ * `at` is { slot, lane }: where the pointer went down, and which lane that
+ * height means. Without it the block lands underneath, as it always did.
  */
-export function applyPaint(blocks, painted) {
+export function applyPaint(blocks, painted, at) {
   const sameTag = blocks.filter(
     (b) => b.tag === painted.tag && b.endSlot >= painted.startSlot && b.startSlot <= painted.endSlot,
   )
 
-  // Appended, so it lands underneath anything it overlaps.
-  if (sameTag.length === 0) return [...blocks, painted]
+  if (sameTag.length === 0) {
+    const index = at ? placeFor(blocks, at.slot, at.lane) : blocks.length
+    return [...blocks.slice(0, index), painted, ...blocks.slice(index)]
+  }
 
   const keep = sameTag[0]
   const notes = sameTag.map((b) => b.note).filter(Boolean)
@@ -47,30 +67,29 @@ export function applyPaint(blocks, painted) {
 /**
  * Move one block's edges. Neighbours are left alone; overlaps just stack.
  *
- * Dragging keeps the block at the height it is already drawn at. A block
- * sitting on top of another stays on top of whatever it reaches; one sitting
- * underneath stays underneath. A block that isn't overlapping anything yet has
- * no height to keep, so it behaves like painting and tucks under.
+ * Dragging an edge must never change the height the block is drawn at — the
+ * whole point is to change the times, not the stacking. So whatever height it
+ * has now, it keeps over everything the new extent reaches: top stays top,
+ * bottom stays bottom. A block wedged between two others keeps its exact place
+ * in the order, since that is the only record of where it sits. One that isn't
+ * overlapping anything has no height to keep, so it tucks under, the same as
+ * painting it there would.
  */
 export function applyResize(blocks, id, startSlot, endSlot) {
   if (endSlot <= startSlot) return blocks
   const target = blocks.find((b) => b.id === id)
   if (!target) return blocks
 
-  const drawn = layoutLanes(blocks).filter((p) => p.block.id === id)
-  const sharesWithAnything = drawn.some((p) => p.lanes > 1)
-  const lowestLane = drawn.reduce((low, p) => Math.max(low, p.lane), 0)
-  const onTop = sharesWithAnything && lowestLane === 0
-
+  // Only the stretches it shares say anything about its height; where it runs
+  // alone it is full height and there is nothing to preserve.
+  const shared = layoutLanes(blocks).filter((p) => p.block.id === id && p.lanes > 1)
   const moved = { ...target, startSlot, endSlot }
   const rest = blocks.filter((b) => b.id !== id)
-  if (!onTop) return [...rest, moved]
 
-  // Ahead of everything the new extent touches, so it stays the upper one.
-  const first = rest.findIndex((b) => b.startSlot < endSlot && b.endSlot > startSlot)
-  return first === -1
-    ? [...rest, moved]
-    : [...rest.slice(0, first), moved, ...rest.slice(first)]
+  if (shared.length === 0) return [...rest, moved]
+  if (shared.every((p) => p.lane === 0)) return [moved, ...rest]
+  if (shared.every((p) => p.lane === p.lanes - 1)) return [...rest, moved]
+  return blocks.map((b) => (b.id === id ? moved : b))
 }
 
 export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)
@@ -129,8 +148,8 @@ export function layoutLanes(blocks) {
 
 /**
  * Every block joined to this one by overlap, directly or through others.
- * They share a single note, so the answer must be the same whichever member
- * you click. Sorted, so the first is the one that owns the note.
+ * Each keeps its own note; this is only so the note panel can name what else
+ * was running at the time. Sorted by start, so it reads in order.
  */
 export function overlapCluster(blocks, id) {
   const start = blocks.find((b) => b.id === id)

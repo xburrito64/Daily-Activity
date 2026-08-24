@@ -319,6 +319,21 @@ export default function DayList({
     return Math.min(SLOTS_PER_DAY - 1, Math.max(0, cell))
   }
 
+  /**
+   * Which lane a new block should take, from how far down the bar the pointer
+   * went. The bar is split into one band per block already there, plus one:
+   * with a single block that means the top half puts the new one above it and
+   * the bottom half below, and aiming at the seam between two blocks slots the
+   * new one in between them. Decided once, when the drag starts — dragging
+   * sideways over more blocks must not shuffle it.
+   */
+  function laneFrom(trackEl, clientY, blocks, cell) {
+    const rect = trackEl.getBoundingClientRect()
+    const bands = blocks.filter((b) => b.startSlot <= cell && b.endSlot > cell).length + 1
+    const band = Math.floor(((clientY - rect.top) / rect.height) * bands)
+    return Math.min(bands - 1, Math.max(0, band))
+  }
+
   function boundaryFrom(trackEl, clientX) {
     const rect = trackEl.getBoundingClientRect()
     const slot = Math.round(((clientX - rect.left) / rect.width) * SLOTS_PER_DAY)
@@ -342,7 +357,8 @@ export default function DayList({
     if (armed?.date === date) {
       e.preventDefault()
       const cell = cellFrom(trackEl, e.clientX)
-      setDragState({ mode: 'paint', date, trackEl, anchor: cell, cell })
+      const lane = laneFrom(trackEl, e.clientY, days[date]?.blocks ?? [], cell)
+      setDragState({ mode: 'paint', date, trackEl, anchor: cell, cell, lane })
       return
     }
 
@@ -398,6 +414,7 @@ export default function DayList({
         h.onPaint(d.date, {
           startSlot: Math.min(d.anchor, d.cell),
           endSlot: Math.max(d.anchor, d.cell) + 1,
+          at: { slot: d.anchor, lane: d.lane },
         })
       } else if (d.mode === 'resize') {
         h.onResize(d.date, d.id, d.startSlot, d.endSlot)
@@ -532,13 +549,17 @@ export default function DayList({
           let previewId = null
           if (paintPreview && drag.date === date) {
             const before = blocks
-            blocks = applyPaint(before, {
-              id: PREVIEW_ID,
-              tag: armed.tag,
-              startSlot: paintPreview.startSlot,
-              endSlot: paintPreview.endSlot,
-              note: '',
-            })
+            blocks = applyPaint(
+              before,
+              {
+                id: PREVIEW_ID,
+                tag: armed.tag,
+                startSlot: paintPreview.startSlot,
+                endSlot: paintPreview.endSlot,
+                note: '',
+              },
+              { slot: drag.anchor, lane: drag.lane },
+            )
             // Usually the new block, but painting a tag over itself merges,
             // in which case the survivor is what changed.
             previewId = blocks.find((b) => {

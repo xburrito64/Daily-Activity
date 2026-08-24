@@ -394,7 +394,7 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   font-weight: var(--w-medium);
   opacity: 0.55;
 }
-/* the half you actually clicked */
+/* the block whose note is open */
 .notetag.current { opacity: 1; }
 .notedate { color: var(--c-text-dim); }
 .notetime { font-size: var(--f-lg); font-weight: var(--w-medium); }

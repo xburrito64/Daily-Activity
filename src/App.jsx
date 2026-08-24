@@ -63,10 +63,12 @@ export default function App() {
     setArmed((a) => (a && a.date === date && a.tag === tag ? null : { date, tag }))
   }, [])
 
-  function handlePaint(date, { startSlot, endSlot }) {
+  function handlePaint(date, { startSlot, endSlot, at }) {
     if (!armed || armed.date !== date) return
+    // `at` is where the pointer went down: it decides whether the new block
+    // lands above or below whatever is already there.
     editDay(date, (prev) =>
-      applyPaint(prev, { id: newId(), tag: armed.tag, startSlot, endSlot, note: '' }))
+      applyPaint(prev, { id: newId(), tag: armed.tag, startSlot, endSlot, note: '' }, at))
     setArmed(null)
   }
 
@@ -75,7 +77,7 @@ export default function App() {
 
   const dayBlocks = selected ? days[selected.date]?.blocks ?? [] : []
   const selectedBlock = selected ? dayBlocks.find((b) => b.id === selected.id) ?? null : null
-  // Everything running alongside it shares one note.
+  // Named across the top of the note, so you can see what else was running.
   const selectedCluster = selectedBlock ? overlapCluster(dayBlocks, selected.id) : []
 
   return (

@@ -3,22 +3,18 @@ import { slotToTime, formatDuration } from './time.js'
 import TagIcon from './TagIcon.jsx'
 
 /**
- * One note for everything overlapping at that moment. `cluster` is the whole
- * group (earliest first, which is the one holding the text); `block` is the
- * one actually clicked, which is what Delete removes.
+ * The note for one block. `block` is the one clicked — its own text, its own
+ * times, and what Delete removes. `cluster` is everything overlapping it, listed
+ * across the top so you can see what else was running at the same time.
  */
 export default function NotePanel({ cluster, block, date, tags, onNote, onDelete, onClose }) {
   const area = useRef(null)
   const tagFor = (id) => tags.find((t) => t.id === id)
 
-  const owner = cluster[0]
-  const from = Math.min(...cluster.map((b) => b.startSlot))
-  const to = Math.max(...cluster.map((b) => b.endSlot))
   const clickedTag = tagFor(block.tag)
 
-  // Opening the panel should put the cursor straight in the text. Keyed on the
-  // group, so clicking between halves of one note doesn't yank the cursor.
-  useEffect(() => { area.current?.focus() }, [owner.id])
+  // Opening the panel should put the cursor straight in the text.
+  useEffect(() => { area.current?.focus() }, [block.id])
 
   return (
     <div className="notepanel">
@@ -39,8 +35,9 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onDelete
         })}
 
         <span className="notedate">{date}</span>
-        <span className="notetime">{slotToTime(from)} – {slotToTime(to)}</span>
-        <span className="notedur">{formatDuration(to - from)}</span>
+        {/* The clicked block's own hours, not the whole overlap's. */}
+        <span className="notetime">{slotToTime(block.startSlot)} – {slotToTime(block.endSlot)}</span>
+        <span className="notedur">{formatDuration(block.endSlot - block.startSlot)}</span>
 
         <button
           className="notebtn danger"
@@ -56,8 +53,8 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onDelete
         ref={area}
         className="notetext"
         placeholder="Anything worth remembering about this…"
-        value={owner.note ?? ''}
-        onChange={(e) => onNote(owner.id, e.target.value)}
+        value={block.note ?? ''}
+        onChange={(e) => onNote(block.id, e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
       />
     </div>
