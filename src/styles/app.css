@@ -315,12 +315,15 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
 .selection {
   position: absolute;
   left: 0;
-  right: 0;
   /* Inset vertically to match the blocks, so 0 and 100 in the polygon's
      coordinates land exactly on the top and bottom of a full-height block,
-     and 50 lands exactly where two stacked halves meet. */
+     and 50 lands exactly where two stacked halves meet.
+     Width and height are given explicitly: an <svg> is a replaced element,
+     so with only top/bottom set it sizes itself from its own aspect ratio
+     and ends up as tall as it is wide. */
   top: var(--block-inset);
-  bottom: var(--block-inset);
+  width: 100%;
+  height: calc(100% - var(--block-inset) * 2);
   overflow: visible;
   pointer-events: none;
 }

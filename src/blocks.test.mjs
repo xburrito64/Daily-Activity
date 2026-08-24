@@ -149,11 +149,19 @@ t('a merge keeps the surviving block in its original place in the order', () => 
   assert.deepStrictEqual(out.map((x) => x.tag), ['game', 'dgg'], 'game must not jump to the end')
 })
 
-t('resizing does not change the stacking order', () => {
+t('dragging a block over another tucks it underneath', () => {
+  // music sits before dgg in the list, then is dragged right across it
+  const start = [b('m', 'music', 0, 8), b('d', 'dgg', 20, 30)]
+  const out = applyResize(start, 'm', 0, 24)
+  assert.deepStrictEqual(out.map((x) => x.id), ['d', 'm'], 'the dragged block moves last')
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 22), { d: 0, m: 1 })
+})
+
+t('dragging a block that is already underneath leaves it there', () => {
   const start = [b('g', 'game', 0, 12), b('r', 'reading', 4, 6)]
-  const out = applyResize(start, 'r', 0, 40)
+  const out = applyResize(start, 'r', 4, 10)
   assert.deepStrictEqual(out.map((x) => x.id), ['g', 'r'])
-  assert.deepStrictEqual(lanesAt(layoutLanes(out), 2), { g: 0, r: 1 })
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 5), { g: 0, r: 1 })
 })
 
 t('painting the same tag over itself merges', () => {
@@ -177,8 +185,9 @@ t('merging same-tag blocks keeps their notes', () => {
 t('resize no longer eats its neighbour', () => {
   const out = applyResize([b('g', 'game', 0, 4), b('d', 'dgg', 6, 10)], 'g', 0, 8)
   assert.strictEqual(out.length, 2)
-  assert.deepStrictEqual(out.map((x) => [x.id, x.startSlot, x.endSlot]),
-    [['g', 0, 8], ['d', 6, 10]])
+  // order is stacking order, so the dragged block is last; check contents
+  const byId = Object.fromEntries(out.map((x) => [x.id, [x.startSlot, x.endSlot]]))
+  assert.deepStrictEqual(byId, { g: [0, 8], d: [6, 10] })
 })
 
 t('cluster is the same whichever member you click', () => {

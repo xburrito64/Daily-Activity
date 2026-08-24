@@ -35,7 +35,10 @@ export function validateEntries(entries) {
 
   // Overlaps are allowed: two things really can happen at once, and the app
   // draws them stacked. Only the shape of each entry is enforced here.
-  checked.sort((a, b) => a.start - b.start || a.end - b.end)
+  //
+  // The order is left exactly as given. It is not decoration — it decides
+  // which of two overlapping blocks is drawn above the other, so sorting
+  // here would quietly undo that every time a day was saved.
   return checked.map((c) => c.clean)
 }
 

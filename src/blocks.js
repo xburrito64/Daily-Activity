@@ -44,11 +44,16 @@ export function applyPaint(blocks, painted) {
     .map((b) => (b === keep ? merged : b))
 }
 
-/** Move one block's edges. Neighbours are left alone; overlaps just stack. */
+/**
+ * Move one block's edges. Neighbours are left alone; overlaps just stack.
+ * The block moves to the end of the list, so dragging one over another tucks
+ * it underneath — the same as painting it there would.
+ */
 export function applyResize(blocks, id, startSlot, endSlot) {
   if (endSlot <= startSlot) return blocks
-  // Position in the list is the stacking order, so resizing must not reorder.
-  return blocks.map((b) => (b.id === id ? { ...b, startSlot, endSlot } : b))
+  const target = blocks.find((b) => b.id === id)
+  if (!target) return blocks
+  return [...blocks.filter((b) => b.id !== id), { ...target, startSlot, endSlot }]
 }
 
 export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)
