@@ -20,19 +20,40 @@ app says so and refuses to write over it.
 
 ## Running it
 
+As a desktop app — its own window, no console, no browser:
+
+```bash
+npm run app
+```
+
+To build an installer instead (lands in `release/`):
+
+```bash
+npm run package
+```
+
+For development, with hot reload in a browser tab:
+
 ```bash
 npm install
 npm start
 ```
 
-Then open http://localhost:5273. Only run one copy at a time — if it says the
-app is already running:
+Then open http://localhost:5273. Only run one copy of the dev server at a
+time — if it says the app is already running:
 
 ```bash
 npm run stop
 ```
 
 ## Setup
+
+**The installed app keeps its settings in `%APPDATA%/Daily Documentation/`**,
+not in the project folder, so they survive reinstalling. Both `config.json`
+and `tags.json` live there, copied from the project versions the first time it
+runs. The app's menu has *Open settings folder*.
+
+In development the project's own `config.json` and `tags.json` are used.
 
 Copy `config.example.json` to `config.json` and point it at your daily notes
 folder. Use forward slashes:
@@ -63,6 +84,7 @@ Fonts go in `public/fonts/`; see the README in there.
 ## Layout
 
 ```
+electron/  desktop wrapper; runs the server in-process
 server/    Express API; reads and writes the fenced block
 src/       React frontend
 src/styles/tokens.css   all colours, spacing and type sizes

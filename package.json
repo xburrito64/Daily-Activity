@@ -1,16 +1,21 @@
 {
   "name": "daily-documenter",
+  "productName": "Daily Documentation",
+  "description": "A personal daily activity tracker that writes into an Obsidian vault",
+  "author": "Burrito",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "start": "concurrently -n api,web -c yellow,green \"npm:server\" \"npm:dev\"",
     "dev": "vite",
     "server": "node server/index.js",
+    "stop": "node server/stop.js",
     "test": "node server/fence.test.mjs && node server/store.test.mjs && node src/blocks.test.mjs",
     "build": "vite build",
-    "preview": "vite preview",
-    "stop": "node server/stop.js"
+    "app": "npm run build && electron .",
+    "package": "npm run build && electron-builder"
   },
   "dependencies": {
     "express": "^5.2.1",
@@ -20,6 +25,33 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^10.0.5",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "vite": "^6.0.7"
+  },
+  "build": {
+    "appId": "com.raild.daily-documentation",
+    "productName": "Daily Documentation",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**",
+      "server/**",
+      "!server/*.test.mjs",
+      "dist/**",
+      "tags.json",
+      "config*.json",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Daily Documentation"
+    }
   }
 }

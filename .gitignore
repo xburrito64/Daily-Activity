@@ -10,3 +10,4 @@ config.json
 # tooling scratch
 .playwright-mcp/
 *.log
+release/
