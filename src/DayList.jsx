@@ -161,8 +161,15 @@ export default function DayList({
 
   // --- keeping your place while the list grows or the rows resize --------
   const didInitialScroll = useRef(false)
-  const topDate = useRef(today)
+  // Each view keeps its own place. Scrolling back through the Overview
+  // shouldn't drag the Day view along with it, so switching between them
+  // returns to wherever that view was left.
+  const topDates = useRef({ day: today, compact: today })
   const lastMode = useRef(mode)
+  // handleScroll is memoised, so it reads the view from here rather than
+  // from a closure that was made several views ago.
+  const modeRef = useRef(mode)
+  modeRef.current = mode
 
   /**
    * Every correction says "put this date back where it was", never "shift by
@@ -177,7 +184,7 @@ export default function DayList({
 
     if (lastMode.current !== mode) {
       lastMode.current = mode
-      pendingAnchor.current = { date: topDate.current, offset: 0 }
+      pendingAnchor.current = { date: topDates.current[mode], offset: 0 }
     }
 
     const anchor = pendingAnchor.current
@@ -185,14 +192,20 @@ export default function DayList({
     // rowTotal is still a guess for this view; wait for the real measurement
     // rather than scrolling to a position computed from the wrong height.
     if (!chromeReady) return
-    pendingAnchor.current = null
 
     const i = dates.indexOf(anchor.date)
-    if (i < 0) return
+    if (i < 0) {
+      // The day this view was left on isn't loaded any more — jumping to a
+      // date in the other view moves the window. Load around it and let this
+      // run again; the anchor stays pending until it lands.
+      setRange({ start: shiftDate(anchor.date, -INITIAL), end: shiftDate(anchor.date, INITIAL) })
+      return
+    }
+    pendingAnchor.current = null
     el.scrollTop = anchor.cursorY == null
       ? i * rowTotal + anchor.offset
       : (i + anchor.frac) * rowTotal - anchor.cursorY
-  }, [dates.length, rowTotal, mode, chromeReady])
+  }, [range.start, dates.length, rowTotal, mode, chromeReady])
 
   // Short rows can leave the loaded window shorter than the viewport, which
   // means nothing to scroll. Keep at least two screens' worth loaded.
@@ -200,7 +213,7 @@ export default function DayList({
     const el = scrollRef.current
     if (!el || dates.length > 800) return
     if (el.scrollHeight >= el.clientHeight * 2) return
-    pendingAnchor.current = { date: topDate.current, offset: 0 }
+    pendingAnchor.current = { date: topDates.current[mode], offset: 0 }
     setRange((r) => ({ start: shiftDate(r.start, -CHUNK), end: shiftDate(r.end, CHUNK) }))
   }, [dates.length, rowTotal])
 
@@ -211,7 +224,7 @@ export default function DayList({
     const i = dates.indexOf(today)
     if (i < 0) return
     el.scrollTop = i * rowTotal
-    topDate.current = today
+    topDates.current[mode] = today
     didInitialScroll.current = true
   }, [dates, rowTotal, today, chromeReady])
 
@@ -245,7 +258,7 @@ export default function DayList({
     // Mid-correction the scroll position isn't a truthful answer to
     // "which day are you looking at", so don't record it.
     const atTop = datesRef.current[index]
-    if (atTop && !pendingAnchor.current) topDate.current = atTop
+    if (atTop && !pendingAnchor.current) topDates.current[modeRef.current] = atTop
 
     if (el.scrollTop < EDGE_PX) {
       if (atTop) pendingAnchor.current = { date: atTop, offset: el.scrollTop - index * h }
@@ -373,6 +386,8 @@ export default function DayList({
       setDragState({
         mode: 'resize', date, trackEl, id: block.id, edge,
         startSlot: block.startSlot, endSlot: block.endSlot,
+        // Kept so a press that goes nowhere can be told from a real drag.
+        was: { startSlot: block.startSlot, endSlot: block.endSlot },
       })
     } else {
       setDragState({ mode: 'press', date, id: block.id, originX: e.clientX, originY: e.clientY })
@@ -417,7 +432,13 @@ export default function DayList({
           at: { slot: d.anchor, lane: d.lane },
         })
       } else if (d.mode === 'resize') {
-        h.onResize(d.date, d.id, d.startSlot, d.endSlot)
+        // Landing back on the same slot isn't a resize — it's a click on a
+        // block too narrow to have anywhere else to click.
+        if (d.startSlot === d.was.startSlot && d.endSlot === d.was.endSlot) {
+          h.onSelect(d.date, d.id)
+        } else {
+          h.onResize(d.date, d.id, d.startSlot, d.endSlot)
+        }
       } else if (!d.moved) {
         if (d.compact) h.onPickDay(d.date)
         else h.onSelect(d.date, d.id)
@@ -472,11 +493,19 @@ export default function DayList({
       setRange({ start: shiftDate(jumpTo, -INITIAL), end: shiftDate(jumpTo, INITIAL) })
       return // re-runs once the range covers it
     }
+    topDates.current[mode] = jumpTo
+    // Asking for a date beats every correction still queued, including the one
+    // that puts a view back where you left it — which is what makes clicking a
+    // day in the Overview open that day rather than the last one you read.
     const el = scrollRef.current
-    if (el) el.scrollTop = daysBetween(range.start, jumpTo) * rowTotal
-    topDate.current = jumpTo
+    if (el && chromeReady) {
+      pendingAnchor.current = null
+      el.scrollTop = daysBetween(range.start, jumpTo) * rowTotal
+    } else {
+      pendingAnchor.current = { date: jumpTo, offset: 0 }
+    }
     onJumped()
-  }, [jumpTo, range.start, range.end, rowTotal, onJumped])
+  }, [jumpTo, range.start, range.end, rowTotal, onJumped, mode, chromeReady])
 
   const paintPreview = drag?.mode === 'paint' && armedTag
     ? { startSlot: Math.min(drag.anchor, drag.cell), endSlot: Math.max(drag.anchor, drag.cell) + 1 }
@@ -632,11 +661,13 @@ ${b.note}` : ''}`}
               {/* Handles are drawn over the blocks so they are never buried,
                   but only as tall as the block is at that edge — a full-height
                   strip would reach into whatever is stacked above or below and
-                  steal its clicks. */}
+                  steal its clicks. A quarter-hour block is narrower than two
+                  grab strips, so they halve to fit; it ends up entirely
+                  covered, which is why a press that goes nowhere opens the
+                  note instead of counting as a resize. */}
               {isDay && !day?.malformed && !previewId && pieces.map((piece) => {
                 const b = piece.block
                 const widthPx = ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth
-                if (widthPx < 18) return null // no room for two grab strips
                 if (!piece.isFirst && !piece.isLast) return null
 
                 const lane = {
@@ -646,6 +677,7 @@ ${b.note}` : ''}`}
                   height: `calc(${100 / piece.lanes}%`
                     + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
                     + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
+                  '--block-w': `${widthPx}px`,
                 }
                 return (
                   <span key={`h${b.id}:${piece.from}`}>

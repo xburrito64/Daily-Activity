@@ -355,11 +355,14 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
    set inline, so the strip never covers a neighbouring lane. */
 .handle {
   position: absolute;
-  width: var(--handle-width);
+  /* Both strips sit inside the block, so on a short one they take half each
+     rather than overlapping. --block-w is the block's width, set inline. */
+  --w: min(var(--handle-width), calc(var(--block-w) / 2));
+  width: var(--w);
   cursor: ew-resize;
 }
 .handle.start { margin-left: 0; }
-.handle.end { margin-left: calc(var(--handle-width) * -1); }
+.handle.end { margin-left: calc(var(--w) * -1); }
 .scroller.armed .handle { pointer-events: none; }
 
 .rowbroken {
