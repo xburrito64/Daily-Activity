@@ -3,7 +3,7 @@ import {
   SLOTS_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO, daysBetween,
   formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
 } from './time.js'
-import { applyResize, layoutLanes } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes } from './blocks.js'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
 const CLICK_SLOP_PX = 4
@@ -26,6 +26,7 @@ export const ZOOM = {
 const CHROME_GUESS = { day: 160, compact: 4 }
 
 const WIPE_CONFIRM_MS = 4000
+const PREVIEW_ID = '__preview' // the block being painted, not yet committed
 
 const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
@@ -491,9 +492,31 @@ export default function DayList({
         {dates.map((date, rowIndex) => {
           const day = days[date]
           const isToday = date === today
-          const blocks = resizing?.date === date
+          let blocks = resizing?.date === date
             ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot)
             : day?.blocks ?? []
+
+          // While painting, lay the day out as it will be once the drag is
+          // released — so the new block shows at the height it will land at,
+          // and anything it overlaps shrinks to make room for it.
+          let previewId = null
+          if (paintPreview && drag.date === date) {
+            const before = blocks
+            blocks = applyPaint(before, {
+              id: PREVIEW_ID,
+              tag: armed.tag,
+              startSlot: paintPreview.startSlot,
+              endSlot: paintPreview.endSlot,
+              note: '',
+            })
+            // Usually the new block, but painting a tag over itself merges,
+            // in which case the survivor is what changed.
+            previewId = blocks.find((b) => {
+              const was = before.find((o) => o.id === b.id)
+              return !was || was.startSlot !== b.startSlot || was.endSlot !== b.endSlot
+            })?.id ?? null
+          }
+
           const pieces = layoutLanes(blocks)
           // Only the clicked block is outlined, and as one shape even when it
           // is drawn in several pieces around an overlap.
@@ -525,6 +548,7 @@ export default function DayList({
                     data-block-id={b.id}
                     className={
                       'block' +
+                      (b.id === previewId ? ' preview' : '') +
                       // square off the ends where this block carries on
                       `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
                     }
@@ -555,7 +579,7 @@ ${b.note}` : ''}`}
                   but only as tall as the block is at that edge — a full-height
                   strip would reach into whatever is stacked above or below and
                   steal its clicks. */}
-              {isDay && !day?.malformed && pieces.map((piece) => {
+              {isDay && !day?.malformed && !previewId && pieces.map((piece) => {
                 const b = piece.block
                 const widthPx = ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth
                 if (widthPx < 18) return null // no room for two grab strips
@@ -597,17 +621,7 @@ ${b.note}` : ''}`}
                 </svg>
               )}
 
-              {paintPreview && drag.date === date && (
-                <div
-                  className="block preview"
-                  style={{
-                    left: `${pct(paintPreview.startSlot)}%`,
-                    width: `${pct(paintPreview.endSlot - paintPreview.startSlot)}%`,
-                    background: armedTag.colour,
-                  }}
-                />
-              )}
-            </div>
+           </div>
           )
 
           if (!isDay) {

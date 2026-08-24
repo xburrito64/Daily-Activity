@@ -303,9 +303,9 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   padding: 0 var(--s-4);
   pointer-events: none;
 }
+/* Position comes from the lane, same as any block: the preview sits where
+   the finished block will sit. */
 .block.preview {
-  top: var(--block-inset);
-  bottom: var(--block-inset);
   opacity: 0.7;
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
