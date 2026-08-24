@@ -314,16 +314,34 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
    separate boxes. */
 .selection {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  border: 2px solid var(--c-focus-ring);
-  border-radius: var(--r-md);
+  left: 0;
+  right: 0;
+  /* Inset vertically to match the blocks, so 0 and 100 in the polygon's
+     coordinates land exactly on the top and bottom of a full-height block,
+     and 50 lands exactly where two stacked halves meet. */
+  top: var(--block-inset);
+  bottom: var(--block-inset);
+  overflow: visible;
   pointer-events: none;
 }
+.selection polygon {
+  fill: none;
+  stroke: var(--c-focus-ring);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
 
-.handle { position: absolute; top: 0; bottom: 0; width: var(--handle-width); cursor: ew-resize; }
-.handle.start { left: 0; }
-.handle.end { right: 0; }
+/* Full height of the bar, positioned on the block's edge rather than inside
+   whichever piece happens to be drawn there. */
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--handle-width);
+  cursor: ew-resize;
+}
+.handle.start { margin-left: 0; }
+.handle.end { margin-left: calc(var(--handle-width) * -1); }
 .scroller.armed .handle { pointer-events: none; }
 
 .rowbroken {

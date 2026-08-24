@@ -3,7 +3,7 @@ import {
   SLOTS_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO, daysBetween,
   formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
 } from './time.js'
-import { applyResize, layoutLanes, overlapCluster } from './blocks.js'
+import { applyResize, layoutLanes } from './blocks.js'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
 const CLICK_SLOP_PX = 4
@@ -53,6 +53,25 @@ function textWidth(text) {
     widths.set(text, measureCtx.measureText(text).width)
   }
   return widths.get(text)
+}
+
+/**
+ * Outline of one block as a single closed shape. A block split around an
+ * overlap is several rectangles of differing heights; tracing the tops left
+ * to right and the bottoms back again gives one silhouette, so the step where
+ * it narrows is drawn but the joins inside it are not.
+ */
+function silhouette(pieces) {
+  const sorted = [...pieces].sort((a, b) => a.from - b.from)
+  const x1 = (p) => (p.from / SLOTS_PER_DAY) * 100
+  const x2 = (p) => (p.to / SLOTS_PER_DAY) * 100
+  const yTop = (p) => (p.lane / p.lanes) * 100
+  const yBottom = (p) => ((p.lane + 1) / p.lanes) * 100
+
+  const points = []
+  for (const p of sorted) points.push(`${x1(p)},${yTop(p)}`, `${x2(p)},${yTop(p)}`)
+  for (const p of [...sorted].reverse()) points.push(`${x2(p)},${yBottom(p)}`, `${x1(p)},${yBottom(p)}`)
+  return points.join(' ')
 }
 
 /** Full name if it fits, otherwise just the icon, otherwise nothing. */
@@ -423,17 +442,6 @@ export default function DayList({
 
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
 
-  // Clicking any part of an overlap opens one shared note, so the highlight
-  // covers the whole group as a single outline rather than boxing each piece.
-  const selection = (() => {
-    if (!selected) return null
-    const cluster = overlapCluster(days[selected.date]?.blocks ?? [], selected.id)
-    if (cluster.length === 0) return null
-    return {
-      from: Math.min(...cluster.map((b) => b.startSlot)),
-      to: Math.max(...cluster.map((b) => b.endSlot)),
-    }
-  })()
 
   return (
     <div className={`daylist ${mode}`}>
@@ -486,6 +494,12 @@ export default function DayList({
           const blocks = resizing?.date === date
             ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot)
             : day?.blocks ?? []
+          const pieces = layoutLanes(blocks)
+          // Only the clicked block is outlined, and as one shape even when it
+          // is drawn in several pieces around an overlap.
+          const selectedPieces = selected?.date === date
+            ? pieces.filter((p) => p.block.id === selected.id)
+            : []
 
           const track = (
             <div
@@ -499,7 +513,7 @@ export default function DayList({
 
               {day?.malformed ? (
                 <span className="rowbroken">needs fixing in Obsidian</span>
-              ) : layoutLanes(blocks).map((piece) => {
+              ) : pieces.map((piece) => {
                 const b = piece.block
                 const tag = tagById(b.tag)
                 const widthPct = (piece.to - piece.from) * (100 / SLOTS_PER_DAY)
@@ -530,27 +544,41 @@ export default function DayList({
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   >
-                    {isDay && piece.isFirst && widthPct > 2 && (
-                      <span className="handle start" data-handle="start" />
-                    )}
                     {piece.isLabel && laneHeight >= 34 && label && (
                       <span className="block-label">{label}</span>
-                    )}
-                    {isDay && piece.isLast && widthPct > 2 && (
-                      <span className="handle end" data-handle="end" />
                     )}
                   </div>
                 )
               })}
 
-              {selection && selected?.date === date && (
-                <div
-                  className="selection"
-                  style={{
-                    left: `${pct(selection.from)}%`,
-                    width: `${pct(selection.to - selection.from)}%`,
-                  }}
-                />
+              {/* Handles sit on the bar, not inside a piece, so the grab strip
+                  is the full height of the bar even where the block is only
+                  showing as a half. */}
+              {isDay && !day?.malformed && blocks.map((b) => {
+                const widthPx = ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth
+                if (widthPx < 18) return null // no room for two grab strips
+                return (
+                  <span key={`h${b.id}`}>
+                    <span
+                      className="handle start"
+                      data-block-id={b.id}
+                      data-handle="start"
+                      style={{ left: `${pct(b.startSlot)}%` }}
+                    />
+                    <span
+                      className="handle end"
+                      data-block-id={b.id}
+                      data-handle="end"
+                      style={{ left: `${pct(b.endSlot)}%` }}
+                    />
+                  </span>
+                )
+              })}
+
+              {selectedPieces.length > 0 && (
+                <svg className="selection" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <polygon points={silhouette(selectedPieces)} vectorEffect="non-scaling-stroke" />
+                </svg>
               )}
 
               {paintPreview && drag.date === date && (
