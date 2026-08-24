@@ -16,6 +16,7 @@ const projectRoot = path.resolve(here, '..')
 const settingsDir = app.getPath('userData')
 const configFile = path.join(settingsDir, 'config.json')
 const tagsFile = path.join(settingsDir, 'tags.json')
+const tagIconsDir = path.join(settingsDir, 'tag-icons')
 
 function seedSettings() {
   fs.mkdirSync(settingsDir, { recursive: true })
@@ -32,6 +33,14 @@ function seedSettings() {
     const source = path.join(projectRoot, 'tags.json')
     if (fs.existsSync(source)) fs.copyFileSync(source, tagsFile)
   }
+
+  // Somewhere to drop tag images, with the instructions alongside them.
+  fs.mkdirSync(tagIconsDir, { recursive: true })
+  const readme = path.join(tagIconsDir, 'README.md')
+  const readmeSource = path.join(projectRoot, 'tag-icons', 'README.md')
+  if (!fs.existsSync(readme) && fs.existsSync(readmeSource)) {
+    fs.copyFileSync(readmeSource, readme)
+  }
 }
 
 function startServer() {
@@ -39,6 +48,7 @@ function startServer() {
   const server = createApp({
     vaultDailyDir: config.vaultDailyDir,
     tagsFile,
+    tagIconsDir,
     staticDir: path.join(projectRoot, 'dist'),
   })
   return new Promise((resolve, reject) => {
@@ -85,11 +95,15 @@ async function main() {
 
   const { port } = listener.address()
 
+  // build/icon.ico if it has been added; Electron's default until then.
+  const iconFile = path.join(projectRoot, 'build', 'icon.ico')
+
   const window = new BrowserWindow({
     width: 1600,
     height: 1000,
     minWidth: 900,
     minHeight: 600,
+    ...(fs.existsSync(iconFile) ? { icon: iconFile } : {}),
     backgroundColor: '#17130f', // matches the page, so no white flash on open
     show: false,
     autoHideMenuBar: true,

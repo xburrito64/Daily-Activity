@@ -4,6 +4,7 @@ import {
   formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes } from './blocks.js'
+import TagIcon from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
 const CLICK_SLOP_PX = 4
@@ -30,6 +31,8 @@ const PREVIEW_ID = '__preview' // the block being painted, not yet committed
 
 const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
+const ICON_PX = 16 // --tagicon-size
+const ICON_GAP = 6
 
 /**
  * Width of a string in the label font, measured once per string. The font is
@@ -75,11 +78,15 @@ function silhouette(pieces) {
   return points.join(' ')
 }
 
-/** Full name if it fits, otherwise just the icon, otherwise nothing. */
+/**
+ * How much of a label fits: 'full', 'icon', or nothing at all. A custom image
+ * is a fixed width; an emoji has to be measured like any other text.
+ */
 function fitLabel(tag, fallback, widthPx) {
-  const full = tag ? `${tag.icon} ${tag.name}` : fallback
-  if (textWidth(full) <= widthPx - LABEL_PADDING) return full
-  if (tag && textWidth(tag.icon) <= widthPx - ICON_PADDING) return tag.icon
+  if (!tag) return textWidth(fallback) <= widthPx - LABEL_PADDING ? 'full' : null
+  const iconWidth = tag.image ? ICON_PX : textWidth(tag.icon)
+  if (iconWidth + ICON_GAP + textWidth(tag.name) <= widthPx - LABEL_PADDING) return 'full'
+  if (iconWidth <= widthPx - ICON_PADDING) return 'icon'
   return null
 }
 
@@ -107,6 +114,7 @@ export default function DayList({
   onSelect,
   onPickDay,
   onWipeDay,
+  onVisibleRange,
   jumpTo,
   onJumped,
 }) {
@@ -207,9 +215,30 @@ export default function DayList({
     didInitialScroll.current = true
   }, [dates, rowTotal, today, chromeReady])
 
+  // Which days are actually on screen, for the totals beside the list.
+  const reportedRange = useRef('')
+  const reportVisible = useCallback(() => {
+    const el = scrollRef.current
+    if (!el || !onVisibleRange) return
+    const h = rowTotalRef.current
+    const list = datesRef.current
+    const first = Math.max(0, Math.floor(el.scrollTop / h))
+    const last = Math.min(list.length - 1, Math.ceil((el.scrollTop + el.clientHeight) / h) - 1)
+    if (last < first) return
+
+    const range = { from: list[first], to: list[last] }
+    const key = `${range.from}|${range.to}`
+    if (key === reportedRange.current) return
+    reportedRange.current = key
+    onVisibleRange(range)
+  }, [onVisibleRange])
+
+  useEffect(reportVisible)
+
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
+    reportVisible()
 
     const h = rowTotalRef.current
     const index = Math.max(0, Math.floor(el.scrollTop / h))
@@ -224,7 +253,7 @@ export default function DayList({
     } else if (el.scrollHeight - el.scrollTop - el.clientHeight < EDGE_PX) {
       setRange((r) => ({ ...r, end: shiftDate(r.end, CHUNK) }))
     }
-  }, [])
+  }, [reportVisible])
 
   // --- ctrl+scroll zoom, anchored on whatever is under the cursor --------
   useEffect(() => {
@@ -451,7 +480,8 @@ export default function DayList({
           {readoutRange ? (
             <>
               <span className="readout-tag" style={{ color: readoutTag?.colour }}>
-                {readoutTag && `${readoutTag.icon} ${readoutTag.name}`}
+                <TagIcon tag={readoutTag} />
+                {readoutTag?.name}
               </span>
               <span className="readout-range">
                 {slotToTime(readoutRange.startSlot)} – {slotToTime(readoutRange.endSlot)}
@@ -569,7 +599,10 @@ export default function DayList({
 ${b.note}` : ''}`}
                   >
                     {piece.isLabel && laneHeight >= 34 && label && (
-                      <span className="block-label">{label}</span>
+                      <span className="block-label">
+                        <TagIcon tag={tag} />
+                        {label === 'full' && (tag ? tag.name : b.tag)}
+                      </span>
                     )}
                   </div>
                 )
@@ -682,7 +715,7 @@ ${b.note}` : ''}`}
                     disabled={day?.malformed}
                     onClick={() => onArm(date, t.id)}
                   >
-                    <span className="chip-icon">{t.icon}</span>
+                    <TagIcon tag={t} />
                     {t.name}
                   </button>
                 ))}

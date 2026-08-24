@@ -10,6 +10,7 @@ const config = loadJson('config.json')
 const app = createApp({
   vaultDailyDir: config.vaultDailyDir,
   tagsFile: path.join(root, 'tags.json'),
+  tagIconsDir: path.join(root, 'tag-icons'),
 })
 
 const server = app.listen(config.port, '127.0.0.1', () => {

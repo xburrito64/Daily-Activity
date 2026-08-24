@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import DayList, { ZOOM } from './DayList.jsx'
 import NotePanel from './NotePanel.jsx'
+import Totals from './Totals.jsx'
 import { useDays } from './useDays.js'
 import { getTags } from './api.js'
 import { applyPaint, applyResize, removeBlock, setNote, newId, overlapCluster } from './blocks.js'
@@ -21,6 +22,7 @@ export default function App() {
   const [armed, setArmed] = useState(null) // { date, tag } — a tag armed for one day
   const [selected, setSelected] = useState(null) // { date, id }
   const [jumpTo, setJumpTo] = useState(null)
+  const [visible, setVisible] = useState(null) // days currently on screen
 
   const [zoom, setZoom] = useState(() => ({
     day: storedZoom('day'),
@@ -102,7 +104,8 @@ export default function App() {
       {tagError && <div className="banner offline">Couldn't load tags.json — {tagError}</div>}
       {problem && <div className={`banner ${problem.kind}`}>{problem.message}</div>}
 
-      <DayList
+      <div className={`workspace ${view}`}>
+        <DayList
         mode={view}
         days={days}
         tags={tags}
@@ -120,9 +123,12 @@ export default function App() {
           editDay(date, () => [])
           setSelected((sel) => (sel?.date === date ? null : sel))
         }}
+        onVisibleRange={setVisible}
         jumpTo={jumpTo}
         onJumped={() => setJumpTo(null)}
-      />
+        />
+        {view === 'compact' && <Totals days={days} tags={tags} range={visible} />}
+      </div>
 
       {selectedBlock && (
         <NotePanel

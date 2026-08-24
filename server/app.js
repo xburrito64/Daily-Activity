@@ -1,9 +1,34 @@
 import express from 'express'
+import fs from 'node:fs'
 import path from 'node:path'
 import { createStore, DATE_RE } from './store.js'
 import { readJson } from './config.js'
 
 const MAX_RANGE_DAYS = 400
+
+// Best first: a vector scales to any zoom level without going fuzzy.
+const ICON_EXTENSIONS = ['.svg', '.png', '.webp', '.gif', '.jpg', '.jpeg']
+
+/**
+ * A tag uses a custom image when a file named after its id sits in the icon
+ * folder, and falls back to its emoji otherwise. Nothing to configure — the
+ * file being there is the whole switch.
+ */
+function withIcons(tags, tagIconsDir) {
+  let names = []
+  try {
+    names = fs.readdirSync(tagIconsDir)
+  } catch {
+    return tags // no folder yet, everyone keeps their emoji
+  }
+
+  return tags.map((tag) => {
+    const file = ICON_EXTENSIONS
+      .map((ext) => tag.id + ext)
+      .find((name) => names.includes(name))
+    return file ? { ...tag, image: `/tag-icons/${encodeURIComponent(file)}` } : tag
+  })
+}
 
 /**
  * The API, and optionally the built frontend alongside it.
@@ -12,7 +37,7 @@ const MAX_RANGE_DAYS = 400
  * so the same server runs under `npm start` during development and inside the
  * packaged desktop app, where the files live somewhere else entirely.
  */
-export function createApp({ vaultDailyDir, tagsFile, staticDir = null }) {
+export function createApp({ vaultDailyDir, tagsFile, tagIconsDir, staticDir = null }) {
   const store = createStore(vaultDailyDir)
   const app = express()
   app.use(express.json({ limit: '1mb' }))
@@ -23,9 +48,12 @@ export function createApp({ vaultDailyDir, tagsFile, staticDir = null }) {
   })
 
   app.get('/api/tags', wrap(async (_req, res) => {
-    // Re-read each time so editing tags.json doesn't need a restart.
-    res.json(readJson(tagsFile))
+    // Re-read each time, so editing tags.json or dropping in an icon file
+    // only needs a refresh rather than a restart.
+    res.json(withIcons(readJson(tagsFile), tagIconsDir))
   }))
+
+  app.use('/tag-icons', express.static(tagIconsDir))
 
   app.get('/api/day/:date', wrap(async (req, res) => {
     const { date } = req.params

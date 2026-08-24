@@ -80,6 +80,7 @@
                 inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 
   --handle-width: 7px;
+  --tagicon-size: 16px;         /* emoji and custom images alike */
 
   --gutter-w: 62px;                      /* overview date column */
   --gutter-gap: var(--s-5);

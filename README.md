@@ -68,13 +68,16 @@ folder. Use forward slashes:
 Tags live in `tags.json` — name, colour and icon. Edit and refresh; no restart
 needed.
 
-Fonts go in `public/fonts/`; see the README in there.
+Fonts go in `public/fonts/`, the app icon in `build/`, and images to replace
+the tag emoji in `tag-icons/`. Each of those folders has a README explaining
+the format and naming.
 
 ## Using it
 
 - **Day view** — one full-size bar per day, endlessly scrollable. Scroll up for
   the past, down into the future.
-- **Overview** — the same days compressed, read-only, for spotting patterns.
+- **Overview** — the same days compressed, read-only, for spotting patterns,
+  with totals per tag for whatever is on screen beside it.
 - **ctrl+scroll** resizes the rows. Each view remembers its own size.
 - Click a block for its note, drag its edges to adjust the times, or use the
   red button to clear a whole day.

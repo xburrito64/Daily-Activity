@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { slotToTime, formatDuration } from './time.js'
+import TagIcon from './TagIcon.jsx'
 
 /**
  * One note for everything overlapping at that moment. `cluster` is the whole
@@ -31,7 +32,8 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onDelete
               style={{ color: tag?.colour }}
               title={`${slotToTime(b.startSlot)} – ${slotToTime(b.endSlot)}`}
             >
-              {tag ? `${tag.icon} ${tag.name}` : b.tag}
+              <TagIcon tag={tag} />
+              {tag ? tag.name : b.tag}
             </span>
           )
         })}
