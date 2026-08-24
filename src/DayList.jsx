@@ -3,7 +3,7 @@ import {
   SLOTS_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO, daysBetween,
   formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
 } from './time.js'
-import { applyResize, layoutLanes } from './blocks.js'
+import { applyResize, layoutLanes, overlapCluster } from './blocks.js'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
 const CLICK_SLOP_PX = 4
@@ -26,6 +26,42 @@ export const ZOOM = {
 const CHROME_GUESS = { day: 160, compact: 4 }
 
 const WIPE_CONFIRM_MS = 4000
+
+const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
+const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
+
+/**
+ * Width of a string in the label font, measured once per string. The font is
+ * read from the type tokens so this stays honest if they change.
+ */
+const widths = new Map()
+let labelFont = null
+let measureCtx = null
+
+function textWidth(text) {
+  if (labelFont === null) {
+    const root = getComputedStyle(document.documentElement)
+    labelFont = [
+      root.getPropertyValue('--w-medium').trim(),
+      root.getPropertyValue('--f-md').trim(),
+      root.getPropertyValue('--font-ui').trim(),
+    ].join(' ')
+  }
+  if (!widths.has(text)) {
+    measureCtx ??= document.createElement('canvas').getContext('2d')
+    measureCtx.font = labelFont
+    widths.set(text, measureCtx.measureText(text).width)
+  }
+  return widths.get(text)
+}
+
+/** Full name if it fits, otherwise just the icon, otherwise nothing. */
+function fitLabel(tag, fallback, widthPx) {
+  const full = tag ? `${tag.icon} ${tag.name}` : fallback
+  if (textWidth(full) <= widthPx - LABEL_PADDING) return full
+  if (tag && textWidth(tag.icon) <= widthPx - ICON_PADDING) return tag.icon
+  return null
+}
 
 function TrashIcon() {
   return (
@@ -202,6 +238,21 @@ export default function DayList({
     return () => el.removeEventListener('wheel', onWheel)
   }, [barHeight, rowTotal, mode, onZoom])
 
+  // Pixel width of a bar. Labels need it to decide whether the tag name fits.
+  const [trackWidth, setTrackWidth] = useState(0)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => {
+      const t = el.querySelector('.track')
+      if (t) setTrackWidth((w) => (Math.abs(w - t.clientWidth) > 1 ? t.clientWidth : w))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mode])
+
   // --- the paint / resize / click gesture --------------------------------
   const [drag, setDrag] = useState(null)
   const dragRef = useRef(null)
@@ -372,6 +423,18 @@ export default function DayList({
 
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
 
+  // Clicking any part of an overlap opens one shared note, so the highlight
+  // covers the whole group as a single outline rather than boxing each piece.
+  const selection = (() => {
+    if (!selected) return null
+    const cluster = overlapCluster(days[selected.date]?.blocks ?? [], selected.id)
+    if (cluster.length === 0) return null
+    return {
+      from: Math.min(...cluster.map((b) => b.startSlot)),
+      to: Math.max(...cluster.map((b) => b.endSlot)),
+    }
+  })()
+
   return (
     <div className={`daylist ${mode}`}>
       <div className="listbar">
@@ -441,21 +504,27 @@ export default function DayList({
                 const tag = tagById(b.tag)
                 const widthPct = (piece.to - piece.from) * (100 / SLOTS_PER_DAY)
                 const laneHeight = barHeight / piece.lanes
-                const isSelected = selected?.date === date && selected?.id === b.id
+                const label = fitLabel(tag, b.tag, (piece.to - piece.from) / SLOTS_PER_DAY * trackWidth)
                 return (
                   <div
                     key={`${b.id}:${piece.from}`}
                     data-block-id={b.id}
                     className={
-                      `block${isSelected ? ' selected' : ''}` +
+                      'block' +
                       // square off the ends where this block carries on
                       `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
                     }
                     style={{
                       left: `${pct(piece.from)}%`,
                       width: `${pct(piece.to - piece.from)}%`,
-                      top: `calc(${(piece.lane / piece.lanes) * 100}% + var(--block-inset))`,
-                      height: `calc(${100 / piece.lanes}% - var(--block-inset) * 2)`,
+                      // Inset only against the edges of the bar: stacked
+                      // halves meet flush rather than showing a gap.
+                      top: piece.lane === 0
+                        ? 'var(--block-inset)'
+                        : `${(piece.lane / piece.lanes) * 100}%`,
+                      height: `calc(${100 / piece.lanes}%`
+                        + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
+                        + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
                       background: tag?.colour ?? '#555',
                     }}
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
@@ -464,8 +533,8 @@ ${b.note}` : ''}`}
                     {isDay && piece.isFirst && widthPct > 2 && (
                       <span className="handle start" data-handle="start" />
                     )}
-                    {piece.isLabel && laneHeight >= 34 && (
-                      <span className="block-label">{tag ? `${tag.icon} ${tag.name}` : b.tag}</span>
+                    {piece.isLabel && laneHeight >= 34 && label && (
+                      <span className="block-label">{label}</span>
                     )}
                     {isDay && piece.isLast && widthPct > 2 && (
                       <span className="handle end" data-handle="end" />
@@ -473,6 +542,16 @@ ${b.note}` : ''}`}
                   </div>
                 )
               })}
+
+              {selection && selected?.date === date && (
+                <div
+                  className="selection"
+                  style={{
+                    left: `${pct(selection.from)}%`,
+                    width: `${pct(selection.to - selection.from)}%`,
+                  }}
+                />
+              )}
 
               {paintPreview && drag.date === date && (
                 <div

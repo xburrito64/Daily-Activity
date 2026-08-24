@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { applyPaint, applyResize, layoutLanes, overlapCluster } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise } from './blocks.js'
 
 let pass = 0, fail = 0
 const t = (name, fn) => {
@@ -27,39 +27,60 @@ t('overlap in the middle splits only the shared stretch', () => {
   ])
 })
 
-t('the longer block takes the top lane', () => {
-  const pieces = layoutLanes([b('d', 'dgg', 4, 8), b('g', 'game', 0, 12)])
-  const shared = pieces.filter((p) => p.from === 4 && p.to === 8)
-  assert.strictEqual(shared.find((p) => p.block.id === 'g').lane, 0)
-  assert.strictEqual(shared.find((p) => p.block.id === 'd').lane, 1)
+// Whatever was painted later is later in the list, and goes underneath.
+const lanesAt = (pieces, slot) => Object.fromEntries(
+  pieces.filter((p) => p.from <= slot && p.to > slot).map((p) => [p.block.id, p.lane]))
+
+t('the block added first takes the top lane', () => {
+  const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
+  assert.deepStrictEqual(lanesAt(pieces, 5), { g: 0, d: 1 })
 })
 
 t('a short block painted at the START of a long one goes underneath', () => {
-  // the reported bug: both begin at 12, reading is short, game is long
   const pieces = layoutLanes([b('g', 'game', 48, 80), b('r', 'reading', 48, 52)])
-  const shared = pieces.filter((p) => p.from === 48 && p.to === 52)
-  assert.strictEqual(shared.find((p) => p.block.id === 'g').lane, 0, 'game should be on top')
-  assert.strictEqual(shared.find((p) => p.block.id === 'r').lane, 1, 'reading should be underneath')
+  assert.deepStrictEqual(lanesAt(pieces, 49), { g: 0, r: 1 })
 })
 
 t('a short block painted at the END of a long one goes underneath', () => {
   const pieces = layoutLanes([b('g', 'game', 48, 80), b('r', 'reading', 76, 80)])
-  const shared = pieces.filter((p) => p.from === 76)
-  assert.strictEqual(shared.find((p) => p.block.id === 'g').lane, 0)
-  assert.strictEqual(shared.find((p) => p.block.id === 'r').lane, 1)
+  assert.deepStrictEqual(lanesAt(pieces, 77), { g: 0, r: 1 })
 })
 
 t('identical spans put the newer block underneath', () => {
-  // ids are issued in order, so 'b2' was painted after 'b1'
   const pieces = layoutLanes([b('b1', 'game', 0, 8), b('b2', 'reading', 0, 8)])
-  assert.strictEqual(pieces.find((p) => p.block.id === 'b1').lane, 0)
-  assert.strictEqual(pieces.find((p) => p.block.id === 'b2').lane, 1)
+  assert.deepStrictEqual(lanesAt(pieces, 1), { b1: 0, b2: 1 })
+})
+
+t('a later block stays underneath even when it is LONGER', () => {
+  // the reported bug: reading was dragged out past game, and jumped on top
+  const pieces = layoutLanes([b('g', 'game', 48, 64), b('r', 'reading', 48, 90)])
+  assert.deepStrictEqual(lanesAt(pieces, 50), { g: 0, r: 1 })
+})
+
+t('a later block stays underneath when it spans two earlier ones', () => {
+  // reading dragged right so it covers the end of game and the start of dgg
+  const pieces = layoutLanes([
+    b('g', 'game', 48, 64), b('d', 'dgg', 70, 84), b('r', 'reading', 60, 76),
+  ])
+  assert.deepStrictEqual(lanesAt(pieces, 62), { g: 0, r: 1 }, 'over game')
+  assert.deepStrictEqual(lanesAt(pieces, 72), { d: 0, r: 1 }, 'over dgg')
 })
 
 t('the whole of a long block stays in one lane while something nests in it', () => {
   const pieces = layoutLanes([b('g', 'game', 48, 80), b('r', 'reading', 48, 52)])
   const game = pieces.filter((p) => p.block.id === 'g')
   assert.ok(game.every((p) => p.lane === 0), 'game must not change lane part-way')
+})
+
+t('stacking order survives a save and reload', () => {
+  const painted = applyPaint([b('g', 'game', 48, 64)], b('r', 'reading', 48, 90))
+  const reloaded = deserialise(serialise(painted))
+  const ids = reloaded.map((x) => x.tag)
+  assert.deepStrictEqual(ids, ['game', 'reading'], 'file order must not be re-sorted')
+  const pieces = layoutLanes(reloaded)
+  const at = pieces.filter((p) => p.from <= 50 && p.to > 50)
+  assert.strictEqual(at.find((p) => p.block.tag === 'game').lane, 0)
+  assert.strictEqual(at.find((p) => p.block.tag === 'reading').lane, 1)
 })
 
 t('three at once split into thirds', () => {
@@ -118,6 +139,21 @@ t('painting a different tag stacks instead of trimming', () => {
   assert.strictEqual(out.length, 2)
   assert.deepStrictEqual(out.map((x) => [x.tag, x.startSlot, x.endSlot]),
     [['game', 0, 12], ['dgg', 4, 8]])
+})
+
+t('a merge keeps the surviving block in its original place in the order', () => {
+  const out = applyPaint(
+    [b('g', 'game', 0, 12), b('d', 'dgg', 20, 24)],
+    b('n', 'game', 12, 16),
+  )
+  assert.deepStrictEqual(out.map((x) => x.tag), ['game', 'dgg'], 'game must not jump to the end')
+})
+
+t('resizing does not change the stacking order', () => {
+  const start = [b('g', 'game', 0, 12), b('r', 'reading', 4, 6)]
+  const out = applyResize(start, 'r', 0, 40)
+  assert.deepStrictEqual(out.map((x) => x.id), ['g', 'r'])
+  assert.deepStrictEqual(lanesAt(layoutLanes(out), 2), { g: 0, r: 1 })
 })
 
 t('painting the same tag over itself merges', () => {

@@ -1,12 +1,17 @@
 [
-  { "id": "sleep",     "name": "Sleep",          "colour": "#223a5e", "icon": "🌙" },
-  { "id": "game",      "name": "Game",           "colour": "#63478f", "icon": "🎮" },
-  { "id": "shower",    "name": "Shower",         "colour": "#2f8f84", "icon": "💧" },
-  { "id": "smoke",     "name": "Smoke",          "colour": "#4c5c3a", "icon": "🍃" },
-  { "id": "reading",   "name": "Reading",        "colour": "#8f7a35", "icon": "📖" },
-  { "id": "walk",      "name": "Walk",           "colour": "#3d7d5a", "icon": "🚶" },
-  { "id": "walk-coco", "name": "Walk with Coco", "colour": "#5c9440", "icon": "🐕" },
-  { "id": "anime",     "name": "Anime",          "colour": "#94406d", "icon": "🌸" },
-  { "id": "youtube",   "name": "Youtube",        "colour": "#9e3f42", "icon": "▶️" },
-  { "id": "dgg",       "name": "DGG",            "colour": "#3474c4", "icon": "💬" }
+  { "id": "sleep",        "name": "Sleep",          "colour": "#223a5e", "icon": "🌙" },
+  { "id": "game",         "name": "Game",           "colour": "#63478f", "icon": "🎮" },
+  { "id": "shower",       "name": "Shower",         "colour": "#2f8f84", "icon": "💧" },
+  { "id": "smoke",        "name": "Smoke",          "colour": "#4c5c3a", "icon": "🍃" },
+  { "id": "reading",      "name": "Reading",        "colour": "#8f7a35", "icon": "📖" },
+  { "id": "walk",         "name": "Walk",           "colour": "#3d7d5a", "icon": "🚶" },
+  { "id": "walk-coco",    "name": "Walk with Coco", "colour": "#5c9440", "icon": "🐕" },
+  { "id": "anime",        "name": "Anime",          "colour": "#94406d", "icon": "🌸" },
+  { "id": "youtube",      "name": "Youtube",        "colour": "#9e3f42", "icon": "▶️" },
+  { "id": "dgg",          "name": "DGG",            "colour": "#3474c4", "icon": "💬" },
+  { "id": "music",        "name": "Music",          "colour": "#9b45a8", "icon": "🎵" },
+  { "id": "food",         "name": "Food",           "colour": "#b0642c", "icon": "🍽️" },
+  { "id": "cleaning",     "name": "Cleaning",       "colour": "#2f8ba8", "icon": "🧹" },
+  { "id": "vibe-coding",  "name": "Vibe Coding",    "colour": "#5c6670", "icon": "💻" },
+  { "id": "documenting",  "name": "Documenting",    "colour": "#7a5c46", "icon": "📝" }
 ]

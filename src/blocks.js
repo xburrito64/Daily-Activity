@@ -8,18 +8,13 @@ const byStart = (a, b) =>
 
 const overlaps = (a, b) => a.startSlot < b.endSlot && a.endSlot > b.startSlot
 
-const span = (b) => b.endSlot - b.startSlot
-
-/**
- * Which lane a block takes when several share a stretch of the bar.
- * The longest runs on top and shorter ones nest underneath it, so something
- * painted onto an existing block drops below it rather than covering it.
- * Equal spans fall back to the earlier start, then to the newer block, whose
- * id always sorts last — so the one you just painted still ends up at the
- * bottom.
+/*
+ * Lane order is the order blocks were added, so whatever you paint last sits
+ * underneath what was already there. That can't be worked out from the times
+ * — a block painted later may be longer, shorter, earlier or later — so the
+ * list is kept in the order things were created and saved that way. Read the
+ * file back and the order, and therefore the stacking, is unchanged.
  */
-const byLane = (a, b) =>
-  span(b) - span(a) || a.startSlot - b.startSlot || (a.id < b.id ? -1 : 1)
 
 /**
  * Add a painted range. Different tags are allowed to overlap — they stack in
@@ -31,9 +26,10 @@ export function applyPaint(blocks, painted) {
     (b) => b.tag === painted.tag && b.endSlot >= painted.startSlot && b.startSlot <= painted.endSlot,
   )
 
-  if (sameTag.length === 0) return [...blocks, painted].sort(byStart)
+  // Appended, so it lands underneath anything it overlaps.
+  if (sameTag.length === 0) return [...blocks, painted]
 
-  const keep = sameTag.reduce((a, b) => (byStart(a, b) <= 0 ? a : b))
+  const keep = sameTag[0]
   const notes = sameTag.map((b) => b.note).filter(Boolean)
   const merged = {
     ...keep,
@@ -42,15 +38,17 @@ export function applyPaint(blocks, painted) {
     // Don't lose anything that was written on the blocks being absorbed.
     note: [...new Set(notes)].join('\n'),
   }
-  return [...blocks.filter((b) => !sameTag.includes(b)), merged].sort(byStart)
+  // Merging isn't creating, so the survivor keeps its place in the order.
+  return blocks
+    .filter((b) => b === keep || !sameTag.includes(b))
+    .map((b) => (b === keep ? merged : b))
 }
 
 /** Move one block's edges. Neighbours are left alone; overlaps just stack. */
 export function applyResize(blocks, id, startSlot, endSlot) {
   if (endSlot <= startSlot) return blocks
-  return blocks
-    .map((b) => (b.id === id ? { ...b, startSlot, endSlot } : b))
-    .sort(byStart)
+  // Position in the list is the stacking order, so resizing must not reorder.
+  return blocks.map((b) => (b.id === id ? { ...b, startSlot, endSlot } : b))
 }
 
 export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)
@@ -72,7 +70,7 @@ export const setNote = (blocks, id, note) =>
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
 
-  const sorted = [...blocks].sort(byLane)
+  const sorted = blocks // list order is stacking order: first added, top lane
   const cuts = [...new Set(sorted.flatMap((b) => [b.startSlot, b.endSlot]))].sort((a, b) => a - b)
 
   const pieces = []
@@ -133,7 +131,9 @@ export function overlapCluster(blocks, id) {
 
 /** Internal blocks -> the JSON shape stored in the Obsidian fence. */
 export function serialise(blocks) {
-  return [...blocks].sort(byStart).map(({ tag, startSlot, endSlot, note }) => {
+  // Saved in list order, not sorted by time: the order is what decides which
+  // block stacks above which, and it has to survive a reload.
+  return blocks.map(({ tag, startSlot, endSlot, note }) => {
     const entry = { tag, start: slotToTime(startSlot), end: slotToTime(endSlot) }
     if (note) entry.note = note
     return entry
