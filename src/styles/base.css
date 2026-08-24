@@ -1,0 +1,27 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font: var(--f-base) / 1.5 var(--font-ui);
+  overflow: hidden; /* the day list scrolls, not the page */
+  color-scheme: dark;
+}
+
+button { font: inherit; color: inherit; }
+
+/* shared control look */
+.control {
+  height: var(--control-height);
+  padding: 0 var(--s-6);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.control:hover:not(:disabled) { border-color: var(--c-text-dim); }
+.control:disabled { opacity: 0.4; cursor: default; }

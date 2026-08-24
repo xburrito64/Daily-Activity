@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# Your vault path lives here. Kept out of git so the repo can be public
+# without naming a folder on your PC. Copy config.example.json to
+# config.json after cloning. If you keep the repo private and would rather
+# clone-and-run, delete the next line.
+config.json
+
+# tooling scratch
+.playwright-mcp/
+*.log

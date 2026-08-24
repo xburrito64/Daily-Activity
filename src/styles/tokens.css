@@ -1,0 +1,97 @@
+/*
+ * Design tokens. Everything visual should come from here, so restyling means
+ * editing this file rather than hunting through components.
+ *
+ *   --c-*   colour        --s-*   spacing       --r-*   radius
+ *   --f-*   font size     --w-*   font weight   --z-*   layer
+ */
+:root {
+  /* --- palette: warm, dark, forest ------------------------------------ */
+  --c-bg:            #17130f;  /* page */
+  --c-surface:       #201a15;  /* panels, empty track */
+  --c-surface-hi:    #2c2419;  /* raised / active */
+  --c-surface-hover: #221c15;
+
+  --c-line:          #3a2f25;  /* borders */
+  --c-line-soft:     #2b231b;  /* hairlines, grid */
+  --c-line-strong:   #4a3d26;
+
+  --c-text:          #e8dcc8;
+  --c-text-dim:      #9a8973;
+  --c-text-faint:    #6f6252;
+  --c-text-on-block: #ffffff;
+
+  --c-accent:        #b08a2e;  /* today, emphasis */
+  --c-ok:            #6f9a5a;
+  --c-danger:        #c4614c;
+  --c-danger-soft:   #d18a78;
+  --c-warn:          #e0c98a;
+
+  --c-focus-ring:    #f0e0b8;  /* selected block outline */
+
+  /* --- spacing --------------------------------------------------------- */
+  --s-1: 2px;
+  --s-2: 4px;
+  --s-3: 6px;
+  --s-4: 8px;
+  --s-5: 12px;
+  --s-6: 16px;
+  --s-7: 20px;
+  --s-8: 28px;
+  --s-9: 40px;
+
+  /* --- radius ---------------------------------------------------------- */
+  --r-sm: 3px;
+  --r-md: 4px;
+  --r-lg: 6px;
+
+  /* --- type ------------------------------------------------------------ */
+  /* Crimson Pro, with a system fallback until the files are in public/fonts.
+     --font-display is split out so headings can diverge later without
+     touching everything else. */
+  --font-ui: "Crimson Pro", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Crimson Pro", Georgia, serif;
+
+  /* Crimson Pro sits small for its point size, so the scale runs a touch
+     larger than it would for a sans. */
+  --f-xs: 12px;
+  --f-sm: 13px;
+  --f-md: 14px;
+  --f-base: 16px;
+  --f-lg: 18px;
+  --f-xl: 21px;
+  --f-title: 27px;
+  --f-dayhead: 22px;
+
+  --w-normal: 400;
+  --w-medium: 600;  /* SemiBold. Set to 700 to pair Regular with Bold instead. */
+  --w-bold: 600;    /* Only Regular + SemiBold are installed; see fonts.css. */
+
+  /* --- component knobs -------------------------------------------------- */
+  --track-bg: var(--c-surface);
+  --track-border: 1px solid var(--c-line);
+  --track-radius: var(--r-md);
+
+  --block-radius: var(--r-sm);
+  --block-inset: var(--s-1);            /* gap between block and track edge */
+  /* Top highlight and bottom shade only. No side edges, so where one block
+     is split around an overlap the parts join without a seam. */
+  --block-ring: inset 0 1px 0 rgba(255, 255, 255, 0.13),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+
+  --handle-width: 7px;
+
+  --gutter-w: 62px;                      /* overview date column */
+  --gutter-gap: var(--s-5);
+
+  --chip-height: 34px;
+  --dayhead-height: 30px;
+  --dayruler-height: 20px;               /* hour labels under each bar */
+
+  /* Space around the hairline between days. Give the next day's heading more
+     room than the line takes from the day above it. */
+  --daysep-before: var(--s-7);
+  --daysep-after: var(--s-8);
+
+  --control-height: 34px;
+}

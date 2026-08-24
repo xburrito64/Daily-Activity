@@ -1,0 +1,25 @@
+{
+  "name": "daily-documenter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "concurrently -n api,web -c yellow,green \"npm:server\" \"npm:dev\"",
+    "dev": "vite",
+    "server": "node server/index.js",
+    "test": "node server/fence.test.mjs && node src/blocks.test.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "stop": "node server/stop.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.5",
+    "vite": "^6.0.7"
+  }
+}

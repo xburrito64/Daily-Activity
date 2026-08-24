@@ -1,0 +1,372 @@
+/* ============ page shell ============ */
+.app {
+  height: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--s-8) var(--s-9) 0;
+  display: flex;
+  flex-direction: column;
+}
+
+header { flex: none; margin-bottom: var(--s-5); }
+h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); font-weight: var(--w-medium); }
+
+.titlerow { display: flex; align-items: center; gap: var(--s-5); }
+
+.viewswitch { display: flex; margin-left: var(--s-7); }
+.viewswitch button {
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  padding: var(--s-3) var(--s-6);
+  cursor: pointer;
+}
+.viewswitch button:first-child { border-radius: var(--r-lg) 0 0 var(--r-lg); }
+.viewswitch button:last-child { border-radius: 0 var(--r-lg) var(--r-lg) 0; border-left: none; }
+.viewswitch button:hover { color: var(--c-text); }
+.viewswitch button.on {
+  color: var(--c-text);
+  background: var(--c-surface-hi);
+  border-color: var(--c-line-strong);
+}
+
+.nav.today { margin-left: auto; }
+.datepick {
+  height: var(--control-height);
+  padding: 0 var(--s-4);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+}
+.status { min-width: 62px; font-size: var(--f-md); color: var(--c-text-dim); }
+.status.saved { color: var(--c-ok); }
+.status.error { color: var(--c-danger); }
+
+.banner {
+  flex: none;
+  margin-bottom: var(--s-7);
+  padding: var(--s-5) var(--s-6);
+  border-radius: var(--r-lg);
+  border: 1px solid;
+  font-size: var(--f-md);
+}
+.banner.malformed { background: #2e2416; border-color: #6b5320; color: var(--c-warn); }
+.banner.offline,
+.banner.save { background: #2e1b17; border-color: #6b3428; color: #e5a898; }
+
+/* ============ list header: readout + hour ruler ============ */
+.daylist { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.listbar { flex: none; }
+
+.listreadout {
+  height: 26px;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-5);
+  font-variant-numeric: tabular-nums;
+}
+.readout-tag { font-weight: var(--w-medium); }
+.readout-range { font-size: var(--f-xl); font-weight: var(--w-medium); }
+.readout-dur { color: var(--c-text-dim); }
+.readout-hint { color: var(--c-text-dim); }
+
+.listruler {
+  position: relative;
+  height: 15px;
+  margin-right: 10px; /* scrollbar, so ticks stay aligned with the bars */
+}
+/* Overview indents by the date column; Day view runs full width. */
+.daylist.compact .listruler { margin-left: calc(var(--gutter-w) + var(--gutter-gap)); }
+
+.ltick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: var(--f-xs);
+  color: var(--c-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.ltick.last { transform: translateX(-100%); }
+
+/* ============ the scroller ============ */
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+.scroller::-webkit-scrollbar { width: 10px; }
+.scroller::-webkit-scrollbar-thumb { background: var(--c-line); border-radius: 5px; }
+
+/* ============ Day view: heading, bar, its own chips ============ */
+.daysection {
+  display: flex;
+  flex-direction: column;
+  /* The hairline belongs to the top of each day, so the gap after it (before
+     the heading) is larger than the gap before it.
+     Drawn as an inset shadow, not a border: every row must measure exactly
+     the same height or the scroll position drifts over a long list. */
+  box-shadow: inset 0 1px 0 var(--c-line-soft);
+  padding-top: var(--daysep-after);
+  padding-bottom: var(--daysep-before);
+}
+
+.dayhead {
+  height: var(--dayhead-height);
+  font-family: var(--font-display);
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-4);
+  margin: 0 0 var(--s-4);
+  font-size: var(--f-dayhead);
+  font-weight: var(--w-medium);
+  color: var(--c-text);
+}
+.dayweekday { font-size: var(--f-md); font-weight: var(--w-normal); color: var(--c-text-faint); }
+.daysection.today .dayhead { color: var(--c-accent); }
+.todaymark {
+  font-size: var(--f-xs);
+  font-weight: var(--w-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-accent);
+}
+
+.daychips {
+  /* Height is left to the content: with many tags the chips wrap, and the
+     row-height measurement picks that up so every day still matches. */
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  margin-top: var(--s-4);
+}
+.chipgroup {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  min-width: 0;
+}
+.wipe { flex: none; }
+
+/* --- hour scale under each day's bar --- */
+.dayruler {
+  position: relative;
+  height: var(--dayruler-height);
+  flex: none;
+}
+.rtick { position: absolute; top: 0; }
+.rmark {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 4px;
+  background: var(--c-line);
+}
+.rtick.major .rmark { height: 6px; background: var(--c-line-strong); }
+.rlabel {
+  position: absolute;
+  top: 7px;
+  transform: translateX(-50%);
+  font-size: var(--f-xs);
+  font-weight: var(--w-normal);
+  color: var(--c-text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rlabel.first { transform: none; }
+.rlabel.last { transform: translateX(-100%); }
+
+/* --- wipe the whole day --- */
+.wipe {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  height: var(--chip-height);
+  padding: 0 var(--s-5);
+  font-size: var(--f-md);
+  font-weight: var(--w-medium);
+  color: var(--c-danger-soft);
+  background: color-mix(in srgb, var(--c-danger) 16%, var(--c-surface));
+  border: 1px solid color-mix(in srgb, var(--c-danger) 45%, var(--c-line));
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.wipe:hover:not(:disabled) {
+  color: #fff;
+  background: color-mix(in srgb, var(--c-danger) 55%, var(--c-surface));
+}
+.wipe:disabled { opacity: 0.3; cursor: default; }
+.wipe.confirming {
+  color: #fff;
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+}
+.wipe svg { width: 15px; height: 15px; display: block; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  height: var(--chip-height);
+  padding: 0 var(--s-5);
+  font-size: var(--f-md);
+  font-weight: var(--w-medium);
+  color: var(--c-text);
+  background: color-mix(in srgb, var(--chip) 26%, var(--c-surface));
+  border: 1px solid color-mix(in srgb, var(--chip) 55%, var(--c-line));
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.chip:hover:not(:disabled) { background: color-mix(in srgb, var(--chip) 42%, var(--c-surface)); }
+.chip:disabled { opacity: 0.35; cursor: default; }
+.chip.armed {
+  background: var(--chip);
+  color: var(--c-text-on-block);
+  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px color-mix(in srgb, var(--chip) 70%, #fff);
+}
+.chip-icon { font-size: var(--f-base); }
+
+/* ============ Overview: date column + bar ============ */
+.compactrow {
+  display: flex;
+  align-items: stretch;
+  gap: var(--gutter-gap);
+  padding: var(--s-1) 0;
+}
+/* Inset shadow rather than a border, for the same equal-height reason. */
+.compactrow.weekedge { box-shadow: inset 0 -1px 0 var(--c-line-soft); }
+
+.gutter {
+  flex: 0 0 var(--gutter-w);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  font-size: var(--f-sm);
+  color: var(--c-text-dim);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.gdate { color: var(--c-text); }
+.compactrow.today .gdate { color: var(--c-accent); font-weight: var(--w-bold); }
+
+/* ============ the bar itself, shared by both views ============ */
+.track {
+  position: relative;
+  /* Height comes from the zoom level, set inline. Must not be a flex item
+     that grows, or flex-basis:0 collapses it in the column layout. */
+  flex: none;
+  background: var(--track-bg);
+  border: var(--track-border);
+  border-radius: var(--track-radius);
+  overflow: hidden;
+}
+.daysection .track { width: 100%; }
+.compactrow .track { flex: 1 1 auto; min-width: 0; } /* fills the row beside the date */
+
+.daysection.today .track,
+.compactrow.today .track { border-color: var(--c-line-strong); }
+.scroller.armed .track { cursor: crosshair; }
+
+.gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--c-line-soft); }
+
+.block {
+  position: absolute;
+  /* top and height are set per piece: a block shares the bar's height with
+     anything running alongside it. */
+  border-radius: var(--block-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--block-ring);
+}
+/* At tiny bar heights the inset would eat the block, so drop it. The inline
+   top/height calc reads this variable, so zeroing it here is enough. */
+.track.dense { --block-inset: 0px; }
+.track.dense .block { border-radius: 0; box-shadow: none; }
+
+/* A block split around an overlap draws as several pieces. Rounding only the
+   real ends keeps it reading as one continuous block. */
+.block.joined-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.block.joined-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.block-label {
+  font-size: var(--f-md);
+  font-weight: var(--w-medium);
+  color: var(--c-text-on-block);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  padding: 0 var(--s-4);
+  pointer-events: none;
+}
+.block.preview {
+  top: var(--block-inset);
+  bottom: var(--block-inset);
+  opacity: 0.7;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+.block.selected { box-shadow: inset 0 0 0 2px var(--c-focus-ring); }
+
+.handle { position: absolute; top: 0; bottom: 0; width: var(--handle-width); cursor: ew-resize; }
+.handle.start { left: 0; }
+.handle.end { right: 0; }
+.scroller.armed .handle { pointer-events: none; }
+
+.rowbroken {
+  position: absolute;
+  left: var(--s-4);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--f-xs);
+  color: var(--c-warn);
+}
+
+/* ============ note panel ============ */
+.notepanel {
+  flex: none;
+  margin: var(--s-5) 0 var(--s-7);
+  padding: var(--s-5) var(--s-6);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+}
+.notehead {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  margin-bottom: var(--s-4);
+  font-variant-numeric: tabular-nums;
+}
+.notetag { font-weight: var(--w-medium); opacity: 0.55; }
+/* the half you actually clicked */
+.notetag.current { opacity: 1; }
+.notedate { color: var(--c-text-dim); }
+.notetime { font-size: var(--f-lg); font-weight: var(--w-medium); }
+.notedur { color: var(--c-text-dim); }
+.notebtn {
+  background: none;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-5);
+  cursor: pointer;
+}
+.notebtn:hover { border-color: var(--c-text-dim); }
+.notebtn.danger { margin-left: auto; color: var(--c-danger-soft); border-color: #5a3129; }
+.notebtn.danger:hover { background: #3a1f1a; border-color: #8a4a3c; }
+.notetext {
+  display: block;
+  width: 100%;
+  min-height: 74px;
+  padding: var(--s-5);
+  font: inherit;
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  resize: vertical;
+}
+.notetext:focus { outline: none; border-color: var(--c-text-dim); }
