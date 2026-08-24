@@ -9,18 +9,20 @@ one at a time — nothing breaks in between.
 **The filename must be the tag's `id`, exactly as written in `tags.json`.**
 Not its display name. Ids are lowercase and use hyphens:
 
-| Tag              | id            | File to add        |
-| ---------------- | ------------- | ------------------ |
-| Sleep            | `sleep`       | `sleep.svg`        |
-| Walk with Coco   | `walk-coco`   | `walk-coco.svg`    |
-| Vibe Coding      | `vibe-coding` | `vibe-coding.svg`  |
-| DGG              | `dgg`         | `dgg.svg`          |
+| Tag              | id              | File to add          |
+| ---------------- | --------------- | -------------------- |
+| Sleep            | `sleep`         | `sleep.svg`          |
+| Walk with Coco   | `walk-coco`     | `walk-coco.svg`      |
+| Vibe Coding      | `vibe-coding`   | `vibe-coding.svg`    |
+| DGG              | `dgg`           | `dgg.svg`            |
+| Anything Else?   | `anything-else` | `anything-else.svg`  |
 
 Current ids, ready to copy:
 
 ```
 sleep  game  shower  smoke  reading  walk  walk-coco  anime
 youtube  dgg  music  food  cleaning  vibe-coding  documenting
+anything-else
 ```
 
 A typo in the name isn't an error — the tag just quietly keeps its emoji. If
