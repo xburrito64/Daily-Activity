@@ -16,7 +16,8 @@
     "build": "vite build",
     "app": "npm run build && electron .",
     "package": "npm run build && electron-builder",
-    "update-app": "npm run package && node scripts/open-installer.js"
+    "sync-tags": "node scripts/sync-tags.js",
+    "update-app": "npm run package && npm run sync-tags && node scripts/open-installer.js"
   },
   "dependencies": {
     "express": "^5.2.1",
