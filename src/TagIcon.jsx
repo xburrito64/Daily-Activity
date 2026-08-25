@@ -6,7 +6,7 @@
  * A tag can ask for a larger one with "iconScale" in tags.json — mostly for
  * pictures that aren't square, which are fitted inside a square and so end up
  * drawn smaller than everything else. Twice normal is the ceiling: that is a
- * 32px box, and a chip is 34px tall, so nothing can be asked for that would
+ * 40px box, and a chip is 40px tall, so nothing can be asked for that would
  * push its way out of the row it sits in.
  */
 export default function TagIcon({ tag, className = '', scale }) {

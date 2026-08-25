@@ -31,7 +31,6 @@ const PREVIEW_ID = '__preview' // the block being painted, not yet committed
 
 const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
-const ICON_PX = 16 // --tagicon-size
 const ICON_GAP = 6
 const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
 const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
@@ -45,6 +44,16 @@ const ICON_OF_LANE = 0.36 // how much of the row's height an icon reaches for
 const widths = new Map()
 let labelFont = null
 let measureCtx = null
+let iconBase = null
+
+/** The size a tag icon is normally drawn at, read from the tokens. */
+function baseIconPx() {
+  if (iconBase === null) {
+    const token = getComputedStyle(document.documentElement).getPropertyValue('--tagicon-size')
+    iconBase = parseFloat(token) || 16
+  }
+  return iconBase
+}
 
 function textWidth(text) {
   if (labelFont === null) {
@@ -87,10 +96,10 @@ function silhouette(pieces) {
  * and how wide the result comes out. Returns { mode: 'full' | 'icon', iconPx,
  * widthPx }, or nothing when even an icon would be a smudge.
  *
- * The icon is sized to the room available rather than fixed. It grows with the
- * height of the row when there is space, and gives that back when the block is
- * too narrow to hold the name beside it — a few pixels of icon are worth less
- * than the name, so the name is what survives.
+ * The icon is sized to the room available rather than fixed, and grows with
+ * the height of the row. It never gives that height back to make room for the
+ * name: a small icon beside a name reads worse than a big icon on its own, so
+ * when both won't fit at full size the name is what goes.
  *
  * A custom image is square; an emoji is text, so its width has to be measured
  * and scales with the size it is drawn at.
@@ -102,27 +111,26 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
     return width <= room ? { mode: 'full', iconPx: 0, widthPx: width + LABEL_PADDING } : null
   }
 
-  const base = ICON_PX * clampScale(tag.iconScale)
-  const emojiWidth = textWidth(tag.icon) || ICON_PX
+  const iconPx = baseIconPx()
+  const base = iconPx * clampScale(tag.iconScale)
+  const emojiWidth = textWidth(tag.icon) || iconPx
   // The tallest icon that fits a given width, and how wide one of a given
   // height comes out — not the same thing for an emoji, which is text.
-  const sizeFor = (width) => (tag.image ? width : (width * ICON_PX) / emojiWidth)
-  const widthAt = (px) => (tag.image ? px : emojiWidth * (px / ICON_PX))
+  const sizeFor = (width) => (tag.image ? width : (width * iconPx) / emojiWidth)
+  const widthAt = (px) => (tag.image ? px : emojiWidth * (px / iconPx))
 
   const wanted = Math.min(base * ICON_GROWTH, Math.max(base, lanePx * ICON_OF_LANE))
   // Never insist on more than the tag asked for: a deliberately small icon
   // shouldn't be dropped for being small.
   const floor = Math.min(ICON_MIN_PX, wanted)
 
-  const beside = Math.min(wanted, sizeFor(room - ICON_GAP - textWidth(tag.name)))
-  if (beside >= floor) {
-    return {
-      mode: 'full',
-      iconPx: beside,
-      widthPx: widthAt(beside) + ICON_GAP + textWidth(tag.name) + LABEL_PADDING,
-    }
+  const withName = widthAt(wanted) + ICON_GAP + textWidth(tag.name)
+  if (withName <= room) {
+    return { mode: 'full', iconPx: wanted, widthPx: withName + LABEL_PADDING }
   }
 
+  // Only now does the icon give any ground, and only because at this width
+  // there is nothing else to give.
   const alone = Math.min(wanted, sizeFor(widthPx - ICON_PADDING))
   return alone >= floor
     ? { mode: 'icon', iconPx: alone, widthPx: widthAt(alone) + ICON_PADDING }
@@ -732,7 +740,7 @@ ${b.note}` : ''}`}
                         className="block-label"
                         style={shift ? { transform: `translateX(${shift}px)` } : undefined}
                       >
-                        <TagIcon tag={tag} scale={label.iconPx / ICON_PX} />
+                        <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
                         {label.mode === 'full' && (tag ? tag.name : b.tag)}
                       </span>
                     )}
