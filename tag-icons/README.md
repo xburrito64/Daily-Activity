@@ -21,8 +21,8 @@ Current ids, ready to copy:
 
 ```
 sleep  bed  game  shower  smoke  reading  walk  walk-coco  anime
-youtube  dgg  music  food  cleaning  vibe-coding  documenting  research
-anything-else
+youtube  dgg  music  food  cleaning  vibe-coding  documenting
+research  planning  anything-else
 ```
 
 Capitals don't matter — `Anime.gif` works as well as `anime.gif`. The rest of
