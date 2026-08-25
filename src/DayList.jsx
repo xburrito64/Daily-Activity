@@ -34,8 +34,8 @@ const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
 const ICON_GAP = 6
 const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
 const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
-const ICON_GROWTH = 2.5 // the most an icon may outgrow its normal size
-const ICON_OF_LANE = 0.36 // how much of the row's height an icon reaches for
+const ICON_GROWTH = 4 // the most an icon may outgrow its normal size
+const ICON_OF_LANE = 0.44 // how much of the row's height an icon reaches for
 
 /**
  * Width of a string in the label font, measured once per string. The font is
