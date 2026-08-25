@@ -21,7 +21,7 @@ Current ids, ready to copy:
 
 ```
 sleep  bed  game  shower  smoke  reading  walk  walk-coco  anime
-youtube  dgg  music  food  cleaning  vibe-coding  documenting
+youtube  dgg  music  food  cleaning  vibe-coding  documenting  research
 anything-else
 ```
 

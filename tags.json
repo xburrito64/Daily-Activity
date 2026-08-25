@@ -15,5 +15,6 @@
   { "id": "cleaning",       "name": "Cleaning",       "colour": "#2f8ba8", "icon": "🧹" },
   { "id": "vibe-coding",    "name": "Vibe Coding",    "colour": "#5c6670", "icon": "💻" },
   { "id": "documenting",    "name": "Documenting",    "colour": "#7a5c46", "icon": "📝" },
+  { "id": "research",       "name": "Research",       "colour": "#5e2d76", "icon": "🔍" },
   { "id": "anything-else",  "name": "Anything Else?", "colour": "#cb4d80", "icon": "❓", "iconScale": 2 }
 ]
