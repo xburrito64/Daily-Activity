@@ -1,9 +1,12 @@
 /* ============ page shell ============ */
 .app {
   height: 100%;
-  max-width: 1600px;
+  /* The bar is the app. Give it the width of the screen rather than a
+     comfortable reading measure — an hour is easier to aim at when the day is
+     wide, and there is nothing here that suffers from a long line. */
+  max-width: 2400px;
   margin: 0 auto;
-  padding: var(--s-8) var(--s-9) 0;
+  padding: var(--s-8) var(--s-6) 0;
   display: flex;
   flex-direction: column;
 }

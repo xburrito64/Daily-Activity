@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
+import { app, BrowserWindow, Menu, shell, dialog, screen } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -79,6 +79,15 @@ function buildMenu(reload) {
   ]))
 }
 
+/** A window of this size, or as much of it as the screen actually has. */
+function fitToScreen(width, height) {
+  const { workAreaSize } = screen.getPrimaryDisplay()
+  return {
+    width: Math.min(width, workAreaSize.width - 40),
+    height: Math.min(height, workAreaSize.height - 40),
+  }
+}
+
 async function main() {
   let listener
   try {
@@ -99,8 +108,10 @@ async function main() {
   const iconFile = path.join(projectRoot, 'build', 'icon.ico')
 
   const window = new BrowserWindow({
-    width: 1600,
-    height: 1000,
+    // Wide by default: the bar is the app, and an hour is easier to aim at
+    // when the day has room. Clamped to the screen so a smaller one still
+    // gets a window it can move.
+    ...fitToScreen(2000, 1150),
     minWidth: 900,
     minHeight: 600,
     ...(fs.existsSync(iconFile) ? { icon: iconFile } : {}),

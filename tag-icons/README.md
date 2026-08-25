@@ -12,7 +12,7 @@ Not its display name. Ids are lowercase and use hyphens:
 | Tag              | id              | File to add          |
 | ---------------- | --------------- | -------------------- |
 | Sleep            | `sleep`         | `sleep.svg`          |
-| Walk with Coco   | `walk-coco`     | `walk-coco.svg`      |
+| Walking w/ Coco  | `walk-coco`     | `walk-coco.svg`      |
 | Vibe Coding      | `vibe-coding`   | `vibe-coding.svg`    |
 | DGG              | `dgg`           | `dgg.svg`            |
 | Anything Else?   | `anything-else` | `anything-else.svg`  |
@@ -20,9 +20,9 @@ Not its display name. Ids are lowercase and use hyphens:
 Current ids, ready to copy:
 
 ```
-sleep  bed  game  shower  smoke  reading  walk  walk-coco  anime
-youtube  dgg  music  food  cleaning  vibe-coding  documenting
-research  planning  anything-else
+sleep  bed  game  shower  smoke  smoke-mum  reading  walk
+walk-coco  anime  youtube  dgg  music  food  cleaning
+vibe-coding  documenting  research  planning  anything-else
 ```
 
 Capitals don't matter — `Anime.gif` works as well as `anime.gif`. The rest of
