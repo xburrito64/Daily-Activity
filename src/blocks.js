@@ -141,6 +141,13 @@ export function layoutLanes(blocks) {
     // The name is written once, on the roomiest piece, rather than repeated
     // on every fragment.
     mine.reduce((a, b) => (a.to - a.from >= b.to - b.from ? a : b)).isLabel = true
+    // Also flag whichever piece the middle of the block falls in. Drawing the
+    // name there puts it under the middle of the block rather than the middle
+    // of a fragment, when that piece has the room for it — which only the
+    // caller, who knows the pixel sizes, can say.
+    const middle = (block.startSlot + block.endSlot) / 2
+    const under = mine.find((p) => p.from <= middle && p.to > middle)
+    if (under) under.isMiddle = true
   }
 
   return pieces

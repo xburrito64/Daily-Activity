@@ -125,6 +125,20 @@ t('the name is written once, on the roomiest piece', () => {
   assert.strictEqual(labelled.to - labelled.from, 14, 'should label the widest run (6-20)')
 })
 
+t('the piece under the middle of a block is flagged', () => {
+  // game runs 0-12, cut by dgg at 4-8, so its middle (6) is in the cut part
+  const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
+  const middle = pieces.filter((p) => p.block.id === 'g' && p.isMiddle)
+  assert.strictEqual(middle.length, 1, 'exactly one piece holds the middle')
+  assert.deepStrictEqual([middle[0].from, middle[0].to], [4, 8])
+})
+
+t('an uncut block holds its own middle', () => {
+  const [piece] = layoutLanes([b('g', 'game', 0, 12)])
+  assert.strictEqual(piece.isMiddle, true)
+  assert.strictEqual(piece.isLabel, true, 'and is still the roomiest piece')
+})
+
 t('handles sit on the outermost pieces only', () => {
   const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
   const g = pieces.filter((p) => p.block.id === 'g').sort((x, y) => x.from - y.from)

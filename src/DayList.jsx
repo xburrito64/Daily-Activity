@@ -34,8 +34,9 @@ const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
 const ICON_PX = 16 // --tagicon-size
 const ICON_GAP = 6
 const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
-const ICON_GROWTH = 2 // the most an icon may outgrow its normal size
-const ICON_OF_LANE = 0.3 // how much of the row's height an icon reaches for
+const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
+const ICON_GROWTH = 2.5 // the most an icon may outgrow its normal size
+const ICON_OF_LANE = 0.36 // how much of the row's height an icon reaches for
 
 /**
  * Width of a string in the label font, measured once per string. The font is
@@ -82,9 +83,9 @@ function silhouette(pieces) {
 }
 
 /**
- * How to draw a block's label: how much of it fits, and how big to draw the
- * icon. Returns { mode: 'full' | 'icon', iconPx }, or nothing when even an
- * icon would be a smudge.
+ * How to draw a block's label: how much of it fits, how big to draw the icon,
+ * and how wide the result comes out. Returns { mode: 'full' | 'icon', iconPx,
+ * widthPx }, or nothing when even an icon would be a smudge.
  *
  * The icon is sized to the room available rather than fixed. It grows with the
  * height of the row when there is space, and gives that back when the block is
@@ -96,13 +97,17 @@ function silhouette(pieces) {
  */
 function fitLabel(tag, fallback, widthPx, lanePx) {
   const room = widthPx - LABEL_PADDING
-  if (!tag) return textWidth(fallback) <= room ? { mode: 'full', iconPx: 0 } : null
+  if (!tag) {
+    const width = textWidth(fallback)
+    return width <= room ? { mode: 'full', iconPx: 0, widthPx: width + LABEL_PADDING } : null
+  }
 
   const base = ICON_PX * clampScale(tag.iconScale)
   const emojiWidth = textWidth(tag.icon) || ICON_PX
-  // The tallest icon that fits a given width, which for an emoji is not the
-  // width itself.
+  // The tallest icon that fits a given width, and how wide one of a given
+  // height comes out — not the same thing for an emoji, which is text.
   const sizeFor = (width) => (tag.image ? width : (width * ICON_PX) / emojiWidth)
+  const widthAt = (px) => (tag.image ? px : emojiWidth * (px / ICON_PX))
 
   const wanted = Math.min(base * ICON_GROWTH, Math.max(base, lanePx * ICON_OF_LANE))
   // Never insist on more than the tag asked for: a deliberately small icon
@@ -110,10 +115,35 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   const floor = Math.min(ICON_MIN_PX, wanted)
 
   const beside = Math.min(wanted, sizeFor(room - ICON_GAP - textWidth(tag.name)))
-  if (beside >= floor) return { mode: 'full', iconPx: beside }
+  if (beside >= floor) {
+    return {
+      mode: 'full',
+      iconPx: beside,
+      widthPx: widthAt(beside) + ICON_GAP + textWidth(tag.name) + LABEL_PADDING,
+    }
+  }
 
   const alone = Math.min(wanted, sizeFor(widthPx - ICON_PADDING))
-  return alone >= floor ? { mode: 'icon', iconPx: alone } : null
+  return alone >= floor
+    ? { mode: 'icon', iconPx: alone, widthPx: widthAt(alone) + ICON_PADDING }
+    : null
+}
+
+/**
+ * How far to slide a label so it sits under the middle of its block rather
+ * than the middle of the fragment it happens to be drawn in. A block cut
+ * around an overlap is several fragments, and the name looked off-centre
+ * because it was centred in one of them.
+ *
+ * Clamped to stay inside that fragment, so when the middle of the block isn't
+ * reachable the label goes as close as it can rather than off the edge.
+ */
+function labelShift(piece, widthPx, trackWidth) {
+  const block = piece.block
+  const px = (slot) => (slot / SLOTS_PER_DAY) * trackWidth
+  const room = Math.max(0, (px(piece.to - piece.from) - widthPx) / 2)
+  const wanted = px((block.startSlot + block.endSlot) / 2 - (piece.from + piece.to) / 2)
+  return Math.max(-room, Math.min(room, wanted))
 }
 
 function TrashIcon() {
@@ -624,6 +654,26 @@ export default function DayList({
           }
 
           const pieces = layoutLanes(blocks)
+          // Where each block's name goes. A block cut around an overlap reads
+          // as labelled in the middle when the piece under its middle carries
+          // it — but not at the cost of the name itself, so a middle piece
+          // only wide enough for an icon hands back to the roomiest one.
+          const labelled = new Set()
+          for (const middle of pieces) {
+            if (!middle.isMiddle || middle.isLabel) continue
+            const tag = tagById(middle.block.tag)
+            const fit = (p) => {
+              const lanePx = barHeight / p.lanes
+              if (lanePx < LABEL_MIN_LANE) return null
+              return fitLabel(tag, p.block.tag, ((p.to - p.from) / SLOTS_PER_DAY) * trackWidth, lanePx)
+            }
+            const here = fit(middle)
+            if (!here) continue
+            const widest = pieces.find((p) => p.isLabel && p.block.id === middle.block.id)
+            const there = widest && fit(widest)
+            if (there && there.mode === 'full' && here.mode !== 'full') continue
+            labelled.add(middle.block.id)
+          }
           // Only the clicked block is outlined, and as one shape even when it
           // is drawn in several pieces around an overlap.
           const selectedPieces = selected?.date === date
@@ -650,6 +700,7 @@ export default function DayList({
                 const label = fitLabel(
                   tag, b.tag, ((piece.to - piece.from) / SLOTS_PER_DAY) * trackWidth, laneHeight,
                 )
+                const shift = label ? Math.round(labelShift(piece, label.widthPx, trackWidth)) : 0
                 return (
                   <div
                     key={`${b.id}:${piece.from}`}
@@ -676,8 +727,11 @@ export default function DayList({
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   >
-                    {piece.isLabel && laneHeight >= 34 && label && (
-                      <span className="block-label">
+                    {(labelled.has(b.id) ? piece.isMiddle : piece.isLabel) && laneHeight >= LABEL_MIN_LANE && label && (
+                      <span
+                        className="block-label"
+                        style={shift ? { transform: `translateX(${shift}px)` } : undefined}
+                      >
                         <TagIcon tag={tag} scale={label.iconPx / ICON_PX} />
                         {label.mode === 'full' && (tag ? tag.name : b.tag)}
                       </span>
