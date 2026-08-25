@@ -231,15 +231,17 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
    move anything around it. */
 .tagicon {
   flex: none;
-  width: var(--tagicon-size);
-  height: var(--tagicon-size);
+  /* --icon-scale comes from the tag's own iconScale, when it asks for one. */
+  --size: calc(var(--tagicon-size) * var(--icon-scale, 1));
+  width: var(--size);
+  height: var(--size);
   object-fit: contain;
 }
 .tagicon.emoji {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--tagicon-size);
+  font-size: var(--size);
   line-height: 1;
 }
 

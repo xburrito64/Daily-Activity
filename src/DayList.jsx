@@ -4,7 +4,7 @@ import {
   formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes } from './blocks.js'
-import TagIcon from './TagIcon.jsx'
+import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
 const CLICK_SLOP_PX = 4
@@ -84,7 +84,8 @@ function silhouette(pieces) {
  */
 function fitLabel(tag, fallback, widthPx) {
   if (!tag) return textWidth(fallback) <= widthPx - LABEL_PADDING ? 'full' : null
-  const iconWidth = tag.image ? ICON_PX : textWidth(tag.icon)
+  const scale = clampScale(tag.iconScale)
+  const iconWidth = (tag.image ? ICON_PX : textWidth(tag.icon)) * scale
   if (iconWidth + ICON_GAP + textWidth(tag.name) <= widthPx - LABEL_PADDING) return 'full'
   if (iconWidth <= widthPx - ICON_PADDING) return 'icon'
   return null

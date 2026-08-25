@@ -25,7 +25,8 @@ youtube  dgg  music  food  cleaning  vibe-coding  documenting
 anything-else
 ```
 
-A typo in the name isn't an error — the tag just quietly keeps its emoji. If
+Capitals don't matter — `Anime.gif` works as well as `anime.gif`. The rest of
+the name does: a typo isn't an error, the tag just quietly keeps its emoji. If
 an icon doesn't show up, check the spelling against `tags.json` first.
 
 ## Format
@@ -55,6 +56,22 @@ blocky.
   look rough.
 - **Transparent background.** A white or black square will look like a sticker
   glued onto the coloured block.
+
+## Making one bigger
+
+If an icon comes out looking small next to the others — usually because it
+isn't square — give that tag an `iconScale` in `tags.json`:
+
+```json
+{ "id": "anything-else", "name": "Anything Else?", "colour": "#cb4d80", "icon": "❓", "iconScale": 2 }
+```
+
+`1` is normal and is what every tag gets without asking. `2` is the largest
+allowed, and is right for a picture twice as wide as it is tall: it fills the
+row's full height instead of half of it. Anything above 2 is treated as 2, so
+an icon can never grow out of the row it sits in.
+
+It applies wherever that tag is drawn, emoji included, and only to that tag.
 
 ## How it will look
 

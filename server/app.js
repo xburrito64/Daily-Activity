@@ -22,11 +22,18 @@ function withIcons(tags, tagIconsDir) {
     return tags // no folder yet, everyone keeps their emoji
   }
 
+  // Windows doesn't care about capitals anywhere else, so neither does this:
+  // Anime.gif and anime.gif both count. Two files that differ only in case
+  // can't sit in one folder there, so there is nothing to disambiguate.
+  const byName = new Map(names.map((name) => [name.toLowerCase(), name]))
+
   return tags.map((tag) => {
-    const file = ICON_EXTENSIONS
-      .map((ext) => tag.id + ext)
-      .find((name) => names.includes(name))
-    return file ? { ...tag, image: `/tag-icons/${encodeURIComponent(file)}` } : tag
+    const wanted = ICON_EXTENSIONS
+      .map((ext) => tag.id.toLowerCase() + ext)
+      .find((name) => byName.has(name))
+    if (!wanted) return tag
+    const file = byName.get(wanted)
+    return { ...tag, image: `/tag-icons/${encodeURIComponent(file)}` }
   })
 }
 
