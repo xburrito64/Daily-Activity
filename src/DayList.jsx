@@ -73,10 +73,10 @@ function textWidth(text) {
 }
 
 /**
- * Outline of one block as a single closed shape. A block split around an
- * overlap is several rectangles of differing heights; tracing the tops left
- * to right and the bottoms back again gives one silhouette, so the step where
- * it narrows is drawn but the joins inside it are not.
+ * Outline of one block, as the polygon the selection is drawn with. A block
+ * is a single rectangle now, so this traces four corners — kept as a polygon
+ * because it costs nothing and the shape is described in the same slot and
+ * lane terms as everything else.
  */
 function silhouette(pieces) {
   const sorted = [...pieces].sort((a, b) => a.from - b.from)
@@ -135,23 +135,6 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   return alone >= floor
     ? { mode: 'icon', iconPx: alone, widthPx: widthAt(alone) + ICON_PADDING }
     : null
-}
-
-/**
- * How far to slide a label so it sits under the middle of its block rather
- * than the middle of the fragment it happens to be drawn in. A block cut
- * around an overlap is several fragments, and the name looked off-centre
- * because it was centred in one of them.
- *
- * Clamped to stay inside that fragment, so when the middle of the block isn't
- * reachable the label goes as close as it can rather than off the edge.
- */
-function labelShift(piece, widthPx, trackWidth) {
-  const block = piece.block
-  const px = (slot) => (slot / SLOTS_PER_DAY) * trackWidth
-  const room = Math.max(0, (px(piece.to - piece.from) - widthPx) / 2)
-  const wanted = px((block.startSlot + block.endSlot) / 2 - (piece.from + piece.to) / 2)
-  return Math.max(-room, Math.min(room, wanted))
 }
 
 function TrashIcon() {
@@ -662,28 +645,6 @@ export default function DayList({
           }
 
           const pieces = layoutLanes(blocks)
-          // Where each block's name goes. A block cut around an overlap reads
-          // as labelled in the middle when the piece under its middle carries
-          // it — but not at the cost of the name itself, so a middle piece
-          // only wide enough for an icon hands back to the roomiest one.
-          const labelled = new Set()
-          for (const middle of pieces) {
-            if (!middle.isMiddle || middle.isLabel) continue
-            const tag = tagById(middle.block.tag)
-            const fit = (p) => {
-              const lanePx = barHeight / p.lanes
-              if (lanePx < LABEL_MIN_LANE) return null
-              return fitLabel(tag, p.block.tag, ((p.to - p.from) / SLOTS_PER_DAY) * trackWidth, lanePx)
-            }
-            const here = fit(middle)
-            if (!here) continue
-            const widest = pieces.find((p) => p.isLabel && p.block.id === middle.block.id)
-            const there = widest && fit(widest)
-            if (there && there.mode === 'full' && here.mode !== 'full') continue
-            labelled.add(middle.block.id)
-          }
-          // Only the clicked block is outlined, and as one shape even when it
-          // is drawn in several pieces around an overlap.
           const selectedPieces = selected?.date === date
             ? pieces.filter((p) => p.block.id === selected.id)
             : []
@@ -708,16 +669,12 @@ export default function DayList({
                 const label = fitLabel(
                   tag, b.tag, ((piece.to - piece.from) / SLOTS_PER_DAY) * trackWidth, laneHeight,
                 )
-                const shift = label ? Math.round(labelShift(piece, label.widthPx, trackWidth)) : 0
                 return (
                   <div
                     key={`${b.id}:${piece.from}`}
                     data-block-id={b.id}
                     className={
-                      'block' +
-                      (b.id === previewId ? ' preview' : '') +
-                      // square off the ends where this block carries on
-                      `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
+                      'block' + (b.id === previewId ? ' preview' : '')
                     }
                     style={{
                       left: `${pct(piece.from)}%`,
@@ -735,11 +692,8 @@ export default function DayList({
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   >
-                    {(labelled.has(b.id) ? piece.isMiddle : piece.isLabel) && laneHeight >= LABEL_MIN_LANE && label && (
-                      <span
-                        className="block-label"
-                        style={shift ? { transform: `translateX(${shift}px)` } : undefined}
-                      >
+                    {laneHeight >= LABEL_MIN_LANE && label && (
+                      <span className="block-label">
                         <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
                         {label.mode === 'full' && (tag ? tag.name : b.tag)}
                       </span>
@@ -749,17 +703,14 @@ ${b.note}` : ''}`}
               })}
 
               {/* Handles are drawn over the blocks so they are never buried,
-                  but only as tall as the block is at that edge — a full-height
-                  strip would reach into whatever is stacked above or below and
-                  steal its clicks. A quarter-hour block is narrower than two
-                  grab strips, so they halve to fit; it ends up entirely
-                  covered, which is why a press that goes nowhere opens the
-                  note instead of counting as a resize. */}
+                  but only as tall as the block itself — a full-height strip
+                  would reach into whatever is stacked above or below and steal
+                  its clicks. A ten-minute block is narrower than two grab
+                  strips, so they halve to fit; it ends up entirely covered,
+                  which is why a press that goes nowhere opens the note instead
+                  of counting as a resize. */}
               {isDay && !day?.malformed && !previewId && pieces.map((piece) => {
                 const b = piece.block
-                const widthPx = ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth
-                if (!piece.isFirst && !piece.isLast) return null
-
                 const lane = {
                   top: piece.lane === 0
                     ? 'var(--block-inset)'
@@ -767,26 +718,22 @@ ${b.note}` : ''}`}
                   height: `calc(${100 / piece.lanes}%`
                     + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
                     + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
-                  '--block-w': `${widthPx}px`,
+                  '--block-w': `${((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth}px`,
                 }
                 return (
-                  <span key={`h${b.id}:${piece.from}`}>
-                    {piece.isFirst && (
-                      <span
-                        className="handle start"
-                        data-block-id={b.id}
-                        data-handle="start"
-                        style={{ left: `${pct(b.startSlot)}%`, ...lane }}
-                      />
-                    )}
-                    {piece.isLast && (
-                      <span
-                        className="handle end"
-                        data-block-id={b.id}
-                        data-handle="end"
-                        style={{ left: `${pct(b.endSlot)}%`, ...lane }}
-                      />
-                    )}
+                  <span key={`h${b.id}`}>
+                    <span
+                      className="handle start"
+                      data-block-id={b.id}
+                      data-handle="start"
+                      style={{ left: `${pct(b.startSlot)}%`, ...lane }}
+                    />
+                    <span
+                      className="handle end"
+                      data-block-id={b.id}
+                      data-handle="end"
+                      style={{ left: `${pct(b.endSlot)}%`, ...lane }}
+                    />
                   </span>
                 )
               })}

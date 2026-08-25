@@ -316,8 +316,6 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
 
 /* A block split around an overlap draws as several pieces. Rounding only the
    real ends keeps it reading as one continuous block. */
-.block.joined-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.block.joined-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .block-label {
   display: flex;
   align-items: center;

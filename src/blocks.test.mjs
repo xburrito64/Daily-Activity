@@ -17,14 +17,36 @@ t('a lone block fills the bar', () => {
   assert.deepStrictEqual(shape(layoutLanes([b('g', 'game', 0, 10)])), ['g 0-10 0/1'])
 })
 
-t('overlap in the middle splits only the shared stretch', () => {
+t('an overlap gives each block a lane for the whole of its length', () => {
   const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
   assert.deepStrictEqual(shape(pieces), [
-    'd 4-8 1/2',    // dgg on the bottom half, only where it runs
-    'g 0-4 0/1',    // game full height before
-    'g 4-8 0/2',    // game top half across the overlap
-    'g 8-12 0/1',   // game full height after
+    'd 4-8 1/2',    // dgg underneath, where it runs
+    'g 0-12 0/2',   // game on top, one rectangle the whole way across
   ])
+})
+
+t('a block keeps one height however much comes and goes beside it', () => {
+  // The reported fault: music sat at half height, then a third across the
+  // stretch anime ran, then half again — its bottom edge stepped twice in
+  // the middle of the block.
+  const pieces = layoutLanes([
+    b('s', 'sleep', 0, 60), b('m', 'music', 0, 60), b('a', 'anime', 20, 40),
+  ])
+  const music = pieces.filter((p) => p.block.id === 'm')
+  assert.strictEqual(music.length, 1, 'drawn once, not in three parts')
+  assert.deepStrictEqual([music[0].lane, music[0].lanes], [1, 3])
+})
+
+t('blocks that miss each other share a lane', () => {
+  // dgg and anime both sit under game, but never at the same moment, so two
+  // lanes is enough — nothing is thinned to a third for no reason.
+  const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 0, 4), b('a', 'anime', 16, 20)])
+  assert.deepStrictEqual(shape(pieces), ['a 16-20 1/2', 'd 0-4 1/2', 'g 0-20 0/2'])
+})
+
+t('a block that overlaps nothing keeps the full height', () => {
+  const pieces = layoutLanes([b('g', 'game', 0, 10), b('d', 'dgg', 2, 8), b('far', 'walk', 30, 40)])
+  assert.strictEqual(pieces.find((p) => p.block.id === 'far').lanes, 1)
 })
 
 // Whatever was painted later is later in the list, and goes underneath.
@@ -87,10 +109,8 @@ t('three at once split into thirds', () => {
   const pieces = layoutLanes([
     b('a', 'game', 0, 10), b('b', 'dgg', 2, 10), b('c', 'anime', 4, 10),
   ])
-  const last = pieces.filter((p) => p.from === 4)
-  assert.strictEqual(last.length, 3)
-  assert.deepStrictEqual(last.map((p) => p.lanes), [3, 3, 3])
-  assert.deepStrictEqual(last.map((p) => p.lane).sort(), [0, 1, 2])
+  assert.deepStrictEqual(pieces.map((p) => p.lanes), [3, 3, 3])
+  assert.deepStrictEqual(pieces.map((p) => p.lane), [0, 1, 2])
 })
 
 t('identical ranges share evenly', () => {
@@ -103,49 +123,18 @@ t('touching but not overlapping stays full height', () => {
   assert.deepStrictEqual(shape(pieces), ['a 0-4 0/1', 'b 4-8 0/1'])
 })
 
-t('a block fully inside another splits it into three drawn parts', () => {
+t('a block nested inside another is still one rectangle', () => {
   const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 8, 10)])
-  assert.strictEqual(pieces.filter((p) => p.block.id === 'g').length, 3)
+  assert.deepStrictEqual(shape(pieces), ['d 8-10 1/2', 'g 0-20 0/2'])
 })
 
-t('slices are stitched back together when the lane does not change', () => {
-  // two separate overlaps against one long block: game should not be cut
-  // into more pieces than the overlaps require
+t('every block is drawn exactly once, whatever crosses it', () => {
+  // Two separate overlaps against one long block. There is one rectangle per
+  // block, so there is one place to put the name and one pair of handles.
   const pieces = layoutLanes([
     b('g', 'game', 0, 20), b('d', 'dgg', 4, 6), b('y', 'youtube', 12, 14),
   ])
-  assert.strictEqual(pieces.filter((p) => p.block.id === 'g').length, 5)
-})
-
-t('the name is written once, on the roomiest piece', () => {
-  const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 4, 6)])
-  const game = pieces.filter((p) => p.block.id === 'g')
-  assert.strictEqual(game.filter((p) => p.isLabel).length, 1)
-  const labelled = game.find((p) => p.isLabel)
-  assert.strictEqual(labelled.to - labelled.from, 14, 'should label the widest run (6-20)')
-})
-
-t('the piece under the middle of a block is flagged', () => {
-  // game runs 0-12, cut by dgg at 4-8, so its middle (6) is in the cut part
-  const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
-  const middle = pieces.filter((p) => p.block.id === 'g' && p.isMiddle)
-  assert.strictEqual(middle.length, 1, 'exactly one piece holds the middle')
-  assert.deepStrictEqual([middle[0].from, middle[0].to], [4, 8])
-})
-
-t('an uncut block holds its own middle', () => {
-  const [piece] = layoutLanes([b('g', 'game', 0, 12)])
-  assert.strictEqual(piece.isMiddle, true)
-  assert.strictEqual(piece.isLabel, true, 'and is still the roomiest piece')
-})
-
-t('handles sit on the outermost pieces only', () => {
-  const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
-  const g = pieces.filter((p) => p.block.id === 'g').sort((x, y) => x.from - y.from)
-  assert.strictEqual(g[0].isFirst, true)
-  assert.strictEqual(g[0].isLast, undefined)
-  assert.strictEqual(g[2].isLast, true)
-  assert.strictEqual(g[1].isFirst, undefined)
+  assert.deepStrictEqual(pieces.map((p) => p.block.id), ['g', 'd', 'y'])
 })
 
 t('painting a different tag stacks instead of trimming', () => {

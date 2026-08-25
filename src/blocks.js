@@ -80,15 +80,14 @@ export function applyResize(blocks, id, startSlot, endSlot) {
   const target = blocks.find((b) => b.id === id)
   if (!target) return blocks
 
-  // Only the stretches it shares say anything about its height; where it runs
-  // alone it is full height and there is nothing to preserve.
-  const shared = layoutLanes(blocks).filter((p) => p.block.id === id && p.lanes > 1)
+  const drawn = layoutLanes(blocks).find((p) => p.block.id === id)
   const moved = { ...target, startSlot, endSlot }
   const rest = blocks.filter((b) => b.id !== id)
 
-  if (shared.length === 0) return [...rest, moved]
-  if (shared.every((p) => p.lane === 0)) return [moved, ...rest]
-  if (shared.every((p) => p.lane === p.lanes - 1)) return [...rest, moved]
+  // Sharing with nothing means there is no height to keep.
+  if (drawn.lanes === 1) return [...rest, moved]
+  if (drawn.lane === 0) return [moved, ...rest]
+  if (drawn.lane === drawn.lanes - 1) return [...rest, moved]
   return blocks.map((b) => (b.id === id ? moved : b))
 }
 
@@ -100,57 +99,71 @@ export const setNote = (blocks, id, note) =>
 /**
  * Work out where every block should be drawn once overlaps are allowed.
  *
- * The day is cut at every start and end, and within each slice the blocks
- * covering it share the bar's height. A block therefore keeps full height
- * except across the stretch something else runs alongside it. Slices where a
- * block keeps the same lane are stitched back together so it draws as one
- * rectangle rather than a row of abutting ones.
+ * One rectangle per block, the same height and position for its whole length.
+ * Blocks that overlap — directly, or through a chain of others — share the
+ * bar between them; everything else keeps the full height.
  *
- * Returns pieces: { block, from, to, lane, lanes, isFirst, isLast }
+ * The bar used to be cut at every start and end, with whatever covered each
+ * slice sharing the height just for that slice. It packed tighter, but a
+ * block changed shape part-way along whenever something else began or ended
+ * beside it, and an edge that steps in the middle of a block reads as a fault
+ * rather than as information.
+ *
+ * Returns one piece per block: { block, from, to, lane, lanes }
  */
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
 
-  const sorted = blocks // list order is stacking order: first added, top lane
-  const cuts = [...new Set(sorted.flatMap((b) => [b.startSlot, b.endSlot]))].sort((a, b) => a - b)
-
-  const pieces = []
-  for (let i = 0; i < cuts.length - 1; i++) {
-    const from = cuts[i]
-    const to = cuts[i + 1]
-    const covering = sorted.filter((b) => b.startSlot <= from && b.endSlot >= to)
-
-    covering.forEach((block, lane) => {
-      // Extend the block's previous piece if it stayed in the same lane.
-      const prev = pieces.find(
-        (p) => p.block.id === block.id && p.to === from && p.lane === lane && p.lanes === covering.length,
-      )
-      if (prev) prev.to = to
-      else pieces.push({ block, from, to, lane, lanes: covering.length })
-    })
+  // List order is stacking order, so a block sits one lane below the lowest
+  // of the blocks it overlaps that were added before it. That is the least
+  // deep it can go without ending up above something that should cover it.
+  const lane = new Map()
+  for (const block of blocks) {
+    let above = -1
+    for (const earlier of blocks) {
+      if (earlier === block) break
+      if (overlaps(earlier, block)) above = Math.max(above, lane.get(earlier))
+    }
+    lane.set(block, above + 1)
   }
 
-  for (const block of sorted) {
-    const mine = pieces.filter((p) => p.block.id === block.id)
-    if (mine.length === 0) continue
-    // Only the outermost pieces carry the resize handles and the rounded
-    // ends; the joins between them are drawn square so a split block still
-    // reads as one thing.
-    mine.reduce((a, b) => (a.from <= b.from ? a : b)).isFirst = true
-    mine.reduce((a, b) => (a.to >= b.to ? a : b)).isLast = true
-    // The name is written once, on the roomiest piece, rather than repeated
-    // on every fragment.
-    mine.reduce((a, b) => (a.to - a.from >= b.to - b.from ? a : b)).isLabel = true
-    // Also flag whichever piece the middle of the block falls in. Drawing the
-    // name there puts it under the middle of the block rather than the middle
-    // of a fragment, when that piece has the room for it — which only the
-    // caller, who knows the pixel sizes, can say.
-    const middle = (block.startSlot + block.endSlot) / 2
-    const under = mine.find((p) => p.from <= middle && p.to > middle)
-    if (under) under.isMiddle = true
+  // Everything in one group is divided by the same number, or the blocks in
+  // it wouldn't line up with each other. A group is as deep as its deepest
+  // stack, and a block that overlaps nothing is a group of one at full
+  // height.
+  const lanes = new Map()
+  for (const group of clustersOf(blocks)) {
+    const depth = Math.max(...group.map((b) => lane.get(b))) + 1
+    for (const block of group) lanes.set(block, depth)
   }
 
-  return pieces
+  return blocks.map((block) => ({
+    block,
+    from: block.startSlot,
+    to: block.endSlot,
+    lane: lane.get(block),
+    lanes: lanes.get(block),
+  }))
+}
+
+/** The blocks split into groups that overlap, directly or through others. */
+function clustersOf(blocks) {
+  const groups = []
+  const seen = new Set()
+  for (const block of blocks) {
+    if (seen.has(block)) continue
+    const group = [block]
+    seen.add(block)
+    for (let i = 0; i < group.length; i++) {
+      for (const other of blocks) {
+        if (seen.has(other) || !overlaps(group[i], other)) continue
+        seen.add(other)
+        group.push(other)
+      }
+    }
+    groups.push(group)
+  }
+  return groups
 }
 
 /**
