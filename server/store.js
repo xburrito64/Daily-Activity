@@ -10,8 +10,19 @@ const toMinutes = (t) => {
   return h * 60 + m
 }
 
-/** Throws on anything we refuse to write to disk. */
-export function validateEntries(entries) {
+/** Kept level with MINUTES_PER_SLOT in src/time.js. */
+export const MINUTES_PER_MARK = 10
+
+/**
+ * Throws on anything we refuse to write to disk.
+ *
+ * `grid` is off when reading. Days written when a mark was fifteen minutes
+ * hold times that don't divide by ten, and they are still perfectly good
+ * records — the app snaps them as it loads them. Refusing to read them would
+ * declare a day broken over a change we made, which is not the same thing as
+ * a day someone broke by hand.
+ */
+export function validateEntries(entries, { grid = true } = {}) {
   if (!Array.isArray(entries)) throw new Error('entries must be an array')
 
   const checked = entries.map((e, i) => {
@@ -23,7 +34,9 @@ export function validateEntries(entries) {
 
     const start = toMinutes(e.start)
     const end = toMinutes(e.end)
-    if (start % 15 || end % 15) throw new Error(`${where}: times must sit on 15-minute marks`)
+    if (grid && (start % MINUTES_PER_MARK || end % MINUTES_PER_MARK)) {
+      throw new Error(`${where}: times must sit on ${MINUTES_PER_MARK}-minute marks`)
+    }
     if (end <= start) throw new Error(`${where}: end must come after start`)
     if (e.note != null && typeof e.note !== 'string') throw new Error(`${where}: note must be text`)
 
@@ -77,7 +90,7 @@ export function createStore(dailyDir) {
 
       try {
         const parsed = JSON.parse(trimmed)
-        return { entries: validateEntries(parsed), exists: true, hasBlock: true, malformed: false }
+        return { entries: validateEntries(parsed, { grid: false }), exists: true, hasBlock: true, malformed: false }
       } catch (err) {
         return { entries: [], exists: true, hasBlock: true, malformed: true, raw: trimmed, reason: err.message }
       }

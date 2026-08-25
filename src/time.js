@@ -1,7 +1,7 @@
-export const MINUTES_PER_SLOT = 15
-export const SLOTS_PER_DAY = (24 * 60) / MINUTES_PER_SLOT // 96
+export const MINUTES_PER_SLOT = 10
+export const SLOTS_PER_DAY = (24 * 60) / MINUTES_PER_SLOT // 144
 
-/** Slot boundary index (0..96) -> "HH:MM". Slot 96 is "24:00". */
+/** Slot boundary index (0..144) -> "HH:MM". Slot 144 is "24:00". */
 export function slotToTime(slot) {
   const total = slot * MINUTES_PER_SLOT
   const h = Math.floor(total / 60)
@@ -9,10 +9,18 @@ export function slotToTime(slot) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-/** "HH:MM" -> slot boundary index. */
+/**
+ * "HH:MM" -> slot boundary index, snapped to the nearest slot.
+ *
+ * Days written when a slot was fifteen minutes hold times that don't sit on
+ * a ten-minute mark. Rounding both ends the same way keeps them roughly where
+ * they were, and keeps two blocks that met at a quarter hour still meeting:
+ * both sides of the join round to the same slot, so what was flush stays
+ * flush rather than turning into an overlap.
+ */
 export function timeToSlot(text) {
   const [h, m] = text.split(':').map(Number)
-  return (h * 60 + m) / MINUTES_PER_SLOT
+  return Math.round((h * 60 + m) / MINUTES_PER_SLOT)
 }
 
 /** Slot span -> "7h 15m" / "45m" / "8h". */

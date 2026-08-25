@@ -42,9 +42,26 @@ await t('overlapping entries are accepted', () => {
   assert.strictEqual(out.length, 2)
 })
 
+await t('a day written on the old 15-minute grid still opens', async () => {
+  // Days logged before a slot became ten minutes are records, not damage:
+  // they must read back normally rather than being called malformed.
+  const file = store.fileFor('2027-06-20')
+  await fs.writeFile(file, '```daily-log\n[{"tag":"sleep","start":"23:45","end":"24:00"}]\n```\n', 'utf8')
+  const back = await store.readDay('2027-06-20')
+  assert.strictEqual(back.malformed, false, 'must not be called malformed')
+  assert.deepStrictEqual(back.entries, [{ tag: 'sleep', start: '23:45', end: '24:00' }])
+})
+
+await t('but writing off the grid is still refused', async () => {
+  assert.throws(
+    () => validateEntries([{ tag: 'x', start: '09:45', end: '10:00' }]),
+    /10-minute marks/,
+  )
+})
+
 await t('bad shapes are still rejected', () => {
   const bad = [
-    [{ tag: 'x', start: '09:07', end: '10:00' }],   // off the 15-minute grid
+    [{ tag: 'x', start: '09:07', end: '10:00' }],   // off the grid entirely
     [{ tag: 'x', start: '10:00', end: '09:00' }],   // ends before it starts
     [{ start: '00:00', end: '01:00' }],             // no tag
     [{ tag: 'x', start: '25:00', end: '26:00' }],   // not a time
