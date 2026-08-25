@@ -37,9 +37,18 @@ Also accepted, in the order they're looked for:
 `.svg`, `.png`, `.webp`, `.gif`, `.jpg`, `.jpeg`. If you somehow have both
 `sleep.svg` and `sleep.png`, the `.svg` wins.
 
+**Animated GIFs play**, and so do animated WebP files — wherever that icon is
+drawn, so on the chip, the block and the note at once. Nothing to switch on.
+A GIF can only make a pixel fully transparent or not at all, so anything with
+soft edges shows a fringe of whatever colour it was saved against; animated
+WebP has proper transparency and is the better choice if the shape isn't
+blocky.
+
 ## Size and shape
 
-- **Square.** Anything else gets squashed to fit.
+- **Square.** Nothing is stretched — a wider image is fitted inside a square
+  and the leftover space stays empty, so a 64×32 picture draws at 16×8 and
+  ends up half the size it could have been.
 - **SVG:** any size, as long as the `viewBox` is square. `0 0 24 24` is typical.
 - **PNG and friends:** **64×64 or larger.** It's displayed at 16 pixels, but
   bigger source images stay crisp on high-resolution screens. Below 32×32 will
