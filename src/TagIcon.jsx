@@ -9,11 +9,13 @@
  * 32px box, and a chip is 34px tall, so nothing can be asked for that would
  * push its way out of the row it sits in.
  */
-export default function TagIcon({ tag, className = '' }) {
+export default function TagIcon({ tag, className = '', scale }) {
   if (!tag) return null
 
-  const scale = clampScale(tag.iconScale)
-  const style = scale === 1 ? undefined : { '--icon-scale': scale }
+  // An explicit scale is worked out from the room available, so it is trusted
+  // as given — the clamp is only for whatever a person typed into tags.json.
+  const size = scale ?? clampScale(tag.iconScale)
+  const style = size === 1 ? undefined : { '--icon-scale': size }
 
   return tag.image
     ? <img className={`tagicon ${className}`} style={style} src={tag.image} alt="" aria-hidden="true" />

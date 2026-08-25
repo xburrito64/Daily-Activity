@@ -33,6 +33,9 @@ const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
 const ICON_PX = 16 // --tagicon-size
 const ICON_GAP = 6
+const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
+const ICON_GROWTH = 2 // the most an icon may outgrow its normal size
+const ICON_OF_LANE = 0.3 // how much of the row's height an icon reaches for
 
 /**
  * Width of a string in the label font, measured once per string. The font is
@@ -79,16 +82,38 @@ function silhouette(pieces) {
 }
 
 /**
- * How much of a label fits: 'full', 'icon', or nothing at all. A custom image
- * is a fixed width; an emoji has to be measured like any other text.
+ * How to draw a block's label: how much of it fits, and how big to draw the
+ * icon. Returns { mode: 'full' | 'icon', iconPx }, or nothing when even an
+ * icon would be a smudge.
+ *
+ * The icon is sized to the room available rather than fixed. It grows with the
+ * height of the row when there is space, and gives that back when the block is
+ * too narrow to hold the name beside it — a few pixels of icon are worth less
+ * than the name, so the name is what survives.
+ *
+ * A custom image is square; an emoji is text, so its width has to be measured
+ * and scales with the size it is drawn at.
  */
-function fitLabel(tag, fallback, widthPx) {
-  if (!tag) return textWidth(fallback) <= widthPx - LABEL_PADDING ? 'full' : null
-  const scale = clampScale(tag.iconScale)
-  const iconWidth = (tag.image ? ICON_PX : textWidth(tag.icon)) * scale
-  if (iconWidth + ICON_GAP + textWidth(tag.name) <= widthPx - LABEL_PADDING) return 'full'
-  if (iconWidth <= widthPx - ICON_PADDING) return 'icon'
-  return null
+function fitLabel(tag, fallback, widthPx, lanePx) {
+  const room = widthPx - LABEL_PADDING
+  if (!tag) return textWidth(fallback) <= room ? { mode: 'full', iconPx: 0 } : null
+
+  const base = ICON_PX * clampScale(tag.iconScale)
+  const emojiWidth = textWidth(tag.icon) || ICON_PX
+  // The tallest icon that fits a given width, which for an emoji is not the
+  // width itself.
+  const sizeFor = (width) => (tag.image ? width : (width * ICON_PX) / emojiWidth)
+
+  const wanted = Math.min(base * ICON_GROWTH, Math.max(base, lanePx * ICON_OF_LANE))
+  // Never insist on more than the tag asked for: a deliberately small icon
+  // shouldn't be dropped for being small.
+  const floor = Math.min(ICON_MIN_PX, wanted)
+
+  const beside = Math.min(wanted, sizeFor(room - ICON_GAP - textWidth(tag.name)))
+  if (beside >= floor) return { mode: 'full', iconPx: beside }
+
+  const alone = Math.min(wanted, sizeFor(widthPx - ICON_PADDING))
+  return alone >= floor ? { mode: 'icon', iconPx: alone } : null
 }
 
 function TrashIcon() {
@@ -622,7 +647,9 @@ export default function DayList({
                 const tag = tagById(b.tag)
                 const widthPct = (piece.to - piece.from) * (100 / SLOTS_PER_DAY)
                 const laneHeight = barHeight / piece.lanes
-                const label = fitLabel(tag, b.tag, (piece.to - piece.from) / SLOTS_PER_DAY * trackWidth)
+                const label = fitLabel(
+                  tag, b.tag, ((piece.to - piece.from) / SLOTS_PER_DAY) * trackWidth, laneHeight,
+                )
                 return (
                   <div
                     key={`${b.id}:${piece.from}`}
@@ -651,8 +678,8 @@ ${b.note}` : ''}`}
                   >
                     {piece.isLabel && laneHeight >= 34 && label && (
                       <span className="block-label">
-                        <TagIcon tag={tag} />
-                        {label === 'full' && (tag ? tag.name : b.tag)}
+                        <TagIcon tag={tag} scale={label.iconPx / ICON_PX} />
+                        {label.mode === 'full' && (tag ? tag.name : b.tag)}
                       </span>
                     )}
                   </div>

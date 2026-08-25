@@ -20,7 +20,7 @@ Not its display name. Ids are lowercase and use hyphens:
 Current ids, ready to copy:
 
 ```
-sleep  game  shower  smoke  reading  walk  walk-coco  anime
+sleep  bed  game  shower  smoke  reading  walk  walk-coco  anime
 youtube  dgg  music  food  cleaning  vibe-coding  documenting
 anything-else
 ```
