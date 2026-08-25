@@ -211,6 +211,8 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   align-items: center;
   gap: var(--s-3);
   height: var(--chip-height);
+  /* Chip icons run larger than the same icon elsewhere. */
+  --tagicon-size: var(--tagicon-size-chip);
   padding: 0 var(--s-5);
   font-size: var(--f-md);
   font-weight: var(--w-medium);
@@ -220,6 +222,8 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   border-radius: var(--r-lg);
   cursor: pointer;
 }
+/* A tag that asks for a bigger icon still can't outgrow the chip holding it. */
+.chip .tagicon { max-width: var(--chip-height); max-height: var(--chip-height); }
 .chip:hover:not(:disabled) { background: color-mix(in srgb, var(--chip) 42%, var(--c-surface)); }
 .chip:disabled { opacity: 0.35; cursor: default; }
 .chip.armed {

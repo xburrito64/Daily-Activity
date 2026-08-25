@@ -81,6 +81,7 @@
 
   --handle-width: 7px;
   --tagicon-size: 20px;         /* emoji and custom images alike */
+  --tagicon-size-chip: 23px;    /* the chip is what you aim at, so a bit more */
 
   --gutter-w: 62px;                      /* overview date column */
   --gutter-gap: var(--s-5);
