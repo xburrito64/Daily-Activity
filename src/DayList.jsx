@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
-  SLOTS_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO, daysBetween,
-  formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
+  SLOTS_PER_DAY, MINUTES_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO,
+  daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
+  minutesNow, msToNextMinute,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes } from './blocks.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
@@ -182,6 +183,35 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   return alone >= floor
     ? { mode: 'icon', iconPx: alone, widthPx: widthAt(alone) + ICON_PADDING }
     : null
+}
+
+/**
+ * Where you are in the day, drawn on today's bar.
+ *
+ * It keeps its own clock rather than taking the time as a prop, so the minute
+ * turning over re-renders this one line instead of every day in the list —
+ * there can be several hundred of those, and none of the rest of them have
+ * changed.
+ *
+ * The first tick is timed to the turn of the minute rather than a minute from
+ * now, so the mark moves when the clock does.
+ */
+function NowLine({ date }) {
+  const [minute, setMinute] = useState(minutesNow)
+
+  useEffect(() => {
+    let interval
+    const timeout = setTimeout(() => {
+      setMinute(minutesNow())
+      interval = setInterval(() => setMinute(minutesNow()), 60_000)
+    }, msToNextMinute())
+    return () => { clearTimeout(timeout); clearInterval(interval) }
+  }, [])
+
+  // Past midnight this is yesterday's row, and the mark belongs on the new
+  // day rather than back at the start of this one.
+  if (date !== todayISO()) return null
+  return <i className="nowline" style={{ left: `${(minute / MINUTES_PER_DAY) * 100}%` }} />
 }
 
 function TrashIcon() {
@@ -780,6 +810,11 @@ ${b.note}` : ''}`}
                 })}
               </div>
               )}
+
+              {/* Over the blocks, so it can be found against a full day, but
+                  under the names and grab strips, which you have to be able to
+                  read and grab through it. */}
+              {isToday && <NowLine date={date} />}
 
               {/* Names are drawn over the blocks, one per block rather than
                   one per piece: a block cut where it steps up is still one

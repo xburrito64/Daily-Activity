@@ -645,6 +645,30 @@ h1 {
 .handle.end { margin-left: calc(var(--w) * -1); }
 .scroller.armed .handle { pointer-events: none; }
 
+/* Where you are in the day. A hairline rather than anything with weight:
+   it is there to be found when you look for it, not to be looked at. The
+   glow is what makes a single pixel findable against a bar full of blocks. */
+.nowline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--c-accent);
+  box-shadow: 0 0 6px 1px rgba(200, 162, 74, 0.45);
+  pointer-events: none;
+}
+/* A bead at the top, so the eye lands on it without hunting. */
+.nowline::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--c-accent);
+}
+
 .rowbroken {
   position: absolute;
   left: var(--s-4);

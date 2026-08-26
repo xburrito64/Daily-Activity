@@ -1,5 +1,22 @@
 export const MINUTES_PER_SLOT = 10
 export const SLOTS_PER_DAY = (24 * 60) / MINUTES_PER_SLOT // 144
+export const MINUTES_PER_DAY = 24 * 60
+
+/**
+ * Minutes since midnight, right now. To the minute rather than to the slot:
+ * this says where you are, and rounding it to the nearest ten would put the
+ * mark up to five minutes from the truth for no reason.
+ */
+export function minutesNow() {
+  const d = new Date()
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+/** Milliseconds until the clock turns over to the next minute. */
+export function msToNextMinute() {
+  const d = new Date()
+  return (60 - d.getSeconds()) * 1000 - d.getMilliseconds()
+}
 
 /** Slot boundary index (0..144) -> "HH:MM". Slot 144 is "24:00". */
 export function slotToTime(slot) {
