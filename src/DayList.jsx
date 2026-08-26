@@ -8,7 +8,10 @@ import { applyPaint, applyResize, layoutLanes } from './blocks.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
-const CLICK_SLOP_PX = 4
+// How far the pointer may wander and still count as a click. Roughly a slot
+// wide, so that letting go after a small slip opens the note rather than
+// nudging the block ten minutes sideways.
+const CLICK_SLOP_PX = 8
 const CHUNK = 21 // days added each time you reach an end
 const INITIAL = 70 // enough rows to fill the screen even at the smallest zoom
 const EDGE_PX = 600 // how close to an end before more days load
@@ -477,6 +480,23 @@ export default function DayList({
     return Math.min(bands - 1, Math.max(0, band))
   }
 
+  /**
+   * Which lane a block being slid is asking for.
+   *
+   * Measured from where it was picked up, not from where the pointer is in
+   * the bar. A block is drawn from its lane down to the floor, so grabbing a
+   * top-lane block near its bottom edge puts the pointer in the band below
+   * it — read absolutely, sliding it sideways would shove it down a lane it
+   * was never asked to leave. Moving up or down by one lane's worth of height
+   * moves it one lane, and holding still leaves it alone.
+   */
+  function laneWhileSliding(trackEl, clientY, d, cell) {
+    const rect = trackEl.getBoundingClientRect()
+    const bands = d.others.filter((b) => b.startSlot <= cell && b.endSlot > cell).length + 1
+    const by = (clientY - rect.top) / rect.height - d.grabY
+    return Math.min(bands - 1, Math.max(0, d.wasLane + Math.round(by * bands)))
+  }
+
   function boundaryFrom(trackEl, clientX) {
     const rect = trackEl.getBoundingClientRect()
     const slot = Math.round(((clientX - rect.left) / rect.width) * SLOTS_PER_DAY)
@@ -522,12 +542,17 @@ export default function DayList({
     } else {
       // A press, until it moves far enough to be a drag. Everything a slide
       // needs is taken now, while the block is still where it started.
+      const rect = trackEl.getBoundingClientRect()
       setDragState({
         mode: 'press', date, trackEl, id: block.id,
         originX: e.clientX, originY: e.clientY,
-        grabbed: cellFrom(trackEl, e.clientX),
         startSlot: block.startSlot, endSlot: block.endSlot,
         was: { startSlot: block.startSlot, endSlot: block.endSlot },
+        // Where it sits now, and how far down the bar it was taken hold of.
+        // Both are what a slide is measured against.
+        wasLane: layoutLanes(days[date]?.blocks ?? [])
+          .find((p) => p.block.id === block.id)?.lane ?? 0,
+        grabY: (e.clientY - rect.top) / rect.height,
         // The day without this block in it. Which lane the pointer is asking
         // for is a question about what it would be landing among, and a block
         // is not among itself.
@@ -582,17 +607,26 @@ export default function DayList({
         // Both edges together, so the block keeps its length. The whole block
         // has to stay in the day, so the shift is clamped rather than the
         // edges — clamping the edges would squash it against midnight.
-        const by = cellFrom(d.trackEl, e.clientX) - d.grabbed
-        const shift = Math.max(-d.was.startSlot, Math.min(SLOTS_PER_DAY - d.was.endSlot, by))
-        const startSlot = d.was.startSlot + shift
-        // How high you are holding it says where it should sit, the same way
-        // painting reads it: over the upper half of something it lands above,
-        // over the lower half it lands below.
-        const lane = laneFrom(d.trackEl, e.clientY, d.others, startSlot)
+        // How far it has travelled, in slots, measured from where it was
+        // taken hold of. Counting whole cells crossed instead would make the
+        // first step depend on where inside a cell the press landed — a pixel
+        // from the edge and it jumps, halfway across and it takes a full slot.
+        // From the grab point it is always half a slot, wherever you grabbed.
+        const rect = d.trackEl.getBoundingClientRect()
+        const travelled = Math.round(
+          ((e.clientX - d.originX) / rect.width) * SLOTS_PER_DAY)
+        const shift = Math.max(-d.was.startSlot,
+          Math.min(SLOTS_PER_DAY - d.was.endSlot, travelled))
+        const cell = cellFrom(d.trackEl, e.clientX)
+        // How high you are holding it says where it should sit — judged where
+        // the pointer is, since that is what you are aiming at. Judging it at
+        // the block's own start would ask about a moment that can be hours
+        // away and over something else entirely.
+        const lane = laneWhileSliding(d.trackEl, e.clientY, d, cell)
         const next = {
           ...d, mode: 'move', moved: true,
-          startSlot, endSlot: d.was.endSlot + shift,
-          at: { slot: startSlot, lane },
+          startSlot: d.was.startSlot + shift, endSlot: d.was.endSlot + shift,
+          at: { slot: cell, lane },
         }
         if (next.mode !== d.mode || next.startSlot !== d.startSlot || lane !== d.at?.lane) {
           setDragState(next)
@@ -619,7 +653,14 @@ export default function DayList({
         // the only way to open the note on a block too narrow to have anywhere
         // else to click, and what a stray wobble on any other block should
         // come to as well.
-        if (d.startSlot === d.was.startSlot && d.endSlot === d.was.endSlot) {
+        //
+        // A slide can change where a block sits without changing when it
+        // happened, though, and dragging one straight up is the plainest way
+        // to ask for that. Times alone would call it a click and throw the
+        // whole thing away.
+        const sameTimes = d.startSlot === d.was.startSlot && d.endSlot === d.was.endSlot
+        const sameLane = d.mode !== 'move' || d.at?.lane === d.wasLane
+        if (sameTimes && sameLane) {
           h.onSelect(d.date, d.id)
         } else {
           h.onResize(d.date, d.id, d.startSlot, d.endSlot, d.at)
