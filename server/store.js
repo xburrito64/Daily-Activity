@@ -4,6 +4,11 @@ import { readBlock, writeBlock, formatEntries } from './fence.js'
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]|24):([0-5]\d)$/
+// A cover is the name of a file in the covers folder and nothing else. No
+// folders, no walking up out of it, no leading dot — whatever ends up in a
+// note eventually gets joined onto a path, so it is checked on the way in
+// rather than trusted on the way out.
+const COVER_RE = /^[\w][\w .-]{0,119}\.(jpe?g|png|webp|gif)$/i
 
 const toMinutes = (t) => {
   const [h, m] = t.split(':').map(Number)
@@ -39,10 +44,17 @@ export function validateEntries(entries, { grid = true } = {}) {
     }
     if (end <= start) throw new Error(`${where}: end must come after start`)
     if (e.note != null && typeof e.note !== 'string') throw new Error(`${where}: note must be text`)
+    if (e.game != null && typeof e.game !== 'string') throw new Error(`${where}: game must be text`)
+    if (e.cover && !COVER_RE.test(e.cover)) throw new Error(`${where}: bad cover "${e.cover}"`)
 
     // Rebuild rather than pass through, so stray keys never reach the note.
     const clean = { tag: e.tag, start: e.start, end: e.end }
     if (e.note) clean.note = e.note
+    // What was being played, written out in full so the note still says it
+    // without this app — and the file its picture was saved as, which is the
+    // only thing here that means nothing on its own.
+    if (e.game) clean.game = e.game
+    if (e.game && e.cover) clean.cover = e.cover
     return { clean, start, end }
   })
 

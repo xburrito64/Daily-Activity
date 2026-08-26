@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise, setGame } from './blocks.js'
 import { paintSpans, SLOTS_PER_DAY } from './time.js'
 
 let pass = 0, fail = 0
@@ -448,6 +448,79 @@ t('dragging an edge still cannot change the height', () => {
   const before = layoutLanes(day).find((p) => p.block.id === 'b').lane
   const after = applyResize(day, 'b', 66, 84)
   assert.equal(layoutLanes(after).find((p) => p.block.id === 'b').lane, before)
+})
+
+// --- games: two Game blocks are not always the same thing -----------------
+
+const g = (id, name, startSlot, endSlot, cover = '') =>
+  ({ ...b(id, 'game', startSlot, endSlot), game: name, cover })
+
+t('two stretches of the same game still fold together', () => {
+  const day = [g('a', 'Elden Ring', 60, 72), g('c', 'Elden Ring', 72, 84)]
+  const after = applyResize(day, 'c', 72, 90)
+  assert.equal(after.length, 1)
+  assert.deepStrictEqual([after[0].startSlot, after[0].endSlot, after[0].game],
+    [60, 90, 'Elden Ring'])
+})
+
+t('two different games do not, however much they touch', () => {
+  // The reason the merge asks about more than the tag: finishing one game and
+  // starting another is two things, and they are both tagged Game.
+  const day = [g('a', 'Elden Ring', 60, 72), g('c', 'Hades', 72, 84)]
+  const after = applyResize(day, 'c', 70, 84)
+  assert.equal(after.length, 2)
+  assert.deepStrictEqual(after.map((x) => x.game).sort(), ['Elden Ring', 'Hades'])
+})
+
+t('a game nobody has named does not fold into a named one', () => {
+  // There is no way to know it was the same game, and guessing would put a
+  // name on time that was not spent there.
+  const day = [g('a', 'Elden Ring', 60, 72), b('c', 'game', 72, 84)]
+  const after = applyResize(day, 'c', 72, 90)
+  assert.equal(after.length, 2)
+})
+
+t('two unnamed Game blocks still fold together, as they always did', () => {
+  const after = applyResize([b('a', 'game', 60, 72), b('c', 'game', 72, 84)], 'c', 70, 84)
+  assert.equal(after.length, 1)
+})
+
+t('naming a block says what it was', () => {
+  const after = setGame([b('a', 'game', 60, 72)], 'a', { name: 'Hades', cover: 'hades-1.jpg' })
+  assert.deepStrictEqual([after[0].game, after[0].cover], ['Hades', 'hades-1.jpg'])
+})
+
+t('naming a block folds it into the same game beside it', () => {
+  const day = [g('a', 'Hades', 60, 72), b('c', 'game', 72, 84)]
+  const after = setGame(day, 'c', { name: 'Hades', cover: 'hades-1.jpg' })
+  assert.equal(after.length, 1)
+  assert.deepStrictEqual([after[0].id, after[0].startSlot, after[0].endSlot], ['a', 60, 84])
+})
+
+t('taking the name back off leaves the block where it was', () => {
+  const after = setGame([g('a', 'Hades', 60, 72, 'hades-1.jpg')], 'a', null)
+  assert.equal(after.length, 1)
+  assert.deepStrictEqual([after[0].game, after[0].cover, after[0].startSlot], ['', '', 60])
+})
+
+t('the game and its cover survive the round trip', () => {
+  const written = serialise([g('a', 'Elden Ring', 60, 72, 'elden-ring-326243.jpg')])
+  assert.deepStrictEqual(written, [{
+    tag: 'game', start: '10:00', end: '12:00',
+    game: 'Elden Ring', cover: 'elden-ring-326243.jpg',
+  }])
+  const back = deserialise(written)
+  assert.deepStrictEqual([back[0].game, back[0].cover], ['Elden Ring', 'elden-ring-326243.jpg'])
+})
+
+t('a cover with no game is not written — it would mean nothing on its own', () => {
+  assert.deepStrictEqual(serialise([g('a', '', 60, 72, 'stray.jpg')]),
+    [{ tag: 'game', start: '10:00', end: '12:00' }])
+})
+
+t('a day written before any of this reads back with no game', () => {
+  const back = deserialise([{ tag: 'game', start: '10:00', end: '12:00' }])
+  assert.deepStrictEqual([back[0].game, back[0].cover], ['', ''])
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

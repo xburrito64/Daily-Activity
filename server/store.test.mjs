@@ -79,6 +79,36 @@ await t('notes survive, stray fields do not', async () => {
   assert.deepStrictEqual(back.entries, [{ tag: 'game', start: '01:00', end: '02:00', note: 'kept' }])
 })
 
+await t('a game and its cover are kept, and go in readable', async () => {
+  await store.writeDay('2027-06-17', [
+    { tag: 'game', start: '14:00', end: '16:00', game: 'Elden Ring', cover: 'elden-ring-326243.jpg' },
+  ])
+  const text = await fs.readFile(path.join(dir, '2027-06-17.md'), 'utf8')
+  // The name is the record: it has to read as a name in the note itself, not
+  // as an id that means something only to this app.
+  assert.ok(text.includes('"game":"Elden Ring"'), text)
+  const back = await store.readDay('2027-06-17')
+  assert.deepStrictEqual(back.entries[0].game, 'Elden Ring')
+  assert.deepStrictEqual(back.entries[0].cover, 'elden-ring-326243.jpg')
+})
+
+await t('a cover is a filename and nothing else', () => {
+  for (const cover of ['../../secrets.jpg', 'covers/x.jpg', 'x.exe', '.hidden.jpg', 'C:/x.jpg']) {
+    assert.throws(
+      () => validateEntries([{ tag: 'game', start: '01:00', end: '02:00', game: 'X', cover }]),
+      new RegExp('bad cover'),
+      cover,
+    )
+  }
+})
+
+await t('a cover without a game is dropped', () => {
+  assert.deepStrictEqual(
+    validateEntries([{ tag: 'game', start: '01:00', end: '02:00', cover: 'x.jpg' }]),
+    [{ tag: 'game', start: '01:00', end: '02:00' }],
+  )
+})
+
 await fs.rm(dir, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

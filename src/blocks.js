@@ -32,7 +32,19 @@ function placeFor(blocks, atSlot, lane) {
 }
 
 /**
- * Fold a block together with every block of the same tag it meets.
+ * Whether two blocks are the same activity, and so cannot be two blocks.
+ *
+ * The tag says it for nineteen tags out of twenty. Games are the exception:
+ * finishing one and starting another is two things that happened, and they
+ * are both tagged Game. So what is being played counts too, and a game
+ * nobody has named yet is its own answer — it never folds into a named one,
+ * because there is no way to know it was the same game and getting that
+ * wrong would put a name on time that wasn't spent there.
+ */
+const sameThing = (a, b) => a.tag === b.tag && (a.game ?? '') === (b.game ?? '')
+
+/**
+ * Fold a block together with every block of the same activity it meets.
  *
  * One activity can't run alongside itself, so two stretches of it that touch
  * or overlap are one stretch — however they came to meet. Painting one over
@@ -47,7 +59,7 @@ function placeFor(blocks, atSlot, lane) {
  */
 function mergeSameTag(blocks, block) {
   const touching = blocks.filter(
-    (b) => b.tag === block.tag && b.endSlot >= block.startSlot && b.startSlot <= block.endSlot,
+    (b) => sameThing(b, block) && b.endSlot >= block.startSlot && b.startSlot <= block.endSlot,
   )
   if (touching.length < 2) return blocks
 
@@ -121,6 +133,25 @@ export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)
 
 export const setNote = (blocks, id, note) =>
   blocks.map((b) => (b.id === id ? { ...b, note } : b))
+
+/**
+ * Say what was being played, or take it back off.
+ *
+ * `game` is { name, cover } or null. The cover is only ever the file the
+ * picture was saved as — the name is the record, and it is what the note in
+ * the vault reads as with nothing else installed.
+ *
+ * Naming a block can leave it up against another stretch of the same game
+ * that it was already touching, so it merges on the way out, exactly as it
+ * would have if the two had been dragged together.
+ */
+export function setGame(blocks, id, game) {
+  const named = blocks.map((b) => (
+    b.id === id ? { ...b, game: game?.name ?? '', cover: game?.cover ?? '' } : b
+  ))
+  const target = named.find((b) => b.id === id)
+  return target ? mergeSameTag(named, target) : named
+}
 
 /**
  * Work out where every block should be drawn once overlaps are allowed.
@@ -267,9 +298,13 @@ export function overlapCluster(blocks, id) {
 export function serialise(blocks) {
   // Saved in list order, not sorted by time: the order is what decides which
   // block stacks above which, and it has to survive a reload.
-  return blocks.map(({ tag, startSlot, endSlot, note }) => {
+  return blocks.map(({ tag, startSlot, endSlot, note, game, cover }) => {
     const entry = { tag, start: slotToTime(startSlot), end: slotToTime(endSlot) }
     if (note) entry.note = note
+    // The name goes in whether or not there is a picture; the picture is no
+    // use on its own, so it only goes in behind the name.
+    if (game) entry.game = game
+    if (game && cover) entry.cover = cover
     return entry
   })
 }
@@ -281,5 +316,7 @@ export function deserialise(entries) {
     startSlot: timeToSlot(e.start),
     endSlot: timeToSlot(e.end),
     note: e.note ?? '',
+    game: e.game ?? '',
+    cover: e.cover ?? '',
   }))
 }
