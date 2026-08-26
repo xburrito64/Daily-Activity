@@ -36,6 +36,7 @@ const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
 const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
 const ICON_GROWTH = 4 // the most an icon may outgrow its normal size
 const ICON_OF_LANE = 0.44 // how much of the row's height an icon reaches for
+const ICON_INSET = 6 // an icon stops short of the lane's edges rather than filling it
 
 /**
  * Width of a string in the label font, measured once per string. The font is
@@ -132,12 +133,19 @@ function silhouette(mine, pieces) {
  * name: a small icon beside a name reads worse than a big icon on its own, so
  * when both won't fit at full size the name is what goes.
  *
+ * The two want different things from the lane. A name needs one tall enough to
+ * read it in; an icon only needs one it fits inside. So a lane too short for a
+ * name still carries an icon, and only when the icon itself no longer fits is
+ * the block left bare.
+ *
  * A custom image is square; an emoji is text, so its width has to be measured
  * and scales with the size it is drawn at.
  */
 function fitLabel(tag, fallback, widthPx, lanePx) {
   const room = widthPx - LABEL_PADDING
+  const named = lanePx >= LABEL_MIN_LANE
   if (!tag) {
+    if (!named) return null
     const width = textWidth(fallback)
     return width <= room ? { mode: 'full', iconPx: 0, widthPx: width + LABEL_PADDING } : null
   }
@@ -150,13 +158,21 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   const sizeFor = (width) => (tag.image ? width : (width * iconPx) / emojiWidth)
   const widthAt = (px) => (tag.image ? px : emojiWidth * (px / iconPx))
 
-  const wanted = Math.min(base * ICON_GROWTH, Math.max(base, lanePx * ICON_OF_LANE))
+  // Grows with the height of the row, but never past the lane it has to sit
+  // in — that cap is what leaves a short lane an icon.
+  const wanted = Math.min(
+    base * ICON_GROWTH,
+    Math.max(base, lanePx * ICON_OF_LANE),
+    Math.max(0, lanePx - ICON_INSET),
+  )
   // Never insist on more than the tag asked for: a deliberately small icon
-  // shouldn't be dropped for being small.
-  const floor = Math.min(ICON_MIN_PX, wanted)
+  // shouldn't be dropped for being small. Measured against what the tag asks
+  // for rather than what the lane allows, or a lane too short for anything
+  // readable would let a smudge through.
+  const floor = Math.min(ICON_MIN_PX, base)
 
   const withName = widthAt(wanted) + ICON_GAP + textWidth(tag.name)
-  if (withName <= room) {
+  if (named && withName <= room) {
     return { mode: 'full', iconPx: wanted, widthPx: withName + LABEL_PADDING }
   }
 
@@ -734,7 +750,6 @@ ${b.note}` : ''}`}
               {!day?.malformed && wholes.map(({ block: b, lane, lanes }) => {
                 const tag = tagById(b.tag)
                 const laneHeight = barHeight / lanes
-                if (laneHeight < LABEL_MIN_LANE) return null
                 const label = fitLabel(
                   tag, b.tag, ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth, laneHeight,
                 )
