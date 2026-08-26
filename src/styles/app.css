@@ -869,13 +869,16 @@ h1 {
   user-select: all;
 }
 
-/* Tall enough to show three at once and no taller: the list is something to
-   pick from at a glance, not a catalogue to browse. */
+/* Three at once and no more: the list is something to pick from at a glance,
+   not a catalogue to browse. Exactly three, though — a cover is 90px and a
+   row is that plus its padding, so the height is counted from them rather
+   than guessed at, and the third row ends where the list does instead of
+   being sliced through the middle. */
 .gamelist {
   list-style: none;
   margin: var(--s-4) 0 0;
   padding: 0;
-  max-height: 296px;
+  max-height: calc(3 * (90px + 2 * var(--s-3)));
   overflow-y: auto;
 }
 .gameresult {
