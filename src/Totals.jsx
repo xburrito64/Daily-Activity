@@ -1,4 +1,6 @@
 import { formatDuration, formatShortDate, daysBetween, shiftDate } from './time.js'
+import { coverUrl } from './api.js'
+import { COVER_ASPECT } from './game.js'
 import TagIcon from './TagIcon.jsx'
 
 /**
@@ -11,6 +13,9 @@ export default function Totals({ days, tags, range }) {
 
   const span = daysBetween(range.from, range.to) + 1
   const slots = new Map()
+  // What was played, by name rather than by tag. "Game: nineteen hours" is a
+  // number; the list of games is the week.
+  const played = new Map()
   let logged = 0
   let busiest = 0
 
@@ -22,12 +27,22 @@ export default function Totals({ days, tags, range }) {
       const next = (slots.get(b.tag) ?? 0) + (b.endSlot - b.startSlot)
       slots.set(b.tag, next)
       if (next > busiest) busiest = next
+
+      if (!b.game) continue
+      const had = played.get(b.game) ?? { slots: 0, cover: '' }
+      // The first cover seen wins. A game only has one, and a block logged
+      // before the cover was kept simply hasn't got it to offer.
+      played.set(b.game, { slots: had.slots + (b.endSlot - b.startSlot), cover: had.cover || b.cover })
     }
   }
 
   const rows = tags
     .filter((t) => slots.get(t.id))
     .map((t) => ({ tag: t, slots: slots.get(t.id) }))
+    .sort((a, b) => b.slots - a.slots)
+
+  const games = [...played]
+    .map(([name, what]) => ({ name, ...what }))
     .sort((a, b) => b.slots - a.slots)
 
   return (
@@ -68,6 +83,32 @@ export default function Totals({ days, tags, range }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Under the hours rather than among them: this is the same time said
+          again, broken into what it was actually spent on. */}
+      {games.length > 0 && (
+        <div className="played">
+          <span className="eyebrow">What you played</span>
+          <ul className="playedlist">
+            {games.map((game) => (
+              <li key={game.name} className="playedrow">
+                {game.cover
+                  ? (
+                    <img
+                      className="playedcover"
+                      style={{ '--cover-aspect': COVER_ASPECT }}
+                      src={coverUrl(game.cover)}
+                      alt=""
+                    />
+                  )
+                  : <span className="playedcover none" aria-hidden="true">🎮</span>}
+                <span className="playedname">{game.name}</span>
+                <span className="playedtime">{formatDuration(game.slots)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </aside>
   )

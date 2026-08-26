@@ -8,6 +8,10 @@
  * drawn smaller than everything else. Twice normal is the ceiling: that is a
  * 40px box, and a chip is 40px tall, so nothing can be asked for that would
  * push its way out of the row it sits in.
+ *
+ * An "aspect" says the picture is not square and should be given the width it
+ * wants rather than fitted into a box — game covers, which are key art. The
+ * height is still the icon's, so a cover lines up with every icon beside it.
  */
 export default function TagIcon({ tag, className = '', scale }) {
   if (!tag) return null
@@ -15,10 +19,22 @@ export default function TagIcon({ tag, className = '', scale }) {
   // An explicit scale is worked out from the room available, so it is trusted
   // as given — the clamp is only for whatever a person typed into tags.json.
   const size = scale ?? clampScale(tag.iconScale)
-  const style = size === 1 ? undefined : { '--icon-scale': size }
+  const wide = tag.image && tag.aspect > 0 && tag.aspect !== 1
+
+  const style = {}
+  if (size !== 1) style['--icon-scale'] = size
+  if (wide) style['--icon-aspect'] = tag.aspect
 
   return tag.image
-    ? <img className={`tagicon ${className}`} style={style} src={tag.image} alt="" aria-hidden="true" />
+    ? (
+      <img
+        className={`tagicon${wide ? ' wide' : ''} ${className}`}
+        style={style}
+        src={tag.image}
+        alt=""
+        aria-hidden="true"
+      />
+    )
     : <span className={`tagicon emoji ${className}`} style={style} aria-hidden="true">{tag.icon}</span>
 }
 

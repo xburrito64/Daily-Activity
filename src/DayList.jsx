@@ -5,6 +5,7 @@ import {
   minutesNow, msToNextMinute, paintSpans,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes } from './blocks.js'
+import { gameFace } from './game.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
@@ -149,7 +150,8 @@ function silhouette(mine, pieces) {
  * the block left bare.
  *
  * A custom image is square; an emoji is text, so its width has to be measured
- * and scales with the size it is drawn at.
+ * and scales with the size it is drawn at; a game's cover is key art, wider
+ * than it is tall, and says so.
  */
 function fitLabel(tag, fallback, widthPx, lanePx) {
   const room = widthPx - LABEL_PADDING
@@ -162,11 +164,16 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
 
   const iconPx = baseIconPx()
   const base = iconPx * clampScale(tag.iconScale)
-  const emojiWidth = textWidth(tag.icon) || iconPx
+  // How wide the picture comes out per unit of height. Everything below is
+  // reasoned in heights, since that is what the lane limits, and this is the
+  // one number that turns a height back into the room it takes up.
+  const aspect = tag.image
+    ? (tag.aspect > 0 ? tag.aspect : 1)
+    : (textWidth(tag.icon) || iconPx) / iconPx
   // The tallest icon that fits a given width, and how wide one of a given
-  // height comes out — not the same thing for an emoji, which is text.
-  const sizeFor = (width) => (tag.image ? width : (width * iconPx) / emojiWidth)
-  const widthAt = (px) => (tag.image ? px : emojiWidth * (px / iconPx))
+  // height comes out.
+  const sizeFor = (width) => width / aspect
+  const widthAt = (px) => px * aspect
 
   // Grows with the height of the row, but never past the lane it has to sit
   // in — that cap is what leaves a short lane an icon.
@@ -776,9 +783,13 @@ export default function DayList({
       overnights: painting.length - 1,
     }
     : resizing
+  const resizingBlock = resizing
+    ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
+    : null
+  // Dragging a named game around should read as that game, not as "Game".
   const readoutTag = painting
     ? armedTag
-    : resizing && tagById(days[resizing.date]?.blocks.find((b) => b.id === resizing.id)?.tag)
+    : resizingBlock && gameFace(tagById(resizingBlock.tag), resizingBlock)
 
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
 
@@ -955,7 +966,7 @@ export default function DayList({
                       zIndex: piece.lane,
                       background: tag?.colour ?? '#555',
                     }}
-                    title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
+                    title={`${b.game || tag?.name || b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   />
                 )
@@ -973,7 +984,10 @@ ${b.note}` : ''}`}
                   thing with one name, sitting in its own lane across the whole
                   of it. */}
               {!day?.malformed && wholes.map(({ block: b, lane, lanes }) => {
-                const tag = tagById(b.tag)
+                // A named game wears its own name and its own cover here.
+                // Twenty Game blocks in a week all called "Game" say nothing
+                // the colour hasn't already said.
+                const tag = gameFace(tagById(b.tag), b)
                 const laneHeight = barHeight / lanes
                 const label = fitLabel(
                   tag, b.tag, ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth, laneHeight,

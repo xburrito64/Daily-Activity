@@ -61,9 +61,15 @@ folder. Use forward slashes:
 ```json
 {
   "vaultDailyDir": "C:/Vaults/YourVault/Daily",
-  "port": 5274
+  "port": 5274,
+  "rawgKey": ""
 }
 ```
+
+`rawgKey` is only for naming games — see below. Leave it empty and everything
+else works exactly as before; the search box says what is missing if you open
+it. A setting added by a later version is filled into the installed copy on
+next launch, so there is always a line to put it on.
 
 Tags live in `tags.json` — name, colour and icon. Edit and refresh; no restart
 needed.
@@ -82,7 +88,25 @@ the format and naming.
 - Click a block for its note, drag its edges to adjust the times, or use the
   red button to clear a whole day.
 - Blocks may overlap: paint one over another and they share the bar's height
-  for the stretch they have in common. Overlapping blocks share one note.
+  for the stretch they have in common.
+
+### Games
+
+A **Game** block can say which game. Open its note and a search box is there;
+type a name, pick it, and the block takes the game's name and its cover art in
+place of the tag's own.
+
+The name is written into the note as plain text, so the day still reads
+sensibly in Obsidian with nothing installed. The cover is *copied* into
+`<your daily folder>/covers/` rather than linked, so it keeps working offline
+and the vault stays self-contained. One file per game, however many days
+mention it.
+
+Two Game blocks only merge into one when they are the same game — finishing
+one and starting another is two things that happened.
+
+The lookup needs a free key from [rawg.io/apikey](https://rawg.io/apikey) in
+`rawgKey`. Nothing else in the app touches the network.
 
 ## Layout
 

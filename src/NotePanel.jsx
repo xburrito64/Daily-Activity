@@ -1,31 +1,52 @@
 import { useEffect, useRef } from 'react'
 import { slotToTime, formatDuration } from './time.js'
+import { gameFace } from './game.js'
+import GameSearch from './GameSearch.jsx'
 import TagIcon from './TagIcon.jsx'
+
+/** Only Game blocks ask what they were. */
+const SEARCHABLE = 'game'
 
 /**
  * The note for one block. `block` is the one clicked — its own text, its own
  * times, and what Delete removes. `cluster` is everything overlapping it, listed
  * across the top so you can see what else was running at the same time.
  */
-export default function NotePanel({ cluster, block, date, tags, onNote, onDelete, onClose }) {
+export default function NotePanel({ cluster, block, date, tags, onNote, onGame, onDelete, onClose }) {
   const area = useRef(null)
   const tagFor = (id) => tags.find((t) => t.id === id)
 
   const clickedTag = tagFor(block.tag)
+  const searchable = block.tag === SEARCHABLE
+  // A game block with nothing attached opens on the question, not on the
+  // note: naming what you played is the thing you came here to do, and the
+  // note is still one tab away.
+  const askFirst = searchable && !block.game
 
-  // Opening the panel should put the cursor straight in the text.
-  useEffect(() => { area.current?.focus() }, [block.id])
+  // Opening the panel should put the cursor straight in the text — unless the
+  // search is going to want it.
+  //
+  // On opening, and only on opening. Attaching a game turns the question off,
+  // and following that with the cursor would drag it into the note nobody
+  // asked to write — and take ctrl+z with it, which at that moment means
+  // "not that one" and is the first thing you would reach for.
+  const opened = useRef(null)
+  useEffect(() => {
+    const fresh = opened.current !== block.id
+    opened.current = block.id
+    if (fresh && !askFirst) area.current?.focus()
+  }, [block.id, askFirst])
 
   return (
     <div className="notepanel">
       <div className="notehead">
         {cluster.map((b) => {
-          const tag = tagFor(b.tag)
+          const tag = gameFace(tagFor(b.tag), b)
           return (
             <span
               key={b.id}
               className={`notetag${b.id === block.id ? ' current' : ''}`}
-              style={{ '--tag': tag?.colour }}
+              style={{ '--tag': tagFor(b.tag)?.colour }}
               title={`${slotToTime(b.startSlot)} – ${slotToTime(b.endSlot)}`}
             >
               <TagIcon tag={tag} />
@@ -48,6 +69,16 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onDelete
         </button>
         <button className="notebtn" onClick={onClose}>Close</button>
       </div>
+
+      {/* Keyed on the block, so clicking a different one starts a fresh
+          search rather than showing the last block's results under it. */}
+      {searchable && (
+        <GameSearch
+          key={block.id}
+          block={block}
+          onAttach={(game) => onGame(block.id, game)}
+        />
+      )}
 
       <textarea
         ref={area}

@@ -4,7 +4,7 @@ import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
 import { useDays } from './useDays.js'
 import { getTags } from './api.js'
-import { applyPaint, applyResize, removeBlock, setNote, newId, overlapCluster } from './blocks.js'
+import { applyPaint, applyResize, removeBlock, setNote, setGame, newId, overlapCluster } from './blocks.js'
 import { todayISO, formatDotted } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
@@ -153,6 +153,28 @@ export default function App() {
     setArmed(null)
   }
 
+  /**
+   * Say what a Game block was, or take the name back off.
+   *
+   * Naming one can fold it into a stretch of the same game it was already
+   * touching, and the survivor of that is the other block. So the note
+   * follows it in rather than closing on an id that no longer exists — from
+   * where you are sitting nothing was deleted, two things became one.
+   */
+  function handleGame(id, game) {
+    const date = selected.date
+    const before = days[date]?.blocks ?? []
+    const after = setGame(before, id, game)
+    editDay(date, after)
+
+    if (after.some((b) => b.id === id)) return
+    const was = before.find((b) => b.id === id)
+    const survivor = was && after.find((b) => (
+      b.tag === was.tag && b.startSlot <= was.startSlot && b.endSlot >= was.endSlot
+    ))
+    if (survivor) setSelected({ date, id: survivor.id })
+  }
+
   // `at` is only there when the whole block was slid: it is the height the
   // pointer was holding it at. Dragging an edge sends nothing, and keeps the
   // height it already had.
@@ -253,6 +275,7 @@ export default function App() {
           date={selected.date}
           tags={tags}
           onNote={(id, note) => editDay(selected.date, (prev) => setNote(prev, id, note))}
+          onGame={handleGame}
           onDelete={() => {
             editDay(selected.date, (prev) => removeBlock(prev, selected.id))
             setSelected(null)

@@ -491,6 +491,16 @@ h1 {
   font-size: var(--size);
   line-height: 1;
 }
+/* A picture that isn't square — a game's cover. Same height as every icon
+   beside it, given the width that shape actually wants, and filled rather
+   than fitted: key art has nothing to lose off its edges, and a letterboxed
+   strip in a square box reads as a mistake. */
+.tagicon.wide {
+  width: calc(var(--size) * var(--icon-aspect, 1));
+  height: var(--size);
+  object-fit: cover;
+  border-radius: 2px;
+}
 
 /* ============ Overview: date column + bar ============ */
 .compactrow {
@@ -773,6 +783,158 @@ h1 {
 }
 .notetext:focus { outline: none; border-color: var(--c-text-dim); }
 
+/* ============ which game a Game block was ============
+   Sits between the header and the note: above what you wrote, because it is
+   the record rather than a remark on it, and below the times, because it is
+   still one block's business. */
+.gamepick { margin-bottom: var(--s-5); }
+
+/* --- the game once it has one ---------------------------------------- */
+.gameheld {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-3) var(--s-4);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.gamecover {
+  flex: none;
+  height: 46px;
+  width: calc(46px * var(--cover-aspect, 1.778));
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+/* No cover kept — the tag's own symbol, at the size the picture would be. */
+.gamecover.none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: var(--c-surface);
+  box-shadow: none;
+}
+.gamename {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--f-lg);
+  font-weight: var(--w-medium);
+}
+
+/* --- the search ------------------------------------------------------- */
+.gamesearch { display: flex; align-items: center; gap: var(--s-5); }
+.gameinput {
+  flex: 1;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--s-5);
+  font-family: var(--font-ui);
+  font-size: var(--f-base);
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.gameinput:focus { outline: none; border-color: var(--c-accent); }
+.gameinput::placeholder { color: var(--c-text-faint); }
+
+.gamenote {
+  flex: none;
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: var(--f-md);
+  color: var(--c-text-dim);
+}
+.gameproblem {
+  margin: var(--s-4) 0 0;
+  font-size: var(--f-md);
+  color: var(--c-warn);
+}
+.gameproblem a { color: var(--c-accent); }
+.gameproblem code { font-size: var(--f-sm); color: var(--c-text); }
+
+/* Tall enough to show three at once and no taller: the list is something to
+   pick from at a glance, not a catalogue to browse. */
+.gamelist {
+  list-style: none;
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  max-height: 296px;
+  overflow-y: auto;
+}
+.gameresult {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-5);
+  width: 100%;
+  padding: var(--s-3);
+  text-align: left;
+  color: inherit;
+  font-family: var(--font-ui);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+/* One highlight, whether it was reached with the mouse or the arrow keys —
+   hovering moves the same cursor Enter takes. */
+.gameresult.on { background: var(--c-surface-hi); border-color: var(--c-line); }
+.gameresult:disabled { cursor: default; }
+.gamelist:has(.gameresult:disabled) .gameresult:not(.on) { opacity: 0.4; }
+
+.gameshot {
+  flex: none;
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  background: var(--c-bg);
+}
+.gameshot.none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.gamebody { flex: 1; min-width: 0; }
+.gametitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-4);
+  font-size: var(--f-base);
+  font-weight: var(--w-medium);
+}
+.gameyear {
+  font-weight: var(--w-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-dim);
+}
+.gamegenres {
+  display: block;
+  font-size: var(--f-sm);
+  color: var(--c-accent);
+  opacity: 0.8;
+}
+/* Two lines of it. It is there to tell two games of the same name apart,
+   which two lines does; any more and the list stops being scannable. */
+.gameblurb {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: var(--s-1);
+  font-family: var(--font-meta);
+  font-size: var(--f-md);
+  line-height: 1.4;
+  color: var(--c-text-dim);
+}
+
 /* ============ totals beside the overview ============ */
 .workspace { flex: 1; display: flex; min-height: 0; gap: var(--s-7); }
 .workspace .daylist { min-width: 0; }
@@ -826,6 +988,53 @@ h1 {
 .totalsavg {
   font-size: var(--f-xs);
   color: var(--c-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- what you played, under the hours --- */
+.played { margin-top: var(--s-8); }
+.played .eyebrow {
+  display: block;
+  margin-bottom: var(--s-5);
+  font-family: var(--font-display);
+  font-size: var(--f-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--c-accent);
+}
+.playedlist { list-style: none; margin: 0; padding: 0; }
+.playedrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+.playedcover {
+  flex: none;
+  height: 32px;
+  width: calc(32px * var(--cover-aspect, 1.778));
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.playedcover.none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: var(--c-surface);
+  box-shadow: none;
+}
+.playedname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--f-md);
+}
+.playedtime {
+  font-weight: var(--w-medium);
   font-variant-numeric: tabular-nums;
 }
 
