@@ -8,9 +8,9 @@ const t = (name, fn) => {
 }
 
 const b = (id, tag, startSlot, endSlot, note = '') => ({ id, tag, startSlot, endSlot, note })
-/** compact view of a layout: "id from-to lane/lanes" */
+/** compact view of a layout: "id from-to top/lanes" — where it is drawn from */
 const shape = (pieces) => pieces
-  .map((p) => `${p.block.id} ${p.from}-${p.to} ${p.lane}/${p.lanes}`)
+  .map((p) => `${p.block.id} ${p.from}-${p.to} ${p.top}/${p.lanes}`)
   .sort()
 
 t('a lone block fills the bar', () => {
@@ -35,6 +35,37 @@ t('a block keeps one height however much comes and goes beside it', () => {
   const music = pieces.filter((p) => p.block.id === 'm')
   assert.strictEqual(music.length, 1, 'drawn once, not in three parts')
   assert.deepStrictEqual([music[0].lane, music[0].lanes], [1, 3])
+})
+
+t('a block rises to fill the top once nothing is above it', () => {
+  // dgg is pushed down while game is there; past the end of game there is
+  // nothing above it, so it takes the space rather than leaving a gap.
+  const pieces = layoutLanes([b('g', 'game', 6, 11), b('d', 'dgg', 10, 13)])
+  assert.deepStrictEqual(shape(pieces), [
+    'd 10-11 1/2',   // under game
+    'd 11-13 0/2',   // and up to the ceiling after it
+    'g 6-11 0/2',
+  ])
+})
+
+t('a block cut where it rises is still one block', () => {
+  const pieces = layoutLanes([b('g', 'game', 6, 11), b('d', 'dgg', 10, 13)])
+  const dgg = pieces.filter((p) => p.block.id === 'd')
+  assert.strictEqual(dgg.length, 2)
+  assert.deepStrictEqual(dgg.map((p) => [p.isFirst, p.isLast]), [[true, undefined], [undefined, true]],
+    'only the outer ends are rounded, and only they carry handles')
+  assert.ok(dgg.every((p) => p.lane === 1), 'its own lane never moves — that is where its name goes')
+})
+
+t('nothing is left empty above the shallowest block', () => {
+  // whatever is topmost at any moment reaches the ceiling
+  const pieces = layoutLanes([
+    b('a', 'game', 0, 10), b('bb', 'dgg', 5, 20), b('c', 'anime', 15, 30),
+  ])
+  for (const slot of [0, 5, 10, 15, 20, 25]) {
+    const here = pieces.filter((p) => p.from <= slot && p.to > slot)
+    assert.ok(here.some((p) => p.top === 0), `nothing reaches the top at slot ${slot}`)
+  }
 })
 
 t('blocks that miss each other share a lane', () => {
@@ -128,9 +159,10 @@ t('a block nested inside another is still one rectangle', () => {
   assert.deepStrictEqual(shape(pieces), ['d 8-10 1/2', 'g 0-20 0/2'])
 })
 
-t('every block is drawn exactly once, whatever crosses it', () => {
-  // Two separate overlaps against one long block. There is one rectangle per
-  // block, so there is one place to put the name and one pair of handles.
+t('a block covered in two places is still drawn once', () => {
+  // Two separate overlaps against one long block. Neither changes where game
+  // is drawn from — it is topmost throughout — so it stays a single rectangle
+  // and is only ever cut where its own top would step.
   const pieces = layoutLanes([
     b('g', 'game', 0, 20), b('d', 'dgg', 4, 6), b('y', 'youtube', 12, 14),
   ])

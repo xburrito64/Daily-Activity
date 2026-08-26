@@ -75,42 +75,49 @@ function textWidth(text) {
 /**
  * The outline of what can actually be seen of a block.
  *
- * A block runs from its own lane down to the floor of the bar, but anything
- * painted over it hides the part below where that starts. Outlining the whole
- * rectangle therefore drew a box around ground the block no longer holds —
- * around the block sitting on top of it, as far as the eye was concerned.
+ * Both edges move. The top steps up where the block rises to fill the strip
+ * along the ceiling, and the bottom stops short wherever something painted
+ * over it begins. Outlining the block's full rectangle instead would draw a
+ * box straight through whatever is sitting on it, which reads as selecting
+ * both.
  *
- * So the bottom edge follows whatever is covering it: the block's span is cut
- * at every point something over it begins or ends, and each stretch is taken
- * down to the shallowest thing covering it there, or to the floor where
- * nothing does. The top never moves — anything above a block is drawn under
- * it, so a block's own top edge is always in the open.
+ * So the block's span is cut at every point either edge changes, and the
+ * outline traces the tops left to right and the bottoms back again.
  */
-function silhouette(piece, pieces) {
-  const depth = (p) => (p.lane / p.lanes) * 100
-  const top = depth(piece)
+function silhouette(mine, pieces) {
+  const block = mine[0].block
+  const depth = (lane, lanes) => (lane / lanes) * 100
 
   const over = pieces.filter(
-    (p) => p.lane > piece.lane && p.from < piece.to && p.to > piece.from,
+    (p) => p.block !== block && p.lane > mine[0].lane
+      && p.from < block.endSlot && p.to > block.startSlot,
   )
-  const cuts = [...new Set([piece.from, piece.to, ...over.flatMap((p) => [p.from, p.to])])]
-    .filter((slot) => slot >= piece.from && slot <= piece.to)
+  const cuts = [...new Set([
+    ...mine.flatMap((p) => [p.from, p.to]),
+    ...over.flatMap((p) => [p.from, p.to]),
+  ])]
+    .filter((slot) => slot >= block.startSlot && slot <= block.endSlot)
     .sort((a, b) => a - b)
 
   const steps = []
   for (let i = 0; i < cuts.length - 1; i++) {
     const from = cuts[i]
     const to = cuts[i + 1]
+    const piece = mine.find((p) => p.from <= from && p.to >= to)
+    if (!piece) continue
     const covering = over.filter((p) => p.from <= from && p.to >= to)
-    const bottom = covering.length ? Math.min(...covering.map(depth)) : 100
+    const top = depth(piece.top, piece.lanes)
+    const bottom = covering.length
+      ? Math.min(...covering.map((p) => depth(p.lane, p.lanes)))
+      : 100
     const last = steps[steps.length - 1]
-    if (last && last.bottom === bottom) last.to = to
-    else steps.push({ from, to, bottom })
+    if (last && last.to === from && last.top === top && last.bottom === bottom) last.to = to
+    else steps.push({ from, to, top, bottom })
   }
 
-  // The top is one straight line; the bottom is traced back under it.
   const x = (slot) => (slot / SLOTS_PER_DAY) * 100
-  const points = [`${x(piece.from)},${top}`, `${x(piece.to)},${top}`]
+  const points = []
+  for (const s of steps) points.push(`${x(s.from)},${s.top}`, `${x(s.to)},${s.top}`)
   for (const s of [...steps].reverse()) points.push(`${x(s.to)},${s.bottom}`, `${x(s.from)},${s.bottom}`)
   return points.join(' ')
 }
@@ -669,6 +676,9 @@ export default function DayList({
           }
 
           const pieces = layoutLanes(blocks)
+          // One piece per block, for the things that belong to the block
+          // rather than to a piece of it: its name and its grab strips.
+          const wholes = pieces.filter((p) => p.isFirst)
           const selectedPieces = selected?.date === date
             ? pieces.filter((p) => p.block.id === selected.id)
             : []
@@ -688,46 +698,61 @@ export default function DayList({
               ) : pieces.map((piece) => {
                 const b = piece.block
                 const tag = tagById(b.tag)
-                const widthPct = (piece.to - piece.from) * (100 / SLOTS_PER_DAY)
-                const laneHeight = barHeight / piece.lanes
-                const label = fitLabel(
-                  tag, b.tag, ((piece.to - piece.from) / SLOTS_PER_DAY) * trackWidth, laneHeight,
-                )
                 return (
                   <div
                     key={`${b.id}:${piece.from}`}
                     data-block-id={b.id}
                     className={
                       'block' + (b.id === previewId ? ' preview' : '')
+                      // Square where the block carries on: a block cut where
+                      // it steps up has to read as one shape.
+                      + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
                     }
                     style={{
                       left: `${pct(piece.from)}%`,
                       width: `${pct(piece.to - piece.from)}%`,
-                      // Every block runs from its own lane to the floor of the
-                      // bar. Whatever is layered over it covers the lower part,
-                      // so nothing is left standing in empty space. Inset only
-                      // against the edges of the bar itself.
-                      top: piece.lane === 0
+                      // Every block runs from wherever it starts to the floor
+                      // of the bar. Whatever is layered over it covers the
+                      // lower part, so nothing is left standing in empty
+                      // space. Inset only against the edges of the bar itself.
+                      top: piece.top === 0
                         ? 'var(--block-inset)'
-                        : `${(piece.lane / piece.lanes) * 100}%`,
+                        : `${(piece.top / piece.lanes) * 100}%`,
                       bottom: 'var(--block-inset)',
                       background: tag?.colour ?? '#555',
                     }}
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
+                  />
+                )
+              })}
+
+              {/* Names are drawn over the blocks, one per block rather than
+                  one per piece: a block cut where it steps up is still one
+                  thing with one name, sitting in its own lane across the whole
+                  of it. */}
+              {!day?.malformed && wholes.map(({ block: b, lane, lanes }) => {
+                const tag = tagById(b.tag)
+                const laneHeight = barHeight / lanes
+                if (laneHeight < LABEL_MIN_LANE) return null
+                const label = fitLabel(
+                  tag, b.tag, ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth, laneHeight,
+                )
+                if (!label) return null
+                return (
+                  <span
+                    key={`l${b.id}`}
+                    className="block-label"
+                    style={{
+                      left: `${pct(b.startSlot)}%`,
+                      width: `${pct(b.endSlot - b.startSlot)}%`,
+                      top: `${(lane / lanes) * 100}%`,
+                      height: `${100 / lanes}%`,
+                    }}
                   >
-                    {laneHeight >= LABEL_MIN_LANE && label && (
-                      // The name goes in the block's own lane — the band along
-                      // its top that nothing else is drawn over.
-                      <span
-                        className="block-label"
-                        style={{ height: `${100 / (piece.lanes - piece.lane)}%` }}
-                      >
-                        <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
-                        {label.mode === 'full' && (tag ? tag.name : b.tag)}
-                      </span>
-                    )}
-                  </div>
+                    <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
+                    {label.mode === 'full' && (tag ? tag.name : b.tag)}
+                  </span>
                 )
               })}
 
@@ -738,7 +763,7 @@ ${b.note}` : ''}`}
                   strips, so they halve to fit; it ends up entirely covered,
                   which is why a press that goes nowhere opens the note instead
                   of counting as a resize. */}
-              {isDay && !day?.malformed && !previewId && pieces.map((piece) => {
+              {isDay && !day?.malformed && !previewId && wholes.map((piece) => {
                 const b = piece.block
                 const lane = {
                   top: piece.lane === 0
@@ -769,7 +794,7 @@ ${b.note}` : ''}`}
 
               {selectedPieces.length > 0 && (
                 <svg className="selection" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <polygon points={silhouette(selectedPieces[0], pieces)} vectorEffect="non-scaling-stroke" />
+                  <polygon points={silhouette(selectedPieces, pieces)} vectorEffect="non-scaling-stroke" />
                 </svg>
               )}
 

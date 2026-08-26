@@ -109,13 +109,14 @@ export const setNote = (blocks, id, note) =>
  * block is never left as a thin band floating in empty space, and every block
  * ends on the same line.
  *
- * The bar used to be cut at every start and end, with whatever covered each
- * slice sharing the height just for that slice. It packed tighter, but a
- * block changed shape part-way along whenever something else began or ended
- * beside it, and an edge that steps in the middle of a block reads as a fault
- * rather than as information.
+ * Then whatever is still empty is given to the block beneath it, which can
+ * only ever be the strip along the top of the bar. A block is cut where that
+ * changes, so it comes back as one piece per run at the same height.
  *
- * Returns one piece per block: { block, from, to, lane, lanes }
+ * Returns { block, from, to, lane, lanes, top, isFirst, isLast }, where `top`
+ * is the lane the piece is drawn from and `lane` is still the block's own —
+ * the band its name sits in, and what decides which of two blocks covers the
+ * other.
  */
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
@@ -143,13 +144,48 @@ export function layoutLanes(blocks) {
     for (const block of group) lanes.set(block, depth)
   }
 
-  return blocks.map((block) => ({
+  // Second pass: fill what the first one leaves empty. A block reaches the
+  // floor, so the only space that can be left is the strip along the top,
+  // above whichever block is shallowest at that moment. That block gets it —
+  // it is what was happening — but only across the stretch where nothing sits
+  // above it, so the block is cut where it rises.
+  const placed = blocks.map((block) => ({
     block,
     from: block.startSlot,
     to: block.endSlot,
     lane: lane.get(block),
     lanes: lanes.get(block),
   }))
+
+  const cuts = [...new Set(placed.flatMap((p) => [p.from, p.to]))].sort((a, b) => a - b)
+  const pieces = []
+  for (const p of placed) {
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const from = Math.max(p.from, cuts[i])
+      const to = Math.min(p.to, cuts[i + 1])
+      if (from >= to) continue
+      const shallowest = placed
+        .filter((o) => o.from <= from && o.to >= to)
+        .reduce((a, b) => (a.lane <= b.lane ? a : b))
+      const top = shallowest === p ? 0 : p.lane
+
+      // One rectangle per run at the same height, so a block is only ever cut
+      // where its top actually steps.
+      const last = pieces[pieces.length - 1]
+      if (last && last.block === p.block && last.to === from && last.top === top) last.to = to
+      else pieces.push({ ...p, from, to, top })
+    }
+  }
+
+  for (const p of placed) {
+    const mine = pieces.filter((piece) => piece.block === p.block)
+    // Rounded ends and grab strips belong to the outermost pieces only; the
+    // joins between them are drawn square so a stepped block reads as one.
+    mine[0].isFirst = true
+    mine[mine.length - 1].isLast = true
+  }
+
+  return pieces
 }
 
 /** The blocks split into groups that overlap, directly or through others. */
