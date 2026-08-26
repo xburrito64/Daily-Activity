@@ -73,17 +73,46 @@ function textWidth(text) {
 }
 
 /**
- * The four corners of a block, as the polygon the selection is drawn with.
- * A block runs from its own lane down to the floor of the bar, so the whole
- * of that is outlined — including the part covered by whatever is layered
- * over it. That part is still the block, and seeing how far it reaches is the
- * point of selecting it.
+ * The outline of what can actually be seen of a block.
+ *
+ * A block runs from its own lane down to the floor of the bar, but anything
+ * painted over it hides the part below where that starts. Outlining the whole
+ * rectangle therefore drew a box around ground the block no longer holds —
+ * around the block sitting on top of it, as far as the eye was concerned.
+ *
+ * So the bottom edge follows whatever is covering it: the block's span is cut
+ * at every point something over it begins or ends, and each stretch is taken
+ * down to the shallowest thing covering it there, or to the floor where
+ * nothing does. The top never moves — anything above a block is drawn under
+ * it, so a block's own top edge is always in the open.
  */
-function silhouette([piece]) {
-  const x1 = (piece.from / SLOTS_PER_DAY) * 100
-  const x2 = (piece.to / SLOTS_PER_DAY) * 100
-  const y = (piece.lane / piece.lanes) * 100
-  return `${x1},${y} ${x2},${y} ${x2},100 ${x1},100`
+function silhouette(piece, pieces) {
+  const depth = (p) => (p.lane / p.lanes) * 100
+  const top = depth(piece)
+
+  const over = pieces.filter(
+    (p) => p.lane > piece.lane && p.from < piece.to && p.to > piece.from,
+  )
+  const cuts = [...new Set([piece.from, piece.to, ...over.flatMap((p) => [p.from, p.to])])]
+    .filter((slot) => slot >= piece.from && slot <= piece.to)
+    .sort((a, b) => a - b)
+
+  const steps = []
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const from = cuts[i]
+    const to = cuts[i + 1]
+    const covering = over.filter((p) => p.from <= from && p.to >= to)
+    const bottom = covering.length ? Math.min(...covering.map(depth)) : 100
+    const last = steps[steps.length - 1]
+    if (last && last.bottom === bottom) last.to = to
+    else steps.push({ from, to, bottom })
+  }
+
+  // The top is one straight line; the bottom is traced back under it.
+  const x = (slot) => (slot / SLOTS_PER_DAY) * 100
+  const points = [`${x(piece.from)},${top}`, `${x(piece.to)},${top}`]
+  for (const s of [...steps].reverse()) points.push(`${x(s.to)},${s.bottom}`, `${x(s.from)},${s.bottom}`)
+  return points.join(' ')
 }
 
 /**
@@ -740,7 +769,7 @@ ${b.note}` : ''}`}
 
               {selectedPieces.length > 0 && (
                 <svg className="selection" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <polygon points={silhouette(selectedPieces)} vectorEffect="non-scaling-stroke" />
+                  <polygon points={silhouette(selectedPieces[0], pieces)} vectorEffect="non-scaling-stroke" />
                 </svg>
               )}
 
