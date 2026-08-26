@@ -42,7 +42,7 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onDelete
         <button
           className="notebtn danger"
           onClick={onDelete}
-          title={`Remove the ${clickedTag?.name ?? block.tag} block`}
+          title={`Remove the ${clickedTag?.name ?? block.tag} block — or press Delete`}
         >
           Delete {cluster.length > 1 ? (clickedTag?.name ?? block.tag) : ''}
         </button>

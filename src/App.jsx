@@ -71,6 +71,23 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [armed])
 
+  // Delete removes the block whose note is open. Same change the button in the
+  // note makes, so ctrl+z takes it back the same way.
+  useEffect(() => {
+    if (!selected) return
+    const onKey = (e) => {
+      if (e.key !== 'Delete') return
+      // In the note, Delete belongs to the text you are writing.
+      const el = e.target
+      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return
+      e.preventDefault()
+      editDay(selected.date, (prev) => removeBlock(prev, selected.id))
+      setSelected(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected, editDay])
+
   // Ctrl+Z puts the last change back — a mispainted block, a wrong slide, a
   // delete, a whole day cleared. Everything that changes a day goes through
   // one place, so everything that changes a day can be taken back.
