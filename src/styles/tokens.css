@@ -1,35 +1,40 @@
 /*
- * Design tokens. Everything visual should come from here, so restyling means
- * editing this file rather than hunting through components.
+ * Every value the look is made of — the "Starlit Chronicle" theme.
+ *
+ * Nothing here is a rule; these are the numbers and colours the rules in
+ * app.css read. Changing the theme means changing this file, and the six
+ * tokens at the bottom exist only so the decoration has somewhere to live
+ * other than hard-coded in a selector.
  *
  *   --c-*   colour        --s-*   spacing       --r-*   radius
  *   --f-*   font size     --w-*   font weight   --z-*   layer
  */
 :root {
-  /* --- palette: warm, dark, forest ------------------------------------ */
-  --c-bg:            #17130f;  /* page */
-  --c-surface:       #201a15;  /* panels, empty track */
-  --c-surface-hi:    #2c2419;  /* raised / active */
-  --c-surface-hover: #221c15;
+  /* --- palette: night sky, gold leaf ---------------------------------- */
+  --c-bg:            #0d1017;  /* page — cold near-black, not brown */
+  --c-surface:       #141a24;  /* panels, controls */
+  --c-surface-hi:    #1c2433;  /* raised / active */
+  --c-surface-hover: #171e29;
 
-  --c-line:          #3a2f25;  /* borders */
-  --c-line-soft:     #2b231b;  /* hairlines, grid */
-  --c-line-strong:   #4a3d26;
+  --c-line:          #2a3242;  /* borders */
+  --c-line-soft:     #1e2431;  /* hairlines, day separators */
+  --c-line-strong:   #5d4a1c;  /* gold-ish: today, major ruler ticks */
 
-  --c-text:          #e8dcc8;
-  --c-text-dim:      #9a8973;
-  --c-text-faint:    #6f6252;
+  --c-text:          #e8dcc8;  /* warm ivory — reads well on blue-black */
+  --c-text-bright:   #f0e3c4;  /* the title, and the stars behind it */
+  --c-text-dim:      #8d8375;
+  --c-text-faint:    #5f5a50;
   --c-text-on-block: #ffffff;
 
-  --c-accent:        #b08a2e;  /* today, emphasis */
-  --c-ok:            #6f9a5a;
-  --c-danger:        #c4614c;
+  --c-accent:        #c8a24a;  /* gold leaf: today, emphasis, section eyebrows */
+  --c-ok:            #7fa06a;
+  --c-danger:        #b45040;
   --c-danger-soft:   #d18a78;
   --c-warn:          #e0c98a;
 
   --c-focus-ring:    #f0e0b8;  /* selected block outline */
 
-  /* --- spacing --------------------------------------------------------- */
+  /* --- spacing (unchanged) --------------------------------------------- */
   --s-1: 2px;
   --s-2: 4px;
   --s-3: 6px;
@@ -40,20 +45,26 @@
   --s-8: 28px;
   --s-9: 40px;
 
-  /* --- radius ---------------------------------------------------------- */
+  /* --- radius (unchanged) ---------------------------------------------- */
   --r-sm: 3px;
   --r-md: 4px;
   --r-lg: 6px;
 
-  /* --- type ------------------------------------------------------------ */
-  /* Crimson Pro, with a system fallback until the files are in public/fonts.
-     --font-display is split out so headings can diverge later without
-     touching everything else. */
+  /* --- type ------------------------------------------------------------
+     Three faces now, each with one job:
+       Cinzel              headings, day dates, eyebrows. Roman capitals.
+                           ALWAYS with letter-spacing; it is a caps face.
+       Cormorant Garamond  italic only, for the quiet meta lines
+                           ("nineteen hours chronicled", "unwritten").
+       Crimson Pro         everything else — body, chips, block labels,
+                           numbers. Unchanged from today.
+     All three are self-hosted in public/fonts/ so the app looks the same
+     with the network unplugged. Cinzel and Cormorant Garamond are variable
+     fonts — see fonts.css for why that changes how they are declared. */
   --font-ui: "Crimson Pro", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Crimson Pro", Georgia, serif;
+  --font-display: "Cinzel", Georgia, serif;
+  --font-meta: "Cormorant Garamond", Georgia, serif;   /* italic, mostly */
 
-  /* Crimson Pro sits small for its point size, so the scale runs a touch
-     larger than it would for a sans. */
   --f-xs: 12px;
   --f-sm: 13px;
   --f-md: 14px;
@@ -61,39 +72,50 @@
   --f-lg: 18px;
   --f-xl: 21px;
   --f-title: 27px;
-  --f-dayhead: 22px;
+  --f-dayhead: 21px;   /* was 22px: Cinzel runs wide, so one step down */
 
   --w-normal: 400;
-  --w-medium: 600;  /* SemiBold. Set to 700 to pair Regular with Bold instead. */
-  --w-bold: 600;    /* Only Regular + SemiBold are installed; see fonts.css. */
+  --w-medium: 600;
+  --w-bold: 600;
+
+  /* Cinzel is a caps face and must never be set solid. */
+  --ls-display: 0.05em;   /* h1, day headings */
+  --ls-eyebrow: 0.18em;   /* uppercase eyebrows: MON, LEDGER OF HOURS */
 
   /* --- component knobs -------------------------------------------------- */
-  --track-bg: var(--c-surface);
+  --track-bg: #131923;                   /* a shade under --c-surface: the
+                                            bar reads as a recessed well */
   --track-border: 1px solid var(--c-line);
   --track-radius: var(--r-md);
 
   --block-radius: var(--r-sm);
-  --block-inset: var(--s-1);            /* gap between block and track edge */
-  /* Top highlight and bottom shade only. No side edges, so where one block
-     is split around an overlap the parts join without a seam. */
-  --block-ring: inset 0 1px 0 rgba(255, 255, 255, 0.13),
-                inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  --block-inset: var(--s-1);
+  /* Gold hairline added to the original top-highlight/bottom-shade pair.
+     Still no side edges, so a block split around an overlap has no seam. */
+  --block-ring: inset 0  1px 0 rgba(255, 255, 255, 0.16),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+                inset 0  0   0 1px rgba(200, 162, 74, 0.12);
 
   --handle-width: 7px;
-  --tagicon-size: 20px;         /* emoji and custom images alike */
-  --tagicon-size-chip: 23px;    /* the chip is what you aim at, so a bit more */
+  --tagicon-size: 22px;         /* was 20 — the painted icons carry detail */
+  --tagicon-size-chip: 24px;
 
-  --gutter-w: 62px;                      /* overview date column */
+  --gutter-w: 62px;
   --gutter-gap: var(--s-5);
 
-  --chip-height: 40px;
+  --chip-height: 42px;          /* was 40 — 24px icon needs the room */
   --dayhead-height: 30px;
-  --dayruler-height: 20px;               /* hour labels under each bar */
+  --dayruler-height: 22px;      /* was 20 — ruler labels sit 2px lower */
 
-  /* Space around the hairline between days. Give the next day's heading more
-     room than the line takes from the day above it. */
   --daysep-before: var(--s-7);
   --daysep-after: var(--s-8);
 
-  --control-height: 34px;
+  --control-height: 36px;       /* was 34 */
+
+  /* --- decoration, read by the ornament rules in app.css ---------------- */
+  --glow-armed: 0 0 0 1px rgba(216, 178, 96, 0.9),
+                0 0 18px 2px rgba(216, 178, 96, 0.35);
+  --rule-gold: linear-gradient(90deg, transparent, #3a3016 12%, #5d4a1c 50%,
+                               #3a3016 88%, transparent);
+  --star-colour: var(--c-text-bright);
 }

@@ -25,7 +25,7 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onDelete
             <span
               key={b.id}
               className={`notetag${b.id === block.id ? ' current' : ''}`}
-              style={{ color: tag?.colour }}
+              style={{ '--tag': tag?.colour }}
               title={`${slotToTime(b.startSlot)} – ${slotToTime(b.endSlot)}`}
             >
               <TagIcon tag={tag} />

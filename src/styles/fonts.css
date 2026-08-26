@@ -45,3 +45,42 @@
   src: url('/fonts/CrimsonPro-Variable.woff2') format('woff2') tech(variations);
 }
 */
+
+/*
+ * Cinzel and Cormorant Garamond. Both are variable fonts, so one file covers
+ * every weight of a style rather than one file per weight — which is why
+ * these are declared with a weight *range* where Crimson Pro above has a
+ * single number. Ask for 400 or 600 and the same file answers.
+ *
+ * Self-hosted like everything else here: the app has to look the same with
+ * the network unplugged.
+ */
+
+/* Roman capitals, for headings and eyebrows. Never set solid — see
+   --ls-display and --ls-eyebrow in tokens.css. */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/Cinzel-Variable.woff2') format('woff2');
+}
+
+/* The quiet meta voice. Upright for the ledger's dates and the note body. */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/CormorantGaramond-Variable.woff2') format('woff2');
+}
+
+/* Italic is a separate file, not a slant of the one above: asking for
+   italic without this would get a fake oblique from the browser. */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/CormorantGaramond-ItalicVariable.woff2') format('woff2');
+}

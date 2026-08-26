@@ -11,10 +11,66 @@
   flex-direction: column;
 }
 
-header { flex: none; margin-bottom: var(--s-5); }
-h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); font-weight: var(--w-medium); }
+/* The night the whole app sits on. One element and no DOM per star: a wash
+   for the glow, then repeating radial gradients whose tile sizes share no
+   common factor, so the field never visibly repeats. Fixed, so it stays put
+   while the days scroll over it, and inert to the pointer. */
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1200px 500px at 18% -10%, #1a2130 0%, transparent 62%),
+    radial-gradient(1px 1px at 20% 30%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(1px 1px at 70% 15%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(2px 2px at 45% 70%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(1px 1px at 85% 55%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(1px 1px at 10% 85%, var(--star-colour) 50%, transparent 51%);
+  background-size: 100% 100%, 340px 290px, 470px 410px, 610px 530px, 390px 340px, 520px 450px;
+  opacity: 0.5;
+  animation: twinkle 6s ease-in-out infinite alternate;
+}
+/* Everything real sits above the sky. */
+.app > * { position: relative; z-index: 1; }
 
-.titlerow { display: flex; align-items: center; gap: var(--s-5); }
+@keyframes twinkle { from { opacity: 0.32; } to { opacity: 0.62; } }
+
+header { flex: none; margin-bottom: var(--s-5); }
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--f-title);
+  font-weight: var(--w-medium);
+  /* Cinzel is a capitals face and turns into a wall if it is set solid. */
+  letter-spacing: var(--ls-display);
+  color: var(--c-text-bright);
+}
+.subtitle {
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: var(--f-base);
+  color: var(--c-text-dim);
+}
+/* The title and its line are one column, so the row can lay them out as a
+   single item and the controls have something to hang from. */
+.titleblock { display: flex; flex-direction: column; }
+
+.titlerow { display: flex; align-items: flex-start; gap: var(--s-5); }
+/* The controls belong to the title line rather than to both lines under it,
+   so they hang from the top instead of centring against the taller block. */
+.titlerow > :not(.titleblock) { margin-top: var(--s-2); }
+
+/* A gold rule under the header, drawn as a gradient so it fades out at both
+   ends rather than stopping dead. */
+.goldrule {
+  flex: none;
+  height: 1px;
+  margin: var(--s-6) 0 var(--s-5);
+  background: var(--rule-gold);
+}
 
 .viewswitch { display: flex; margin-left: var(--s-7); }
 .viewswitch button {
@@ -22,15 +78,17 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   background: var(--c-surface);
   border: 1px solid var(--c-line);
   padding: var(--s-3) var(--s-6);
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
-.viewswitch button:first-child { border-radius: var(--r-lg) 0 0 var(--r-lg); }
-.viewswitch button:last-child { border-radius: 0 var(--r-lg) var(--r-lg) 0; border-left: none; }
+.viewswitch button:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
+.viewswitch button:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; border-left: none; }
 .viewswitch button:hover { color: var(--c-text); }
+/* The view you are in is gold leaf, not another shade of the same dark. */
 .viewswitch button.on {
-  color: var(--c-text);
-  background: var(--c-surface-hi);
-  border-color: var(--c-line-strong);
+  color: #1b1408;
+  background: linear-gradient(#e0c184, #c8a24a);
+  border-color: #d8b260;
 }
 
 .nav.today { margin-left: auto; }
@@ -42,9 +100,27 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
 }
-.status { min-width: 62px; font-size: var(--f-md); color: var(--c-text-dim); }
+.status {
+  min-width: 92px;
+  height: var(--control-height);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: var(--f-md);
+  color: var(--c-text-dim);
+}
 .status.saved { color: var(--c-ok); }
 .status.error { color: var(--c-danger); }
+/* Takes its colour from the word beside it, so it says the same thing twice
+   — once for anyone reading and once for anyone glancing. */
+.statusdot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px 2px currentColor;
+}
 
 .banner {
   flex: none;
@@ -69,10 +145,24 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   gap: var(--s-5);
   font-variant-numeric: tabular-nums;
 }
-.readout-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--w-medium); }
+/* A tag's own colour is mixed for a block to sit on, not for text to be set
+   in: at these lightnesses it disappears into the page. Named colours are
+   lifted towards the ivory until they read, keeping the hue that identifies
+   them. --tag is the raw colour, set inline. */
+.readout-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--w-medium);
+  color: color-mix(in oklab, var(--tag), var(--c-text) 55%);
+}
 .readout-range { font-size: var(--f-xl); font-weight: var(--w-medium); }
 .readout-dur { color: var(--c-text-dim); }
-.readout-hint { color: var(--c-text-dim); }
+.readout-hint {
+  font-family: var(--font-meta);
+  font-style: italic;
+  color: var(--c-text-dim);
+}
 
 .listruler {
   position: relative;
@@ -118,6 +208,7 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
 .dayhead {
   height: var(--dayhead-height);
   font-family: var(--font-display);
+  letter-spacing: var(--ls-display);
   display: flex;
   align-items: baseline;
   gap: var(--s-4);
@@ -126,8 +217,26 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   font-weight: var(--w-medium);
   color: var(--c-text);
 }
-.dayweekday { font-size: var(--f-md); font-weight: var(--w-normal); color: var(--c-text-faint); }
+/* An eyebrow rather than a word: small capitals, well spaced, sitting to
+   one side of the date instead of competing with it. */
+.dayweekday {
+  font-family: var(--font-display);
+  font-size: var(--f-xs);
+  font-weight: var(--w-normal);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--c-text-faint);
+}
 .daysection.today .dayhead { color: var(--c-accent); }
+/* A day with nothing in it is stated, not left blank — and its date recedes,
+   because there is nothing under it to introduce. */
+.daysection.blank .dayhead { color: var(--c-text-dim); }
+.daysummary {
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: var(--f-base);
+  color: var(--c-text-faint);
+}
 .todaymark {
   font-size: var(--f-xs);
   font-weight: var(--w-medium);
@@ -167,10 +276,11 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   height: 4px;
   background: var(--c-line);
 }
-.rtick.major .rmark { height: 6px; background: var(--c-line-strong); }
+.rtick.major .rmark { height: 7px; background: var(--c-line-strong); }
 .rlabel {
   position: absolute;
-  top: 7px;
+  top: 9px;
+  letter-spacing: 0.03em;
   transform: translateX(-50%);
   font-size: var(--f-xs);
   font-weight: var(--w-normal);
@@ -219,20 +329,37 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   padding: 0 var(--s-5);
   font-size: var(--f-md);
   font-weight: var(--w-medium);
-  color: var(--c-text);
-  background: color-mix(in srgb, var(--chip) 26%, var(--c-surface));
-  border: 1px solid color-mix(in srgb, var(--chip) 55%, var(--c-line));
-  border-radius: var(--r-lg);
+  color: #f0e6d4;
+  /* Twenty tags have to stay apart from each other at a glance. Against a
+     surface this dark, a quarter of the tag colour leaves every chip a
+     near-neutral — the hue is technically there and practically invisible.
+     Most of the way to the colour itself is what keeps them distinct while
+     still sitting quietly under a bar. */
+  background: color-mix(in oklab, var(--chip) 62%, var(--c-surface));
+  border: 1px solid color-mix(in oklab, var(--chip) 80%, var(--c-line));
+  border-radius: var(--r-md);
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
 /* A tag that asks for a bigger icon still can't outgrow the chip holding it. */
 .chip .tagicon { max-width: var(--chip-height); max-height: var(--chip-height); }
-.chip:hover:not(:disabled) { background: color-mix(in srgb, var(--chip) 42%, var(--c-surface)); }
+.chip:hover:not(:disabled) { background: color-mix(in oklab, var(--chip) 78%, var(--c-surface)); }
 .chip:disabled { opacity: 0.35; cursor: default; }
+/* Armed means loaded and waiting for a drag, which is a state you are in
+   rather than a thing that happened — so it keeps glowing until you use it
+   or press escape. */
 .chip.armed {
   background: var(--chip);
   color: var(--c-text-on-block);
-  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px color-mix(in srgb, var(--chip) 70%, #fff);
+  border-color: rgba(216, 178, 96, 0.9);
+  animation: armGlow 2.1s ease-in-out infinite;
+}
+@keyframes armGlow {
+  0%, 100% { box-shadow: var(--glow-armed); }
+  50% {
+    box-shadow: 0 0 0 1px rgba(240, 214, 150, 1),
+                0 0 34px 8px rgba(216, 178, 96, 0.6);
+  }
 }
 /* One size whether it is an emoji or an image, so replacing one does not
    move anything around it. */
@@ -285,7 +412,33 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   background: var(--track-bg);
   border: var(--track-border);
   border-radius: var(--track-radius);
+  /* Sunk into the page rather than laid on it, so the blocks read as things
+     set into a well. */
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.55);
   overflow: hidden;
+}
+/* A day nothing has been written on yet: hatched, not sunk — there is
+   nothing in there to cast a shadow. */
+.track.empty {
+  border-style: dashed;
+  border-color: #232a37;
+  background: repeating-linear-gradient(135deg, #0f141d 0 8px, #111721 8px 16px);
+  box-shadow: none;
+}
+/* The hours are still marked out underneath, but there is nothing in there
+   to measure against them, and hatching plus a grid is two patterns. */
+.track.empty .gridline { display: none; }
+.emptyday {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: var(--f-lg);
+  color: #3f4a5c;
+  pointer-events: none;
 }
 .daysection .track { width: 100%; }
 .compactrow .track { flex: 1 1 auto; min-width: 0; } /* fills the row beside the date */
@@ -308,11 +461,28 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   white-space: nowrap;
   cursor: pointer;
   box-shadow: var(--block-ring);
+  /* Written on rather than switched on: it wipes in from the left, coming
+     into focus as it goes.
+
+     No per-piece delay, deliberately. A block cut around an overlap is
+     several .block elements, and staggering them would wipe one half of the
+     same block in after the other. */
+  animation: inkIn 0.42s ease-out both;
 }
+@keyframes inkIn {
+  from { clip-path: inset(0 100% 0 0); filter: blur(3px); }
+  to { clip-path: inset(0 0 0 0); filter: blur(0); }
+}
+/* Mid-gesture nothing is arriving, so nothing wipes in — see the comment
+   on .scroller in DayList.jsx for what would otherwise restart it. */
+.scroller.dragging .block { animation: none; }
+
 /* At tiny bar heights the inset would eat the block, so drop it. The inline
    top/height calc reads this variable, so zeroing it here is enough. */
 .track.dense { --block-inset: 0px; }
-.track.dense .block { border-radius: 0; box-shadow: none; }
+/* The Overview holds months at once. A hundred days arriving is not an event
+   worth animating, and it is the one place where it would cost something. */
+.track.dense .block { border-radius: 0; box-shadow: none; animation: none; }
 
 /* A block split around an overlap draws as several pieces. Rounding only the
    real ends keeps it reading as one continuous block. */
@@ -328,6 +498,7 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   gap: 6px;
   font-size: var(--f-md);
   font-weight: var(--w-medium);
+  letter-spacing: 0.02em;
   color: var(--c-text-on-block);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   padding: 0 var(--s-4);
@@ -337,6 +508,10 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   white-space: nowrap;
   pointer-events: none;
 }
+/* The painted icons carry their own shading, which the block behind them
+   flattens. A shadow puts them back on top of it. */
+.block-label .tagicon { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
+
 /* Position comes from the lane, same as any block: the preview sits where
    the finished block will sit. */
 .block.joined-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
@@ -344,6 +519,9 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
 .block.preview {
   opacity: 0.7;
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+  /* The preview is redrawn on every pointermove, so letting it animate would
+     restart the wipe each time and strobe under the cursor. */
+  animation: none;
 }
 /* One outline around the whole overlapping group, drawn over the top of it
    rather than as a ring on each piece — a split block was showing up as two
@@ -414,6 +592,9 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   align-items: center;
   gap: 6px;
   font-weight: var(--w-medium);
+  /* Same reason as .readout-tag: lifted towards the ivory so a tag colour
+     can be read as a word. */
+  color: color-mix(in oklab, var(--tag), var(--c-text) 55%);
   opacity: 0.55;
 }
 /* the block whose note is open */
@@ -436,7 +617,11 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   width: 100%;
   min-height: 74px;
   padding: var(--s-5);
-  font: inherit;
+  /* What you write is the one piece of your own prose in here, so it is set
+     in the reading face rather than the interface one. */
+  font-family: var(--font-meta);
+  font-size: var(--f-lg);
+  line-height: 1.55;
   color: var(--c-text);
   background: var(--c-bg);
   border: 1px solid var(--c-line);
@@ -460,9 +645,17 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
 }
 
 .totalshead { flex: none; margin-bottom: var(--s-6); }
-.totalsrange {
+.totalshead .eyebrow {
   display: block;
   font-family: var(--font-display);
+  font-size: var(--f-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--c-accent);
+}
+.totalsrange {
+  display: block;
+  font-family: var(--font-meta);
   font-size: var(--f-lg);
   font-weight: var(--w-medium);
   font-variant-numeric: tabular-nums;
@@ -491,4 +684,14 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
   font-size: var(--f-xs);
   color: var(--c-text-faint);
   font-variant-numeric: tabular-nums;
+}
+
+/* ============ motion, for anyone who would rather not ============
+   Every animation in this file is decoration: the sky twinkling, a block
+   wiping in, an armed chip breathing. None of it carries information that
+   is not also in the colours and the shapes, so all of it can go. */
+@media (prefers-reduced-motion: reduce) {
+  .app::before { animation: none; }
+  .block { animation: none; }
+  .chip.armed { animation: none; box-shadow: var(--glow-armed); }
 }

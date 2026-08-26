@@ -619,7 +619,7 @@ export default function DayList({
         <div className="listreadout">
           {readoutRange ? (
             <>
-              <span className="readout-tag" style={{ color: readoutTag?.colour }}>
+              <span className="readout-tag" style={{ '--tag': readoutTag?.colour }}>
                 <TagIcon tag={readoutTag} />
                 {readoutTag?.name}
               </span>
@@ -654,7 +654,11 @@ export default function DayList({
       </div>
 
       <div
-        className={`scroller${armedTag ? ' armed' : ''}`}
+        // Nothing inks in mid-gesture. Dragging an edge changes where a block
+        // starts, which changes the key its pieces are drawn under, so React
+        // replaces the element and the wipe starts over — every ten minutes,
+        // under the cursor. The block is being moved, not written.
+        className={`scroller${armedTag ? ' armed' : ''}${drag ? ' dragging' : ''}`}
         ref={scrollRef}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
@@ -691,6 +695,10 @@ export default function DayList({
             })?.id ?? null
           }
 
+          // Counted after the paint preview is folded in, so the first drag
+          // on an empty day fills it in as you draw rather than after.
+          const blank = !day?.malformed && blocks.length === 0
+
           const pieces = layoutLanes(blocks)
           // One piece per block, for the things that belong to the block
           // rather than to a piece of it: its name and its grab strips.
@@ -701,13 +709,20 @@ export default function DayList({
 
           const track = (
             <div
-              className={`track${dense ? ' dense' : ''}`}
+              className={`track${dense ? ' dense' : ''}${blank ? ' empty' : ''}`}
               data-track-date={date}
               style={{ height: barHeight }}
             >
               {!dense && Array.from({ length: 23 }, (_, i) => (
                 <div key={i} className="gridline" style={{ left: `${((i + 1) / 24) * 100}%` }} />
               ))}
+
+              {/* Said out loud rather than left blank — but only in the Day
+                  view, where there is room for it. In the Overview a row is
+                  a few pixels tall and the hatching alone reads fine. */}
+              {blank && isDay && (
+                <span className="emptyday">nothing has happened here yet</span>
+              )}
 
               {day?.malformed ? (
                 <span className="rowbroken">needs fixing in Obsidian</span>
@@ -836,12 +851,13 @@ ${b.note}` : ''}`}
             <section
               key={date}
               ref={rowIndex === 0 ? firstRowRef : undefined}
-              className={`daysection${isToday ? ' today' : ''}`}
+              className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`}
             >
               <h2 className="dayhead">
                 <span className="dayweekday">{weekdayOf(date)}</span>
                 {formatDayHeading(date)}
                 {isToday && <span className="todaymark">today</span>}
+                {blank && <span className="daysummary">unwritten</span>}
               </h2>
 
               {track}
@@ -888,7 +904,7 @@ ${b.note}` : ''}`}
                   onClick={() => askWipe(date)}
                 >
                   <TrashIcon />
-                  {confirmWipe === date && 'Sure?'}
+                  {confirmWipe === date ? 'Unwrite?' : 'Unwrite'}
                 </button>
               </div>
             </section>

@@ -9,6 +9,27 @@ import { todayISO } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
 
+// "not saved" stays plain — it is the one of these you need to act on, and
+// the chronicle voice is the wrong register for a problem.
+const STATUS_WORDS = {
+  loading: 'loading…',
+  saving: 'inscribing…',
+  saved: 'inscribed',
+  error: 'not saved',
+  idle: '',
+}
+
+/** The save state, as a word and a lit dot that agree with each other. */
+function Status({ status }) {
+  const word = STATUS_WORDS[status]
+  return (
+    <span className={`status ${status}`}>
+      {word && <i className="statusdot" />}
+      {word}
+    </span>
+  )
+}
+
 const storedZoom = (mode) => {
   const saved = Number(localStorage.getItem(zoomKey(mode)))
   const limits = ZOOM[mode]
@@ -75,6 +96,11 @@ export default function App() {
   const handleResize = (date, id, startSlot, endSlot) =>
     editDay(date, (prev) => applyResize(prev, id, startSlot, endSlot))
 
+  // Days you have actually written something on — the count under the title.
+  // Only the loaded window is in `days`, which is the window you have
+  // scrolled through, so it grows as you go rather than being the true total.
+  const recorded = Object.values(days).filter((d) => !d.malformed && d.blocks.length > 0).length
+
   const dayBlocks = selected ? days[selected.date]?.blocks ?? [] : []
   const selectedBlock = selected ? dayBlocks.find((b) => b.id === selected.id) ?? null : null
   // Named across the top of the note, so you can see what else was running.
@@ -84,7 +110,12 @@ export default function App() {
     <div className="app">
       <header>
         <div className="titlerow">
-          <h1>Daily Documentation</h1>
+          <div className="titleblock">
+            <h1>Daily Documentation</h1>
+            <span className="subtitle">
+              {recorded === 1 ? 'one day recorded' : `${recorded} days recorded`}
+            </span>
+          </div>
 
           <div className="viewswitch">
             <button className={view === 'day' ? 'on' : ''} onClick={() => setView('day')}>Day</button>
@@ -97,11 +128,11 @@ export default function App() {
             type="date"
             onChange={(e) => e.target.value && setJumpTo(e.target.value)}
           />
-          <span className={`status ${status}`}>{
-            { loading: 'loading…', saving: 'saving…', saved: 'saved', error: 'not saved', idle: '' }[status]
-          }</span>
+          <Status status={status} />
         </div>
       </header>
+
+      <div className="goldrule" />
 
       {tagError && <div className="banner offline">Couldn't load tags.json — {tagError}</div>}
       {problem && <div className={`banner ${problem.kind}`}>{problem.message}</div>}

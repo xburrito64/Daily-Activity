@@ -7,6 +7,19 @@ configure — the app already expects these exact filenames:
     CrimsonPro-SemiBold.woff2    (weight 600)  <- needed
     CrimsonPro-Bold.woff2        (weight 700)  <- optional, see below
 
+Two more faces arrived with the Starlit Chronicle look. Both are *variable*
+fonts, so one file covers every weight of a style instead of one file per
+weight:
+
+    Cinzel-Variable.woff2                (headings, Roman capitals)
+    CormorantGaramond-Variable.woff2     (upright meta text)
+    CormorantGaramond-ItalicVariable.woff2   (the italic voice)
+
+Italic is its own file on purpose. Without it the browser fakes the slant.
+
+    https://fonts.google.com/specimen/Cinzel
+    https://fonts.google.com/specimen/Cormorant+Garamond
+
 Only files that are actually referenced get requested — see
 `src/styles/fonts.css`. Adding Bold or switching to the variable version
 means uncommenting one block in that file; it says which.

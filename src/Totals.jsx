@@ -33,6 +33,7 @@ export default function Totals({ days, tags, range }) {
   return (
     <aside className="totals">
       <div className="totalshead">
+        <span className="eyebrow">Ledger of hours</span>
         <span className="totalsrange">
           {formatShortDate(range.from)} – {formatShortDate(range.to)}
         </span>
