@@ -9,7 +9,13 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
  * paste into these files. Say so plainly instead of dying on a parser message.
  */
 export function readJson(file) {
-  const text = fs.readFileSync(file, 'utf8')
+  // A byte-order mark is invisible, is not JSON, and is what Notepad puts at
+  // the front of a file when you save it as UTF-8. Settings are meant to be
+  // edited by hand, so the app has to survive being edited by the editor that
+  // is already on the machine — otherwise the first change anybody makes
+  // stops it from starting, over a character they cannot see. Written as an
+  // escape below, since it is just as invisible in this file.
+  const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')
   try {
     return JSON.parse(text)
   } catch (err) {
