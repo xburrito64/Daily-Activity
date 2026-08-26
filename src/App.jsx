@@ -44,13 +44,17 @@ export default function App() {
   const [selected, setSelected] = useState(null) // { date, id }
   const [jumpTo, setJumpTo] = useState(null)
   const [visible, setVisible] = useState(null) // days currently on screen
+  // Read from a keyboard handler that should not be torn down and rebuilt
+  // every time the list scrolls.
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
 
   const [zoom, setZoom] = useState(() => ({
     day: storedZoom('day'),
     compact: storedZoom('compact'),
   }))
 
-  const { days, ensure, editDay, status, problem } = useDays()
+  const { days, ensure, editDay, undo, status, problem } = useDays()
 
   useEffect(() => {
     getTags().then(setTags).catch((err) => setTagError(err.message))
@@ -66,6 +70,29 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [armed])
+
+  // Ctrl+Z puts the last change back — a mispainted block, a wrong slide, a
+  // delete, a whole day cleared. Everything that changes a day goes through
+  // one place, so everything that changes a day can be taken back.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'z' && e.key !== 'Z') return
+      if (!e.ctrlKey && !e.metaKey) return
+      // In the note, Ctrl+Z belongs to the text you are writing.
+      const el = e.target
+      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return
+      e.preventDefault()
+      const date = undo()
+      if (!date) return
+      // Go and look at it, but only if it happened somewhere you can't see.
+      // Undoing something already in front of you should not also throw the
+      // list around.
+      const seen = visibleRef.current
+      if (!seen || date < seen.from || date > seen.to) setJumpTo(date)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undo])
 
   useEffect(() => { setArmed(null) }, [view])
 

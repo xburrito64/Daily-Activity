@@ -3,6 +3,9 @@ import { getRange, putDay } from './api.js'
 import { serialise, deserialise } from './blocks.js'
 
 const SAVE_DELAY = 400
+// Deep enough to cover a bad few minutes, short enough that it is obviously
+// a safety net rather than a record of the session.
+const UNDO_DEPTH = 50
 
 /**
  * Every day the scroller has asked for, keyed by date. Days are fetched in
@@ -18,6 +21,8 @@ export function useDays() {
 
   const loaded = useRef(new Set())
   const timers = useRef({})
+  // What each day looked like before the last few changes, newest last.
+  const undoStack = useRef([])
 
   /** Load any day in from..to we don't already have. */
   const ensure = useCallback(async (from, to) => {
@@ -54,12 +59,9 @@ export function useDays() {
     }
   }, [])
 
-  /** Change one day and schedule its write. */
-  const editDay = useCallback((date, update) => {
+  /** Put a day's blocks in place and schedule its write. */
+  const write = useCallback((date, blocks) => {
     const current = daysRef.current[date]
-    if (!current || current.malformed) return
-
-    const blocks = typeof update === 'function' ? update(current.blocks) : update
     const merged = { ...daysRef.current, [date]: { ...current, blocks } }
     daysRef.current = merged
     setDays(merged)
@@ -76,7 +78,36 @@ export function useDays() {
     }, SAVE_DELAY)
   }, [])
 
-  return { days, ensure, editDay, status, problem }
+  /** Change one day, remembering what it was first. */
+  const editDay = useCallback((date, update) => {
+    const current = daysRef.current[date]
+    if (!current || current.malformed) return
+
+    const blocks = typeof update === 'function' ? update(current.blocks) : update
+    undoStack.current.push({ date, blocks: current.blocks })
+    if (undoStack.current.length > UNDO_DEPTH) undoStack.current.shift()
+    write(date, blocks)
+  }, [write])
+
+  /**
+   * Put the last change back. Returns the date it happened on, so the caller
+   * can go and look at it, or null if there is nothing left to undo.
+   *
+   * Undoing does not itself go on the stack: there is no redo, and stacking
+   * it would only let undo undo itself.
+   */
+  const undo = useCallback(() => {
+    const last = undoStack.current.pop()
+    if (!last) return null
+    const current = daysRef.current[last.date]
+    // The day has been unloaded since, or turned out to be malformed. Its old
+    // blocks are no longer something we can safely write back over.
+    if (!current || current.malformed) return null
+    write(last.date, last.blocks)
+    return last.date
+  }, [write])
+
+  return { days, ensure, editDay, undo, status, problem }
 }
 
 function* eachDate(from, to) {
