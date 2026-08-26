@@ -85,13 +85,23 @@ export function thumbnailUrl(raw) {
 }
 
 export function createGames({ apiKey, coversDir }) {
-  const key = (apiKey ?? '').trim()
   const searches = boundedCache(CACHE_LIMIT)
   const details = boundedCache(CACHE_LIMIT * 4)
 
+  /**
+   * The key, as it is on disk right now.
+   *
+   * `apiKey` may be a function, and from the app it is: the settings file is
+   * something you edit while the app is open, and having to close it and open
+   * it again before it counts is exactly the sort of thing nobody is told and
+   * everybody trips over. Same as the tag list, which is re-read per request
+   * for the same reason.
+   */
+  const keyNow = () => String(typeof apiKey === 'function' ? apiKey() : apiKey ?? '').trim()
+
   async function ask(pathname, params, timeout) {
     const url = new URL(API + pathname)
-    url.search = new URLSearchParams({ ...params, key }).toString()
+    url.search = new URLSearchParams({ ...params, key: keyNow() }).toString()
     const res = await fetch(url, { signal: AbortSignal.timeout(timeout) })
     if (res.status === 401) throw upstream('RAWG turned the key down — check rawgKey in config.json')
     if (!res.ok) throw upstream(`RAWG answered ${res.status}`)
@@ -118,7 +128,7 @@ export function createGames({ apiKey, coversDir }) {
   }
 
   return {
-    configured: key !== '',
+    get configured() { return keyNow() !== '' },
 
     /**
      * Games matching what has been typed so far, best first.

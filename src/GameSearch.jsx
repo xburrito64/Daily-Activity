@@ -24,6 +24,7 @@ export default function GameSearch({ block, onAttach }) {
   const [results, setResults] = useState([])
   const [state, setState] = useState('idle') // idle | searching | done | error
   const [configured, setConfigured] = useState(null) // null until asked
+  const [settingsFile, setSettingsFile] = useState('')
   const [problem, setProblem] = useState('')
   const [cursor, setCursor] = useState(0)
   const [saving, setSaving] = useState(null) // the game whose cover is coming
@@ -43,7 +44,11 @@ export default function GameSearch({ block, onAttach }) {
   useEffect(() => {
     let alive = true
     searchGames('', undefined)
-      .then((body) => { if (alive) setConfigured(body.configured) })
+      .then((body) => {
+        if (!alive) return
+        setConfigured(body.configured)
+        setSettingsFile(body.settingsFile ?? '')
+      })
       .catch(() => { if (alive) setConfigured(true) }) // let a real search report it
     return () => { alive = false }
   }, [])
@@ -70,6 +75,7 @@ export default function GameSearch({ block, onAttach }) {
         const body = await searchGames(q, controller.signal)
         if (controller.signal.aborted) return
         setConfigured(body.configured)
+        setSettingsFile(body.settingsFile ?? '')
         setResults(body.results)
         setCursor(0)
         setState('done')
@@ -179,9 +185,13 @@ export default function GameSearch({ block, onAttach }) {
       {configured === false && (
         <p className="gameproblem">
           No game key yet. Get a free one from{' '}
-          <a href={KEY_HELP} target="_blank" rel="noreferrer">rawg.io/apikey</a>, then put it in
-          config.json as <code>"rawgKey"</code> — the menu at the top left opens the folder it
-          lives in. Reload afterwards.
+          <a href={KEY_HELP} target="_blank" rel="noreferrer">rawg.io/apikey</a> and put it on the{' '}
+          <code>"rawgKey"</code> line of this file:
+          {/* The whole path. There is a second config.json in the project
+              folder that this app never reads, and naming only the file is
+              how you end up editing that one. */}
+          {settingsFile && <><br /><code className="gamepath">{settingsFile}</code><br /></>}
+          {' '}Save it and search again — there is nothing to restart.
         </p>
       )}
       {problem && <p className="gameproblem">{problem}</p>}

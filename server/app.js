@@ -45,7 +45,9 @@ function withIcons(tags, tagIconsDir) {
  * so the same server runs under `npm start` during development and inside the
  * packaged desktop app, where the files live somewhere else entirely.
  */
-export function createApp({ vaultDailyDir, tagsFile, tagIconsDir, rawgKey = '', staticDir = null }) {
+export function createApp({
+  vaultDailyDir, tagsFile, tagIconsDir, rawgKey = '', settingsFile = '', staticDir = null,
+}) {
   const store = createStore(vaultDailyDir)
   // Covers sit beside the notes they belong to, in a folder of their own.
   // Nothing else in the vault is ours to put things in, and a folder full of
@@ -96,7 +98,10 @@ export function createApp({ vaultDailyDir, tagsFile, tagIconsDir, rawgKey = '', 
    */
   app.get('/api/games', wrap(async (req, res) => {
     if (!games.configured) {
-      return res.json({ configured: false, results: [] })
+      // Which file, in full. There are two of them — the one in the project
+      // folder and the installed app's own copy — and the answer to "put it
+      // in config.json" is only useful if it says which config.json.
+      return res.json({ configured: false, results: [], settingsFile })
     }
     res.json({ configured: true, results: await games.search(req.query.q) })
   }))

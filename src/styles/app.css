@@ -857,6 +857,17 @@ h1 {
 }
 .gameproblem a { color: var(--c-accent); }
 .gameproblem code { font-size: var(--f-sm); color: var(--c-text); }
+/* A path to go and open, so it is set apart and stays selectable rather than
+   being wrapped into the middle of a sentence. */
+.gamepath {
+  display: inline-block;
+  margin: var(--s-2) 0;
+  padding: var(--s-1) var(--s-3);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  user-select: all;
+}
 
 /* Tall enough to show three at once and no taller: the list is something to
    pick from at a glance, not a catalogue to browse. */

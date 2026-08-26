@@ -78,7 +78,10 @@ function startServer() {
     vaultDailyDir: config.vaultDailyDir,
     tagsFile,
     tagIconsDir,
-    rawgKey: config.rawgKey,
+    // Read again each time it is wanted, not captured here — the settings
+    // file is something you edit with the app open.
+    rawgKey: () => { try { return readJson(configFile).rawgKey } catch { return '' } },
+    settingsFile: configFile,
     staticDir: path.join(projectRoot, 'dist'),
   })
   return new Promise((resolve, reject) => {
