@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { slugify, thumbnailUrl } from './games.js'
+import { slugify, steamCover, coverSource } from './games.js'
 
 let pass = 0, fail = 0
 const t = (name, fn) => {
@@ -26,27 +26,33 @@ t('a slug cannot walk out of the covers folder', () => {
   assert.equal(slugify('..'), 'game')
 })
 
-t('covers are fetched at a width worth keeping', () => {
+t("a cover is Steam's upright library picture", () => {
+  // The one size Steam serves that is a cover rather than a banner. Every
+  // other one is wide, and a wide picture is key art, which is the thing
+  // this replaced.
   assert.equal(
-    thumbnailUrl('https://media.rawg.io/media/games/b29/b294fdd8.jpg').href,
-    'https://media.rawg.io/media/resize/420/-/games/b29/b294fdd8.jpg',
+    steamCover(1245620),
+    'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1245620/library_600x900.jpg',
   )
+  assert.equal(coverSource(steamCover(1245620)).hostname, 'shared.cloudflare.steamstatic.com')
 })
 
-t('one that is already resized is left as it is', () => {
-  const already = 'https://media.rawg.io/media/resize/420/-/games/b29/b294fdd8.jpg'
-  assert.equal(thumbnailUrl(already).href, already)
-})
-
-t('covers come from RAWG or they do not come at all', () => {
+t('covers come from Steam or they do not come at all', () => {
   // Whatever is in the note eventually turns into a download. The host it
   // names is not something to take on trust.
   for (const url of [
-    'https://example.com/media/games/x.jpg',
-    'http://media.rawg.io.evil.test/media/x.jpg',
-    'file:///C:/Windows/System32/x.jpg',
+    'https://example.com/store_item_assets/steam/apps/1/library_600x900.jpg',
+    'http://shared.cloudflare.steamstatic.com.evil.test/x/library_600x900.jpg',
+    'file:///C:/Windows/System32/library_600x900.jpg',
   ]) {
-    assert.throws(() => thumbnailUrl(url), new RegExp('not a RAWG image'), url)
+    assert.throws(() => coverSource(url), new RegExp('not a Steam cover'), url)
+  }
+})
+
+t('and only the cover, not anything else that host serves', () => {
+  const host = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/620'
+  for (const file of ['header.jpg', 'capsule_231x87.jpg', 'movie480.webm', '']) {
+    assert.throws(() => coverSource(`${host}/${file}`), new RegExp('not a Steam cover'), file)
   }
 })
 

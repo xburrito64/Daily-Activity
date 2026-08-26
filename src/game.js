@@ -1,12 +1,15 @@
 import { coverUrl } from './api.js'
 
 /**
- * Covers are key art — a wide picture, not a square icon. Drawn square it
- * would either letterbox into a strip with bars either side of it, or crop
- * down to whatever happened to be in the middle. Wide, at the height of the
- * lane, it reads as the game.
+ * A cover is upright, two by three, the shape a game's box has always been —
+ * Steam's library picture, which is where these come from and the only thing
+ * either database has that is actually a cover.
+ *
+ * Not square, so it is given the width that shape wants rather than being
+ * fitted into an icon's box, where it would sit as a narrow panel with empty
+ * space either side of it.
  */
-export const COVER_ASPECT = 16 / 9
+export const COVER_ASPECT = 2 / 3
 
 /**
  * A named game block, dressed as its own tag.

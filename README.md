@@ -102,6 +102,13 @@ sensibly in Obsidian with nothing installed. The cover is *copied* into
 and the vault stays self-contained. One file per game, however many days
 mention it.
 
+It takes two databases, because neither does both jobs. RAWG is the search:
+nine hundred thousand games including everything that never came to a PC. It
+has no cover art at all — what it has is key art, the wide picture across the
+top of a store page. The cover itself comes from Steam, which has one for
+every game it sells and asks for no key. A game Steam has never sold gets its
+name and no picture.
+
 Two Game blocks only merge into one when they are the same game — finishing
 one and starting another is two things that happened.
 

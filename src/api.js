@@ -30,7 +30,7 @@ export const keepCover = (game) =>
   request('/api/games/cover', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: game.id, name: game.name, image: game.image }),
+    body: JSON.stringify({ id: game.id, name: game.name, image: game.cover }),
   })
 
 /** Where a kept cover is served from. */

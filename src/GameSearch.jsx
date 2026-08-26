@@ -211,8 +211,8 @@ export default function GameSearch({ block, onAttach }) {
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => attach(game)}
               >
-                {game.image
-                  ? <img className="gameshot" src={game.image} alt="" loading="lazy" />
+                {game.cover
+                  ? <img className="gameshot" src={game.cover} alt="" loading="lazy" />
                   : <span className="gameshot none" aria-hidden="true">🎮</span>}
                 <span className="gamebody">
                   <span className="gametitle">
