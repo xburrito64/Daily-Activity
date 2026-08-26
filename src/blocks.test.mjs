@@ -395,5 +395,60 @@ t('a stretch ending at midnight itself does not open an empty day', () => {
   )
 })
 
+// --- meeting your own tag, and choosing a height while sliding ------------
+
+t('sliding a block until it touches the same tag merges them', () => {
+  const day = [b('a', 'youtube', 60, 72), b('b', 'youtube', 90, 102)]
+  // b slid back so it starts exactly where a ends
+  const after = applyResize(day, 'b', 72, 84)
+  assert.equal(after.length, 1)
+  assert.deepEqual([after[0].startSlot, after[0].endSlot], [60, 84])
+})
+
+t('overlapping the same tag merges too', () => {
+  const day = [b('a', 'youtube', 60, 72), b('b', 'youtube', 90, 102)]
+  const after = applyResize(day, 'b', 66, 78)
+  assert.equal(after.length, 1)
+  assert.deepEqual([after[0].startSlot, after[0].endSlot], [60, 78])
+})
+
+t('a different tag brought alongside is left alone', () => {
+  const day = [b('a', 'youtube', 60, 72), b('b', 'music', 90, 102)]
+  assert.equal(applyResize(day, 'b', 72, 84).length, 2)
+})
+
+t('dragging an edge into the same tag merges it as well', () => {
+  const day = [b('a', 'youtube', 60, 72), b('b', 'youtube', 90, 102)]
+  const after = applyResize(day, 'a', 60, 90) // a stretched out to meet b
+  assert.equal(after.length, 1)
+  assert.deepEqual([after[0].startSlot, after[0].endSlot], [60, 102])
+})
+
+t('merging keeps what was written on both', () => {
+  const day = [b('a', 'youtube', 60, 72, 'first'), b('b', 'youtube', 90, 102, 'second')]
+  const after = applyResize(day, 'b', 72, 84)
+  assert.equal(after.length, 1)
+  assert.ok(after[0].note.includes('first') && after[0].note.includes('second'))
+})
+
+t('slid onto the upper half, a block lands on top', () => {
+  const day = [b('a', 'dgg', 60, 90), b('b', 'music', 0, 20)]
+  const after = applyResize(day, 'b', 66, 78, { slot: 66, lane: 0 })
+  assert.equal(layoutLanes(after).find((p) => p.block.id === 'b').lane, 0)
+})
+
+t('slid onto the lower half, the same block lands underneath', () => {
+  const day = [b('a', 'dgg', 60, 90), b('b', 'music', 0, 20)]
+  const after = applyResize(day, 'b', 66, 78, { slot: 66, lane: 1 })
+  assert.equal(layoutLanes(after).find((p) => p.block.id === 'b').lane, 1)
+})
+
+t('dragging an edge still cannot change the height', () => {
+  const day = [b('a', 'dgg', 60, 90), b('b', 'music', 66, 78)]
+  const before = layoutLanes(day).find((p) => p.block.id === 'b').lane
+  const after = applyResize(day, 'b', 66, 84)
+  assert.equal(layoutLanes(after).find((p) => p.block.id === 'b').lane, before)
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -528,6 +528,10 @@ export default function DayList({
         grabbed: cellFrom(trackEl, e.clientX),
         startSlot: block.startSlot, endSlot: block.endSlot,
         was: { startSlot: block.startSlot, endSlot: block.endSlot },
+        // The day without this block in it. Which lane the pointer is asking
+        // for is a question about what it would be landing among, and a block
+        // is not among itself.
+        others: (days[date]?.blocks ?? []).filter((b) => b.id !== block.id),
       })
     }
   }
@@ -580,11 +584,19 @@ export default function DayList({
         // edges — clamping the edges would squash it against midnight.
         const by = cellFrom(d.trackEl, e.clientX) - d.grabbed
         const shift = Math.max(-d.was.startSlot, Math.min(SLOTS_PER_DAY - d.was.endSlot, by))
+        const startSlot = d.was.startSlot + shift
+        // How high you are holding it says where it should sit, the same way
+        // painting reads it: over the upper half of something it lands above,
+        // over the lower half it lands below.
+        const lane = laneFrom(d.trackEl, e.clientY, d.others, startSlot)
         const next = {
           ...d, mode: 'move', moved: true,
-          startSlot: d.was.startSlot + shift, endSlot: d.was.endSlot + shift,
+          startSlot, endSlot: d.was.endSlot + shift,
+          at: { slot: startSlot, lane },
         }
-        if (next.mode !== d.mode || next.startSlot !== d.startSlot) setDragState(next)
+        if (next.mode !== d.mode || next.startSlot !== d.startSlot || lane !== d.at?.lane) {
+          setDragState(next)
+        }
         return
       }
       const moved = Math.abs(e.clientX - d.originX) > CLICK_SLOP_PX
@@ -610,7 +622,7 @@ export default function DayList({
         if (d.startSlot === d.was.startSlot && d.endSlot === d.was.endSlot) {
           h.onSelect(d.date, d.id)
         } else {
-          h.onResize(d.date, d.id, d.startSlot, d.endSlot)
+          h.onResize(d.date, d.id, d.startSlot, d.endSlot, d.at)
         }
       } else if (!d.moved) {
         if (d.compact) h.onPickDay(d.date)
@@ -760,7 +772,7 @@ export default function DayList({
           const day = days[date]
           const isToday = date === today
           let blocks = resizing?.date === date
-            ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot)
+            ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
             : day?.blocks ?? []
 
           // While painting, lay the day out as it will be once the drag is

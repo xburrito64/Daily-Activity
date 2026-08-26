@@ -5,7 +5,7 @@ import Totals from './Totals.jsx'
 import { useDays } from './useDays.js'
 import { getTags } from './api.js'
 import { applyPaint, applyResize, removeBlock, setNote, newId, overlapCluster } from './blocks.js'
-import { todayISO } from './time.js'
+import { todayISO, formatDotted } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
 
@@ -136,13 +136,20 @@ export default function App() {
     setArmed(null)
   }
 
-  const handleResize = (date, id, startSlot, endSlot) =>
-    editDay(date, (prev) => applyResize(prev, id, startSlot, endSlot))
+  // `at` is only there when the whole block was slid: it is the height the
+  // pointer was holding it at. Dragging an edge sends nothing, and keeps the
+  // height it already had.
+  const handleResize = (date, id, startSlot, endSlot, at) =>
+    editDay(date, (prev) => applyResize(prev, id, startSlot, endSlot, at))
 
   // Days you have actually written something on — the count under the title.
   // Only the loaded window is in `days`, which is the window you have
   // scrolled through, so it grows as you go rather than being the true total.
   const recorded = Object.values(days).filter((d) => !d.malformed && d.blocks.length > 0).length
+
+  // Whatever day is at the top of the list, or today before anything has
+  // been scrolled. It is what the picker shows and what it opens on.
+  const shownDate = visible?.from ?? todayISO()
 
   const dayBlocks = selected ? days[selected.date]?.blocks ?? [] : []
   const selectedBlock = selected ? dayBlocks.find((b) => b.id === selected.id) ?? null : null
@@ -173,11 +180,20 @@ export default function App() {
           </div>
 
           <button className="control nav today" onClick={() => setJumpTo(todayISO())}>Today</button>
-          <input
-            className="datepick"
-            type="date"
-            onChange={(e) => e.target.value && setJumpTo(e.target.value)}
-          />
+          {/* The date reads as a date rather than as an empty form field, and
+              says which day you are looking at rather than nothing at all. The
+              real input is laid over it, invisible, so the calendar is still
+              one click away — the native one cannot be made to look like this,
+              but it can be made to sit behind something that does. */}
+          <label className="datepick">
+            <span className="datetext">{formatDotted(shownDate)}</span>
+            <input
+              type="date"
+              value={shownDate}
+              onChange={(e) => e.target.value && setJumpTo(e.target.value)}
+              onClick={(e) => e.currentTarget.showPicker?.()}
+            />
+          </label>
           <Status status={status} />
         </div>
       </header>

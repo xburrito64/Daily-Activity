@@ -44,8 +44,8 @@
   animation: twinkle var(--rate) ease-in-out var(--phase) infinite alternate;
 }
 .sky i:nth-child(1) {
-  --rate: 11.3s;
-  --phase: -8.1s;
+  --rate: 5.3s;
+  --phase: -3.7s;
   --dim: 0.06;
   --peak: 0.42;
   background-image:
@@ -54,8 +54,8 @@
   background-size: 470px 410px, 530px 590px;
 }
 .sky i:nth-child(2) {
-  --rate: 6.1s;
-  --phase: -3.7s;
+  --rate: 2.9s;
+  --phase: -1.9s;
   --dim: 0.07;
   --peak: 0.5;
   background-image:
@@ -64,8 +64,8 @@
   background-size: 610px 540px, 690px 470px;
 }
 .sky i:nth-child(3) {
-  --rate: 4.5s;
-  --phase: -0.3s;
+  --rate: 2.2s;
+  --phase: -0.4s;
   --dim: 0.08;
   --peak: 0.55;
   background-image:
@@ -74,8 +74,8 @@
   background-size: 520px 460px, 580px 630px;
 }
 .sky i:nth-child(4) {
-  --rate: 5.3s;
-  --phase: -2.1s;
+  --rate: 2.6s;
+  --phase: -1.3s;
   --dim: 0.1;
   --peak: 0.7;
   background-image:
@@ -84,8 +84,8 @@
   background-size: 700px 600px, 810px 690px;
 }
 .sky i:nth-child(5) {
-  --rate: 9.7s;
-  --phase: -1.4s;
+  --rate: 4.7s;
+  --phase: -2.8s;
   --dim: 0.12;
   --peak: 0.82;
   background-image:
@@ -93,8 +93,8 @@
   background-size: 960px 820px;
 }
 .sky i:nth-child(6) {
-  --rate: 7.9s;
-  --phase: -5.2s;
+  --rate: 3.8s;
+  --phase: -3.1s;
   --dim: 0.12;
   --peak: 0.88;
   background-image:
@@ -102,8 +102,8 @@
   background-size: 820px 700px;
 }
 .sky i:nth-child(7) {
-  --rate: 13.1s;
-  --phase: -4.6s;
+  --rate: 6.1s;
+  --phase: -2.2s;
   --dim: 0.14;
   --peak: 1;
   background-image:
@@ -169,13 +169,34 @@ h1 {
 }
 
 .nav.today { margin-left: auto; }
+/* The date, written out rather than left as an empty form field. The real
+   input sits over the top of it at no opacity: a native date field cannot be
+   made to look like this, but it can be made to sit behind something that
+   does, and still open its calendar when clicked. */
 .datepick {
+  position: relative;
+  display: flex;
+  align-items: center;
   height: var(--control-height);
-  padding: 0 var(--s-4);
+  padding: 0 var(--s-5);
   color: var(--c-text);
   background: var(--c-surface);
   border: 1px solid var(--c-line);
   border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.datepick:hover { border-color: var(--c-text-dim); }
+.datetext {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.datepick input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 .status {
   min-width: 92px;

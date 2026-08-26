@@ -32,63 +32,89 @@ function placeFor(blocks, atSlot, lane) {
 }
 
 /**
+ * Fold a block together with every block of the same tag it meets.
+ *
+ * One activity can't run alongside itself, so two stretches of it that touch
+ * or overlap are one stretch — however they came to meet. Painting one over
+ * the other, dragging an edge until it reaches, or sliding the whole block up
+ * against it all end in the same place.
+ *
+ * Ends that merely touch count: a block ending at 14:00 and one starting at
+ * 14:00 are not two things.
+ *
+ * The survivor is the earliest of them in the list and keeps its place, so
+ * joining two blocks is not a reason to restack anything around them.
+ */
+function mergeSameTag(blocks, block) {
+  const touching = blocks.filter(
+    (b) => b.tag === block.tag && b.endSlot >= block.startSlot && b.startSlot <= block.endSlot,
+  )
+  if (touching.length < 2) return blocks
+
+  const keep = touching[0]
+  const notes = touching.map((b) => b.note).filter(Boolean)
+  const merged = {
+    ...keep,
+    startSlot: Math.min(...touching.map((b) => b.startSlot)),
+    endSlot: Math.max(...touching.map((b) => b.endSlot)),
+    // Don't lose anything that was written on the blocks being absorbed.
+    note: [...new Set(notes)].join('\n'),
+  }
+  return blocks
+    .filter((b) => b === keep || !touching.includes(b))
+    .map((b) => (b === keep ? merged : b))
+}
+
+/**
  * Add a painted range. Different tags are allowed to overlap — they stack in
- * lanes when drawn. Painting a tag over itself merges instead of stacking,
- * since one activity can't run alongside itself.
+ * lanes when drawn. Painting a tag over itself merges instead of stacking.
  *
  * `at` is { slot, lane }: where the pointer went down, and which lane that
  * height means. Without it the block lands underneath, as it always did.
  */
 export function applyPaint(blocks, painted, at) {
-  const sameTag = blocks.filter(
-    (b) => b.tag === painted.tag && b.endSlot >= painted.startSlot && b.startSlot <= painted.endSlot,
-  )
-
-  if (sameTag.length === 0) {
-    const index = at ? placeFor(blocks, at.slot, at.lane) : blocks.length
-    return [...blocks.slice(0, index), painted, ...blocks.slice(index)]
-  }
-
-  const keep = sameTag[0]
-  const notes = sameTag.map((b) => b.note).filter(Boolean)
-  const merged = {
-    ...keep,
-    startSlot: Math.min(painted.startSlot, ...sameTag.map((b) => b.startSlot)),
-    endSlot: Math.max(painted.endSlot, ...sameTag.map((b) => b.endSlot)),
-    // Don't lose anything that was written on the blocks being absorbed.
-    note: [...new Set(notes)].join('\n'),
-  }
-  // Merging isn't creating, so the survivor keeps its place in the order.
-  return blocks
-    .filter((b) => b === keep || !sameTag.includes(b))
-    .map((b) => (b === keep ? merged : b))
+  const index = at ? placeFor(blocks, at.slot, at.lane) : blocks.length
+  return mergeSameTag([...blocks.slice(0, index), painted, ...blocks.slice(index)], painted)
 }
 
 /**
- * Move one block's edges. Neighbours are left alone; overlaps just stack.
+ * Move one block's edges, or the whole block. Neighbours are left alone;
+ * overlaps just stack, and meeting its own tag merges.
  *
- * Dragging an edge must never change the height the block is drawn at — the
- * whole point is to change the times, not the stacking. So whatever height it
- * has now, it keeps over everything the new extent reaches: top stays top,
- * bottom stays bottom. A block wedged between two others keeps its exact place
- * in the order, since that is the only record of where it sits. One that isn't
- * overlapping anything has no height to keep, so it tucks under, the same as
- * painting it there would.
+ * With an `at` of { slot, lane } the block is being slid bodily, and that is
+ * the height the pointer is asking for — read the same way painting reads it,
+ * so dropping a block on the upper half of something puts it above rather
+ * than always underneath.
+ *
+ * Without one, an edge is being dragged, and that must never change the
+ * height the block is drawn at: the point is to change the times, not the
+ * stacking. So whatever height it has now, it keeps over everything the new
+ * extent reaches — top stays top, bottom stays bottom. A block wedged between
+ * two others keeps its exact place in the order, since that is the only
+ * record of where it sits. One that isn't overlapping anything has no height
+ * to keep, so it tucks under, the same as painting it there would.
  */
-export function applyResize(blocks, id, startSlot, endSlot) {
+export function applyResize(blocks, id, startSlot, endSlot, at) {
   if (endSlot <= startSlot) return blocks
   const target = blocks.find((b) => b.id === id)
   if (!target) return blocks
 
-  const drawn = layoutLanes(blocks).find((p) => p.block.id === id)
   const moved = { ...target, startSlot, endSlot }
   const rest = blocks.filter((b) => b.id !== id)
 
+  if (at) {
+    const index = placeFor(rest, at.slot, at.lane)
+    return mergeSameTag([...rest.slice(0, index), moved, ...rest.slice(index)], moved)
+  }
+
+  const drawn = layoutLanes(blocks).find((p) => p.block.id === id)
   // Sharing with nothing means there is no height to keep.
-  if (drawn.lanes === 1) return [...rest, moved]
-  if (drawn.lane === 0) return [moved, ...rest]
-  if (drawn.lane === drawn.lanes - 1) return [...rest, moved]
-  return blocks.map((b) => (b.id === id ? moved : b))
+  const placed = drawn.lanes === 1 || drawn.lane === drawn.lanes - 1
+    ? [...rest, moved]
+    : drawn.lane === 0
+      ? [moved, ...rest]
+      : blocks.map((b) => (b.id === id ? moved : b))
+  return mergeSameTag(placed, moved)
 }
 
 export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)

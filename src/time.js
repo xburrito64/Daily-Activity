@@ -86,6 +86,12 @@ export function formatDayHeading(iso) {
   return `${d}. ${MONTHS[m - 1]} ${y}`
 }
 
+/** "26 · 08 · 2026" — the date on the picker, spaced out to be read. */
+export function formatDotted(iso) {
+  const [y, m, d] = iso.split('-')
+  return `${d} · ${m} · ${y}`
+}
+
 /** "13.09" — the compact date in the Overview gutter. */
 export function formatShortDate(iso) {
   const [, m, d] = iso.split('-')
