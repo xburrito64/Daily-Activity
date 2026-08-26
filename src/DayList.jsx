@@ -514,7 +514,15 @@ export default function DayList({
         was: { startSlot: block.startSlot, endSlot: block.endSlot },
       })
     } else {
-      setDragState({ mode: 'press', date, id: block.id, originX: e.clientX, originY: e.clientY })
+      // A press, until it moves far enough to be a drag. Everything a slide
+      // needs is taken now, while the block is still where it started.
+      setDragState({
+        mode: 'press', date, trackEl, id: block.id,
+        originX: e.clientX, originY: e.clientY,
+        grabbed: cellFrom(trackEl, e.clientX),
+        startSlot: block.startSlot, endSlot: block.endSlot,
+        was: { startSlot: block.startSlot, endSlot: block.endSlot },
+      })
     }
   }
 
@@ -538,6 +546,22 @@ export default function DayList({
         if (next.startSlot !== d.startSlot || next.endSlot !== d.endSlot) setDragState(next)
         return
       }
+      if (d.mode === 'move' || d.mode === 'press') {
+        const moved = Math.abs(e.clientX - d.originX) > CLICK_SLOP_PX
+          || Math.abs(e.clientY - d.originY) > CLICK_SLOP_PX
+        if (!moved) return
+        // Both edges together, so the block keeps its length. The whole block
+        // has to stay in the day, so the shift is clamped rather than the
+        // edges — clamping the edges would squash it against midnight.
+        const by = cellFrom(d.trackEl, e.clientX) - d.grabbed
+        const shift = Math.max(-d.was.startSlot, Math.min(SLOTS_PER_DAY - d.was.endSlot, by))
+        const next = {
+          ...d, mode: 'move', moved: true,
+          startSlot: d.was.startSlot + shift, endSlot: d.was.endSlot + shift,
+        }
+        if (next.mode !== d.mode || next.startSlot !== d.startSlot) setDragState(next)
+        return
+      }
       const moved = Math.abs(e.clientX - d.originX) > CLICK_SLOP_PX
         || Math.abs(e.clientY - d.originY) > CLICK_SLOP_PX
       if (moved && !d.moved) setDragState({ ...d, moved: true })
@@ -555,9 +579,11 @@ export default function DayList({
           endSlot: Math.max(d.anchor, d.cell) + 1,
           at: { slot: d.anchor, lane: d.lane },
         })
-      } else if (d.mode === 'resize') {
-        // Landing back on the same slot isn't a resize — it's a click on a
-        // block too narrow to have anywhere else to click.
+      } else if (d.mode === 'resize' || d.mode === 'move') {
+        // Landing back where it started isn't an edit — it's a click. Which is
+        // the only way to open the note on a block too narrow to have anywhere
+        // else to click, and what a stray wobble on any other block should
+        // come to as well.
         if (d.startSlot === d.was.startSlot && d.endSlot === d.was.endSlot) {
           h.onSelect(d.date, d.id)
         } else {
@@ -634,7 +660,9 @@ export default function DayList({
   const paintPreview = drag?.mode === 'paint' && armedTag
     ? { startSlot: Math.min(drag.anchor, drag.cell), endSlot: Math.max(drag.anchor, drag.cell) + 1 }
     : null
-  const resizing = drag?.mode === 'resize' ? drag : null
+  // A move is a resize where both edges went the same way, so it previews and
+  // reads out through the same path.
+  const resizing = drag?.mode === 'resize' || drag?.mode === 'move' ? drag : null
   const readoutRange = paintPreview ?? resizing
   const readoutTag = paintPreview
     ? armedTag
