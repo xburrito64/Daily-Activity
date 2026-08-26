@@ -90,11 +90,14 @@
 
   --block-radius: var(--r-sm);
   --block-inset: var(--s-1);
-  /* Gold hairline added to the original top-highlight/bottom-shade pair.
-     Still no side edges, so a block split around an overlap has no seam. */
+  /* Lit along the top, shaded along the bottom, with a gold line sitting
+     just under the highlight. Every one of these is a single edge: a block
+     split around an overlap is several rectangles that have to abut without
+     a seam, and anything drawn down the sides would outline each piece
+     separately and give the join away. */
   --block-ring: inset 0  1px 0 rgba(255, 255, 255, 0.16),
-                inset 0 -1px 0 rgba(0, 0, 0, 0.30),
-                inset 0  0   0 1px rgba(200, 162, 74, 0.12);
+                inset 0  2px 0 rgba(216, 178, 96, 0.14),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.30);
 
   --handle-width: 7px;
   --tagicon-size: 22px;         /* was 20 — the painted icons carry detail */

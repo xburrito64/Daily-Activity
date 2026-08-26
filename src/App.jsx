@@ -108,9 +108,12 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* The sky. Three layers of stars, each twinkling at its own rate —
-          decoration only, so it is hidden from anything reading the page. */}
-      <div className="sky" aria-hidden="true"><i /><i /><i /></div>
+      {/* The sky. Each layer is a size of star with its own rate and its own
+          brightness — see app.css. Decoration only, so it is hidden from
+          anything reading the page. */}
+      <div className="sky" aria-hidden="true">
+        <i /><i /><i /><i /><i /><i /><i />
+      </div>
 
       <header>
         <div className="titlerow">
