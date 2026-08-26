@@ -526,6 +526,16 @@ h1 {
 
 .gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--c-line-soft); }
 
+/* Holds the blocks and nothing else. Its whole job is to be a stacking
+   context: the blocks say how deep they sit with a z-index, and this keeps
+   that argument between them, so a block three lanes down cannot climb over
+   a name or a grab strip drawn after it. */
+.blocks {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+}
+
 .block {
   position: absolute;
   /* top and height are set per piece: a block shares the bar's height with

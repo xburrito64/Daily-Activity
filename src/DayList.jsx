@@ -696,9 +696,23 @@ export default function DayList({
           const blank = !day?.malformed && blocks.length === 0
 
           const pieces = layoutLanes(blocks)
+          // Which block covers which is the lane's business, not the DOM's.
+          //
+          // The list order is the stacking order, and dragging an edge
+          // rewrites it to keep a block at the height it already had. If the
+          // blocks were drawn in list order, that rewrite would shuffle the
+          // elements on screen — and moving an element is enough to start
+          // anything that plays on arrival over again, for every block in the
+          // day, twice: once on the way out and once on the way back.
+          //
+          // So they are drawn in an order that never changes, and depth is
+          // said out loud with a z-index instead. Sorting by id is arbitrary,
+          // which is the point: nothing about the day can reorder it.
+          const drawn = [...pieces].sort((a, b) =>
+            (a.block.id < b.block.id ? -1 : a.block.id > b.block.id ? 1 : a.index - b.index))
           // One piece per block, for the things that belong to the block
           // rather than to a piece of it: its name and its grab strips.
-          const wholes = pieces.filter((p) => p.isFirst)
+          const wholes = drawn.filter((p) => p.isFirst)
           const selectedPieces = selected?.date === date
             ? pieces.filter((p) => p.block.id === selected.id)
             : []
@@ -720,9 +734,13 @@ export default function DayList({
                 <span className="emptyday">nothing has happened here yet</span>
               )}
 
+              {/* The blocks keep their depths to themselves, so a block three
+                  lanes down still sits under every name and grab strip. */}
               {day?.malformed ? (
                 <span className="rowbroken">needs fixing in Obsidian</span>
-              ) : pieces.map((piece) => {
+              ) : (
+              <div className="blocks">
+                {drawn.map((piece) => {
                 const b = piece.block
                 const tag = tagById(b.tag)
                 return (
@@ -751,13 +769,17 @@ export default function DayList({
                         ? 'var(--block-inset)'
                         : `${(piece.top / piece.lanes) * 100}%`,
                       bottom: 'var(--block-inset)',
+                      // How deep the block sits is how it stacks.
+                      zIndex: piece.lane,
                       background: tag?.colour ?? '#555',
                     }}
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   />
                 )
-              })}
+                })}
+              </div>
+              )}
 
               {/* Names are drawn over the blocks, one per block rather than
                   one per piece: a block cut where it steps up is still one
