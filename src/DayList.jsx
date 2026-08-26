@@ -48,6 +48,13 @@ const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
 const ICON_GROWTH = 4 // the most an icon may outgrow its normal size
 const ICON_OF_LANE = 0.44 // how much of the row's height an icon reaches for
 const ICON_INSET = 6 // an icon stops short of the lane's edges rather than filling it
+// An upright picture — a game's cover — reaches for far more of the row than
+// a square icon does. At the same height it covers a third of the ground, so
+// matching their heights leaves it looking small with the row empty above and
+// below it. In exchange it keeps further from the ends of its block: it is
+// the growing that would otherwise stand it up against them.
+const COVER_OF_LANE = 0.82
+const COVER_SIDE_ROOM = 14
 
 /**
  * Width of a string in the label font, measured once per string. The font is
@@ -175,11 +182,26 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   const sizeFor = (width) => width / aspect
   const widthAt = (px) => px * aspect
 
+  // An upright picture asks for more of the row, and gives back more of the
+  // block. Everything square or wider is left exactly as it was.
+  const upright = aspect < 1
+  const share = upright ? COVER_OF_LANE : ICON_OF_LANE
+  const sideRoom = upright ? COVER_SIDE_ROOM : ICON_PADDING
+
   // Grows with the height of the row, but never past the lane it has to sit
-  // in — that cap is what leaves a short lane an icon.
+  // in — that cap is what leaves a short lane an icon — and never past what
+  // the block is wide enough to hold it in comfortably. A block only a
+  // little wider than the picture has nowhere to put the growth, and taking
+  // it anyway would trade the space above and below for no space at all
+  // either side.
+  //
+  // The width only ever holds it back from growing, never shrinks it below
+  // its normal size: a narrow block keeps its picture, which is the whole
+  // reason one is drawn without a name.
   const wanted = Math.min(
     base * ICON_GROWTH,
-    Math.max(base, lanePx * ICON_OF_LANE),
+    Math.max(base, lanePx * share),
+    Math.max(base, sizeFor(widthPx - sideRoom)),
     Math.max(0, lanePx - ICON_INSET),
   )
   // Never insist on more than the tag asked for: a deliberately small icon
