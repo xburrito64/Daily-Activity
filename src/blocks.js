@@ -100,8 +100,14 @@ export const setNote = (blocks, id, note) =>
  * Work out where every block should be drawn once overlaps are allowed.
  *
  * One rectangle per block, the same height and position for its whole length.
- * Blocks that overlap — directly, or through a chain of others — share the
- * bar between them; everything else keeps the full height.
+ * Blocks that overlap — directly, or through a chain of others — form a group
+ * that divides the bar into lanes between them; everything else has the bar
+ * to itself.
+ *
+ * A lane is where a block *starts*: it is drawn from there down to the floor
+ * of the bar, and whatever is layered over it covers the lower part. So a
+ * block is never left as a thin band floating in empty space, and every block
+ * ends on the same line.
  *
  * The bar used to be cut at every start and end, with whatever covered each
  * slice sharing the height just for that slice. It packed tighter, but a

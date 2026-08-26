@@ -317,8 +317,16 @@ h1 { margin: 0; font-family: var(--font-display); font-size: var(--f-title); fon
 /* A block split around an overlap draws as several pieces. Rounding only the
    real ends keeps it reading as one continuous block. */
 .block-label {
+  /* Pinned to the top of the block and given the height of its lane inline,
+     so the name sits in the band that is actually visible rather than in the
+     middle of a block whose lower half is covered over. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   font-size: var(--f-md);
   font-weight: var(--w-medium);

@@ -73,22 +73,17 @@ function textWidth(text) {
 }
 
 /**
- * Outline of one block, as the polygon the selection is drawn with. A block
- * is a single rectangle now, so this traces four corners — kept as a polygon
- * because it costs nothing and the shape is described in the same slot and
- * lane terms as everything else.
+ * The four corners of a block, as the polygon the selection is drawn with.
+ * A block runs from its own lane down to the floor of the bar, so the whole
+ * of that is outlined — including the part covered by whatever is layered
+ * over it. That part is still the block, and seeing how far it reaches is the
+ * point of selecting it.
  */
-function silhouette(pieces) {
-  const sorted = [...pieces].sort((a, b) => a.from - b.from)
-  const x1 = (p) => (p.from / SLOTS_PER_DAY) * 100
-  const x2 = (p) => (p.to / SLOTS_PER_DAY) * 100
-  const yTop = (p) => (p.lane / p.lanes) * 100
-  const yBottom = (p) => ((p.lane + 1) / p.lanes) * 100
-
-  const points = []
-  for (const p of sorted) points.push(`${x1(p)},${yTop(p)}`, `${x2(p)},${yTop(p)}`)
-  for (const p of [...sorted].reverse()) points.push(`${x2(p)},${yBottom(p)}`, `${x1(p)},${yBottom(p)}`)
-  return points.join(' ')
+function silhouette([piece]) {
+  const x1 = (piece.from / SLOTS_PER_DAY) * 100
+  const x2 = (piece.to / SLOTS_PER_DAY) * 100
+  const y = (piece.lane / piece.lanes) * 100
+  return `${x1},${y} ${x2},${y} ${x2},100 ${x1},100`
 }
 
 /**
@@ -679,21 +674,26 @@ export default function DayList({
                     style={{
                       left: `${pct(piece.from)}%`,
                       width: `${pct(piece.to - piece.from)}%`,
-                      // Inset only against the edges of the bar: stacked
-                      // halves meet flush rather than showing a gap.
+                      // Every block runs from its own lane to the floor of the
+                      // bar. Whatever is layered over it covers the lower part,
+                      // so nothing is left standing in empty space. Inset only
+                      // against the edges of the bar itself.
                       top: piece.lane === 0
                         ? 'var(--block-inset)'
                         : `${(piece.lane / piece.lanes) * 100}%`,
-                      height: `calc(${100 / piece.lanes}%`
-                        + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
-                        + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
+                      bottom: 'var(--block-inset)',
                       background: tag?.colour ?? '#555',
                     }}
                     title={`${tag?.name ?? b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   >
                     {laneHeight >= LABEL_MIN_LANE && label && (
-                      <span className="block-label">
+                      // The name goes in the block's own lane — the band along
+                      // its top that nothing else is drawn over.
+                      <span
+                        className="block-label"
+                        style={{ height: `${100 / (piece.lanes - piece.lane)}%` }}
+                      >
                         <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
                         {label.mode === 'full' && (tag ? tag.name : b.tag)}
                       </span>
