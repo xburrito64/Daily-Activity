@@ -433,9 +433,12 @@ export default function DayList({
     return () => el.removeEventListener('wheel', onWheel)
   }, [barHeight, rowTotal, mode, onZoom])
 
-  // Pixel width of a bar. Labels need it to decide whether the tag name fits.
+  // Pixel width of a bar. Labels need it to decide whether the tag name fits,
+  // and every block is placed on it — so it is measured before the frame is
+  // painted rather than after. Measuring afterwards would show one frame of
+  // blocks laid out against the width of whichever view was on screen last.
   const [trackWidth, setTrackWidth] = useState(0)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const measure = () => {
@@ -447,6 +450,28 @@ export default function DayList({
     ro.observe(el)
     return () => ro.disconnect()
   }, [mode])
+
+  /**
+   * Where a slot boundary falls, as a whole pixel.
+   *
+   * Two blocks that meet share a slot, but as percentages they do not share a
+   * number: one block's right edge is worked out as its left plus its width,
+   * while its neighbour's left edge is worked out on its own. Land that shared
+   * boundary on half a pixel and the two roundings can disagree, leaving a
+   * one-pixel crack between blocks that are supposed to be touching — and at
+   * every hour there is a gridline sitting directly behind the crack, which is
+   * what shows through it.
+   *
+   * Both edges are the same slot, so here they are the same number, and there
+   * is nothing left for anything to show through. Until the bar has been
+   * measured there is no pixel to snap to, so percentages stand in — one frame
+   * of the old behaviour beats one frame of no blocks at all.
+   */
+  const xAt = (slot) => Math.round((slot / SLOTS_PER_DAY) * trackWidth)
+  const edgeAt = (slot) => (trackWidth ? `${xAt(slot)}px` : `${pct(slot)}%`)
+  const spanAt = (from, to) => (trackWidth
+    ? { left: `${xAt(from)}px`, width: `${xAt(to) - xAt(from)}px` }
+    : { left: `${pct(from)}%`, width: `${pct(to - from)}%` })
 
   // --- the paint / resize / click gesture --------------------------------
   const [drag, setDrag] = useState(null)
@@ -879,8 +904,10 @@ export default function DayList({
               data-track-date={date}
               style={{ height: barHeight }}
             >
+              {/* One per hour, on the same whole pixels the blocks use, so a
+                  gridline sits exactly under the edge that covers it. */}
               {!dense && Array.from({ length: 23 }, (_, i) => (
-                <div key={i} className="gridline" style={{ left: `${((i + 1) / 24) * 100}%` }} />
+                <div key={i} className="gridline" style={{ left: edgeAt((i + 1) * 6) }} />
               ))}
 
               {/* Said out loud rather than left blank — but only in the Day
@@ -915,8 +942,7 @@ export default function DayList({
                       + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
                     }
                     style={{
-                      left: `${pct(piece.from)}%`,
-                      width: `${pct(piece.to - piece.from)}%`,
+                      ...spanAt(piece.from, piece.to),
                       // Every block runs from wherever it starts to the floor
                       // of the bar. Whatever is layered over it covers the
                       // lower part, so nothing is left standing in empty
@@ -958,8 +984,7 @@ ${b.note}` : ''}`}
                     key={`l${b.id}`}
                     className="block-label"
                     style={{
-                      left: `${pct(b.startSlot)}%`,
-                      width: `${pct(b.endSlot - b.startSlot)}%`,
+                      ...spanAt(b.startSlot, b.endSlot),
                       top: `${(lane / lanes) * 100}%`,
                       height: `${100 / lanes}%`,
                     }}
@@ -994,13 +1019,13 @@ ${b.note}` : ''}`}
                       className="handle start"
                       data-block-id={b.id}
                       data-handle="start"
-                      style={{ left: `${pct(b.startSlot)}%`, ...lane }}
+                      style={{ left: edgeAt(b.startSlot), ...lane }}
                     />
                     <span
                       className="handle end"
                       data-block-id={b.id}
                       data-handle="end"
-                      style={{ left: `${pct(b.endSlot)}%`, ...lane }}
+                      style={{ left: edgeAt(b.endSlot), ...lane }}
                     />
                   </span>
                 )
