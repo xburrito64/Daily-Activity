@@ -268,13 +268,20 @@ h1 {
   color: var(--c-text-dim);
 }
 
+/* The hour marks have to line up with the gridlines inside the bar, and those
+   are placed against the bar's padding box — inside its border. So the ruler
+   is inset by that border, and then a tick and its gridline are the same
+   number of pixels from the same edge. */
 .listruler {
   position: relative;
   height: 15px;
-  margin-right: 10px; /* scrollbar, so ticks stay aligned with the bars */
+  margin-left: var(--track-border-w);
+  margin-right: calc(10px + var(--track-border-w)); /* 10px for the scrollbar */
 }
 /* Overview indents by the date column; Day view runs full width. */
-.daylist.compact .listruler { margin-left: calc(var(--gutter-w) + var(--gutter-gap)); }
+.daylist.compact .listruler {
+  margin-left: calc(var(--gutter-w) + var(--gutter-gap) + var(--track-border-w));
+}
 
 .ltick {
   position: absolute;
@@ -367,9 +374,11 @@ h1 {
 .wipe { flex: none; }
 
 /* --- hour scale under each day's bar --- */
+/* Inset by the bar's border, for the same reason as .listruler. */
 .dayruler {
   position: relative;
   height: var(--dayruler-height);
+  margin: 0 var(--track-border-w);
   flex: none;
 }
 .rtick { position: absolute; top: 0; }

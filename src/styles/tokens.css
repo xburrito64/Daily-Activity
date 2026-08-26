@@ -85,7 +85,8 @@
   /* --- component knobs -------------------------------------------------- */
   --track-bg: #131923;                   /* a shade under --c-surface: the
                                             bar reads as a recessed well */
-  --track-border: 1px solid var(--c-line);
+  --track-border-w: 1px;
+  --track-border: var(--track-border-w) solid var(--c-line);
   --track-radius: var(--r-md);
 
   --block-radius: var(--r-sm);

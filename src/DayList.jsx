@@ -819,11 +819,11 @@ export default function DayList({
         {!isDay && (
           <div className="listruler">
             {hourTicks.map((h) => (
-              <span key={h} className="ltick" style={{ left: `${(h / 24) * 100}%` }}>
+              <span key={h} className="ltick" style={{ left: edgeAt(h * 6) }}>
                 {String(h).padStart(2, '0')}
               </span>
             ))}
-            <span className="ltick last" style={{ left: '100%' }}>24</span>
+            <span className="ltick last" style={{ left: edgeAt(SLOTS_PER_DAY) }}>24</span>
           </div>
         )}
       </div>
@@ -1076,7 +1076,7 @@ ${b.note}` : ''}`}
                   <span
                     key={h}
                     className={`rtick${h % 2 === 0 ? ' major' : ''}`}
-                    style={{ left: `${(h / 24) * 100}%` }}
+                    style={{ left: edgeAt(h * 6) }}
                   >
                     <i className="rmark" />
                     {h % 2 === 0 && (
