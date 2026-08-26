@@ -1,5 +1,6 @@
 import assert from 'node:assert'
 import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise } from './blocks.js'
+import { paintSpans, SLOTS_PER_DAY } from './time.js'
 
 let pass = 0, fail = 0
 const t = (name, fn) => {
@@ -324,6 +325,74 @@ t('every piece stays inside its block and covers it exactly once', () => {
       assert.strictEqual(mine[i].from, mine[i - 1].to, `${block.id} has a gap or overlap`)
     }
   }
+})
+
+// --- painting a stretch that runs past midnight ---------------------------
+
+/** compact view of spans: "date start-end" */
+const spans = (list) => list.map((s) => `${s.date} ${s.startSlot}-${s.endSlot}`)
+
+t('a stretch inside one day is one span', () => {
+  assert.deepEqual(
+    spans(paintSpans('2026-08-26', 60, '2026-08-26', 89)),
+    ['2026-08-26 60-90'],
+  )
+})
+
+t('a single slot is one span one slot long', () => {
+  assert.deepEqual(
+    spans(paintSpans('2026-08-26', 60, '2026-08-26', 60)),
+    ['2026-08-26 60-61'],
+  )
+})
+
+t('dragged backwards inside a day reads the same stretch', () => {
+  assert.deepEqual(
+    paintSpans('2026-08-26', 89, '2026-08-26', 60),
+    paintSpans('2026-08-26', 60, '2026-08-26', 89),
+  )
+})
+
+t('a stretch onto the next day is cut at midnight', () => {
+  // 23:00 through to 07:00, which is what sleep actually looks like
+  assert.deepEqual(
+    spans(paintSpans('2026-08-26', 138, '2026-08-27', 41)),
+    ['2026-08-26 138-144', '2026-08-27 0-42'],
+  )
+})
+
+t('dragged back from the next day is the same two spans', () => {
+  assert.deepEqual(
+    paintSpans('2026-08-27', 41, '2026-08-26', 138),
+    paintSpans('2026-08-26', 138, '2026-08-27', 41),
+  )
+})
+
+t('the days in the middle of a long stretch are whole', () => {
+  assert.deepEqual(
+    spans(paintSpans('2026-08-26', 100, '2026-08-29', 20)),
+    ['2026-08-26 100-144', '2026-08-27 0-144', '2026-08-28 0-144', '2026-08-29 0-21'],
+  )
+})
+
+t('every span is a real stretch, and they join end to end', () => {
+  const list = paintSpans('2026-08-26', 138, '2026-08-28', 41)
+  for (const s of list) {
+    assert.ok(s.endSlot > s.startSlot, s.date + ' is empty')
+    assert.ok(s.startSlot >= 0 && s.endSlot <= SLOTS_PER_DAY, s.date + ' leaves the day')
+  }
+  for (let i = 1; i < list.length; i++) {
+    assert.equal(list[i - 1].endSlot, SLOTS_PER_DAY, 'runs to midnight')
+    assert.equal(list[i].startSlot, 0, 'picks up at midnight')
+  }
+})
+
+t('a stretch ending at midnight itself does not open an empty day', () => {
+  // released on the last slot of the day it started on
+  assert.deepEqual(
+    spans(paintSpans('2026-08-26', 138, '2026-08-26', 143)),
+    ['2026-08-26 138-144'],
+  )
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

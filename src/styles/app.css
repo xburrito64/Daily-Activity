@@ -235,6 +235,12 @@ h1 {
 }
 .readout-range { font-size: var(--f-xl); font-weight: var(--w-medium); }
 .readout-dur { color: var(--c-text-dim); }
+/* Only there when a stretch has run past the end of its day. */
+.readout-over {
+  font-family: var(--font-meta);
+  font-style: italic;
+  color: var(--c-accent);
+}
 .readout-hint {
   font-family: var(--font-meta);
   font-style: italic;

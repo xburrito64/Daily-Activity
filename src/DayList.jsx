@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import {
   SLOTS_PER_DAY, MINUTES_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO,
   daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
-  minutesNow, msToNextMinute,
+  minutesNow, msToNextMinute, paintSpans,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes } from './blocks.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
@@ -29,6 +29,12 @@ const CHROME_GUESS = { day: 160, compact: 4 }
 
 const WIPE_CONFIRM_MS = 4000
 const PREVIEW_ID = '__preview' // the block being painted, not yet committed
+
+// How far a painted stretch may run past the day it started on. One, because
+// the point of it is an activity that ran past midnight, and a drag that
+// reaches further than the next bar is far more likely to be a slip than a
+// day and a half of the same thing.
+const PAINT_REACH_DAYS = 1
 
 const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
@@ -495,7 +501,7 @@ export default function DayList({
       e.preventDefault()
       const cell = cellFrom(trackEl, e.clientX)
       const lane = laneFrom(trackEl, e.clientY, days[date]?.blocks ?? [], cell)
-      setDragState({ mode: 'paint', date, trackEl, anchor: cell, cell, lane })
+      setDragState({ mode: 'paint', date, trackEl, anchor: cell, cell, lane, toDate: date })
       return
     }
 
@@ -534,8 +540,27 @@ export default function DayList({
       if (!d) return
 
       if (d.mode === 'paint') {
+        // Which bar the pointer is over now, which need not be the one it
+        // started on: ending on the next day's bar is how a stretch carries
+        // past midnight. Off the bars entirely, it keeps the day it last
+        // reached rather than snapping back — you are on your way somewhere.
+        //
+        // Past the reach it stops at the furthest day it is allowed, rather
+        // than giving up and going home: a drag that has gone too far should
+        // stop at the limit, not turn into a stretch on the day it started.
+        const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-track-date]')
+        const onto = over?.dataset.trackDate
+        let toDate = d.toDate
+        if (onto) {
+          const reach = Math.max(-PAINT_REACH_DAYS,
+            Math.min(PAINT_REACH_DAYS, daysBetween(d.date, onto)))
+          const target = shiftDate(d.date, reach)
+          if (days[target] && !days[target].malformed) toDate = target
+        }
+        // Every bar in this view has the same left edge and the same width,
+        // so the time under the pointer reads the same off any of them.
         const cell = cellFrom(d.trackEl, e.clientX)
-        if (cell !== d.cell) setDragState({ ...d, cell })
+        if (cell !== d.cell || toDate !== d.toDate) setDragState({ ...d, cell, toDate })
         return
       }
       if (d.mode === 'resize') {
@@ -574,10 +599,8 @@ export default function DayList({
       const h = handlers.current
 
       if (d.mode === 'paint') {
-        h.onPaint(d.date, {
-          startSlot: Math.min(d.anchor, d.cell),
-          endSlot: Math.max(d.anchor, d.cell) + 1,
-          at: { slot: d.anchor, lane: d.lane },
+        h.onPaint(d.date, paintSpans(d.date, d.anchor, d.toDate, d.cell), {
+          slot: d.anchor, lane: d.lane,
         })
       } else if (d.mode === 'resize' || d.mode === 'move') {
         // Landing back where it started isn't an edit — it's a click. Which is
@@ -657,14 +680,25 @@ export default function DayList({
     onJumped()
   }, [jumpTo, range.start, range.end, rowTotal, onJumped, mode, chromeReady])
 
-  const paintPreview = drag?.mode === 'paint' && armedTag
-    ? { startSlot: Math.min(drag.anchor, drag.cell), endSlot: Math.max(drag.anchor, drag.cell) + 1 }
+  const painting = drag?.mode === 'paint' && armedTag
+    ? paintSpans(drag.date, drag.anchor, drag.toDate, drag.cell)
     : null
   // A move is a resize where both edges went the same way, so it previews and
   // reads out through the same path.
   const resizing = drag?.mode === 'resize' || drag?.mode === 'move' ? drag : null
-  const readoutRange = paintPreview ?? resizing
-  const readoutTag = paintPreview
+
+  // The readout says the whole stretch, however many days it lands on: the
+  // time it starts, the time it ends, and how long it comes to. Across
+  // midnight the end time belongs to a later day, which the count says.
+  const readoutRange = painting
+    ? {
+      startSlot: painting[0].startSlot,
+      endSlot: painting[painting.length - 1].endSlot,
+      slots: painting.reduce((sum, p) => sum + (p.endSlot - p.startSlot), 0),
+      overnights: painting.length - 1,
+    }
+    : resizing
+  const readoutTag = painting
     ? armedTag
     : resizing && tagById(days[resizing.date]?.blocks.find((b) => b.id === resizing.id)?.tag)
 
@@ -685,8 +719,13 @@ export default function DayList({
                 {slotToTime(readoutRange.startSlot)} – {slotToTime(readoutRange.endSlot)}
               </span>
               <span className="readout-dur">
-                {formatDuration(readoutRange.endSlot - readoutRange.startSlot)}
+                {formatDuration(readoutRange.slots ?? readoutRange.endSlot - readoutRange.startSlot)}
               </span>
+              {readoutRange.overnights > 0 && (
+                <span className="readout-over">
+                  over {readoutRange.overnights === 1 ? 'midnight' : `${readoutRange.overnights} nights`}
+                </span>
+              )}
             </>
           ) : (
             <span className="readout-hint">
@@ -726,20 +765,26 @@ export default function DayList({
 
           // While painting, lay the day out as it will be once the drag is
           // released — so the new block shows at the height it will land at,
-          // and anything it overlaps shrinks to make room for it.
+          // and anything it overlaps shrinks to make room for it. A stretch
+          // that runs past midnight previews on every day it reaches, which
+          // is what shows you it is going to land as more than one block.
           let previewId = null
-          if (paintPreview && drag.date === date) {
+          const span = painting?.find((p) => p.date === date)
+          if (span) {
             const before = blocks
             blocks = applyPaint(
               before,
               {
                 id: PREVIEW_ID,
                 tag: armed.tag,
-                startSlot: paintPreview.startSlot,
-                endSlot: paintPreview.endSlot,
+                startSlot: span.startSlot,
+                endSlot: span.endSlot,
                 note: '',
               },
-              { slot: drag.anchor, lane: drag.lane },
+              // Where the pointer went down decides the height on the day it
+              // went down on. The days it carried into take the same lane,
+              // measured from where the stretch enters them.
+              { slot: date === drag.date ? drag.anchor : span.startSlot, lane: drag.lane },
             )
             // Usually the new block, but painting a tag over itself merges,
             // in which case the survivor is what changed.

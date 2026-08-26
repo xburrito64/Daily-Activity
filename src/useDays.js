@@ -21,7 +21,10 @@ export function useDays() {
 
   const loaded = useRef(new Set())
   const timers = useRef({})
-  // What each day looked like before the last few changes, newest last.
+  // What the days looked like before each of the last few changes, newest
+  // last. One entry per change, and a change can touch more than one day —
+  // painting across midnight is one thing that happened, so it is one thing
+  // to take back.
   const undoStack = useRef([])
 
   /** Load any day in from..to we don't already have. */
@@ -78,16 +81,28 @@ export function useDays() {
     }, SAVE_DELAY)
   }, [])
 
-  /** Change one day, remembering what it was first. */
-  const editDay = useCallback((date, update) => {
-    const current = daysRef.current[date]
-    if (!current || current.malformed) return
-
-    const blocks = typeof update === 'function' ? update(current.blocks) : update
-    undoStack.current.push({ date, blocks: current.blocks })
+  /**
+   * Change some days as one act, remembering what they were first.
+   *
+   * The changes are applied in order and each sees the one before it, so two
+   * changes to the same day in a single call compose rather than fight.
+   */
+  const editDays = useCallback((changes) => {
+    const before = []
+    for (const { date, update } of changes) {
+      const current = daysRef.current[date]
+      if (!current || current.malformed) continue
+      const blocks = typeof update === 'function' ? update(current.blocks) : update
+      before.push({ date, blocks: current.blocks })
+      write(date, blocks)
+    }
+    if (before.length === 0) return
+    undoStack.current.push(before)
     if (undoStack.current.length > UNDO_DEPTH) undoStack.current.shift()
-    write(date, blocks)
   }, [write])
+
+  /** Change one day, remembering what it was first. */
+  const editDay = useCallback((date, update) => editDays([{ date, update }]), [editDays])
 
   /**
    * Put the last change back. Returns the date it happened on, so the caller
@@ -99,15 +114,19 @@ export function useDays() {
   const undo = useCallback(() => {
     const last = undoStack.current.pop()
     if (!last) return null
-    const current = daysRef.current[last.date]
-    // The day has been unloaded since, or turned out to be malformed. Its old
-    // blocks are no longer something we can safely write back over.
-    if (!current || current.malformed) return null
-    write(last.date, last.blocks)
-    return last.date
+    let landed = null
+    for (const { date, blocks } of last) {
+      const current = daysRef.current[date]
+      // Unloaded since, or turned out to be malformed. Its old blocks are no
+      // longer something we can safely write back over it.
+      if (!current || current.malformed) continue
+      write(date, blocks)
+      landed ??= date
+    }
+    return landed
   }, [write])
 
-  return { days, ensure, editDay, undo, status, problem }
+  return { days, ensure, editDay, editDays, undo, status, problem }
 }
 
 function* eachDate(from, to) {

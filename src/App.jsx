@@ -54,7 +54,7 @@ export default function App() {
     compact: storedZoom('compact'),
   }))
 
-  const { days, ensure, editDay, undo, status, problem } = useDays()
+  const { days, ensure, editDay, editDays, undo, status, problem } = useDays()
 
   useEffect(() => {
     getTags().then(setTags).catch((err) => setTagError(err.message))
@@ -111,12 +111,28 @@ export default function App() {
     setArmed((a) => (a && a.date === date && a.tag === tag ? null : { date, tag }))
   }, [])
 
-  function handlePaint(date, { startSlot, endSlot, at }) {
+  /**
+   * Commit a painted stretch. Usually one day; more when it ran past
+   * midnight, which a day file cannot hold, so it lands as one block per day.
+   *
+   * All of them go in as a single act, so one ctrl+z takes the whole stretch
+   * back rather than half of it.
+   *
+   * `at` is where the pointer went down: it decides whether the new block
+   * lands above or below whatever is already there.
+   */
+  function handlePaint(date, spans, at) {
     if (!armed || armed.date !== date) return
-    // `at` is where the pointer went down: it decides whether the new block
-    // lands above or below whatever is already there.
-    editDay(date, (prev) =>
-      applyPaint(prev, { id: newId(), tag: armed.tag, startSlot, endSlot, note: '' }, at))
+    editDays(spans.map((span) => ({
+      date: span.date,
+      update: (prev) => applyPaint(prev, {
+        id: newId(),
+        tag: armed.tag,
+        startSlot: span.startSlot,
+        endSlot: span.endSlot,
+        note: '',
+      }, { slot: span.date === date ? at.slot : span.startSlot, lane: at.lane }),
+    })))
     setArmed(null)
   }
 

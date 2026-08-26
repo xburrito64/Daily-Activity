@@ -102,3 +102,31 @@ export function dayOfWeek(iso) {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d).getDay()
 }
+
+/**
+ * The days a painted stretch covers, and how much of each one.
+ *
+ * Sleep does not stop at midnight, and it used to have to be logged as two
+ * blocks on two bars. A drag that ends on another day's bar is one stretch;
+ * this is where it becomes one span per day, because one day per file is what
+ * the vault holds. Dragged backwards it is the same stretch read the other
+ * way round.
+ *
+ * Cells are the slot the pointer is over, so the far end is inclusive and the
+ * returned end is one past it — the same half-open range a block uses.
+ */
+export function paintSpans(fromDate, fromCell, toDate, toCell) {
+  const back = toDate < fromDate || (toDate === fromDate && toCell < fromCell)
+  const from = { date: back ? toDate : fromDate, cell: back ? toCell : fromCell }
+  const to = { date: back ? fromDate : toDate, cell: back ? fromCell : toCell }
+
+  const days = daysBetween(from.date, to.date)
+  if (days === 0) return [{ date: from.date, startSlot: from.cell, endSlot: to.cell + 1 }]
+
+  const spans = [{ date: from.date, startSlot: from.cell, endSlot: SLOTS_PER_DAY }]
+  for (let i = 1; i < days; i++) {
+    spans.push({ date: shiftDate(from.date, i), startSlot: 0, endSlot: SLOTS_PER_DAY })
+  }
+  spans.push({ date: to.date, startSlot: 0, endSlot: to.cell + 1 })
+  return spans
+}
