@@ -30,6 +30,22 @@ function Status({ status }) {
   )
 }
 
+/**
+ * Whether Delete would have nothing to do in this box: no selection, and the
+ * cursor already at the end of what is written.
+ *
+ * Asked of the box rather than assumed from its kind, because a date field
+ * has no cursor to ask about and throws when you try — which is a no, not a
+ * crash.
+ */
+function nothingAhead(el) {
+  try {
+    return el.selectionStart === el.selectionEnd && el.selectionStart === el.value.length
+  } catch {
+    return false
+  }
+}
+
 const storedZoom = (mode) => {
   const saved = Number(localStorage.getItem(zoomKey(mode)))
   const limits = ZOOM[mode]
@@ -77,9 +93,13 @@ export default function App() {
     if (!selected) return
     const onKey = (e) => {
       if (e.key !== 'Delete') return
-      // In the note, Delete belongs to the text you are writing.
+      // Delete belongs to the text you are writing — but only while there is
+      // text for it to take. Sitting in a box with nothing in front of the
+      // cursor it does nothing at all, and having to click out of a box that
+      // was going to ignore the key anyway is a step for no reason.
       const el = e.target
-      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return
+      const typing = el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement
+      if (typing && !nothingAhead(el)) return
       e.preventDefault()
       editDay(selected.date, (prev) => removeBlock(prev, selected.id))
       setSelected(null)
