@@ -21,12 +21,15 @@ const tagIconsDir = path.join(settingsDir, 'tag-icons')
 function seedSettings() {
   fs.mkdirSync(settingsDir, { recursive: true })
 
+  // config.json is kept out of git, so fall back to the example.
+  const configSource = ['config.json', 'config.example.json']
+    .map((name) => path.join(projectRoot, name))
+    .find((file) => fs.existsSync(file))
+
   if (!fs.existsSync(configFile)) {
-    // config.json is kept out of git, so fall back to the example.
-    const source = ['config.json', 'config.example.json']
-      .map((name) => path.join(projectRoot, name))
-      .find((file) => fs.existsSync(file))
-    if (source) fs.copyFileSync(source, configFile)
+    if (configSource) fs.copyFileSync(configSource, configFile)
+  } else if (configSource) {
+    addMissingSettings(configSource)
   }
 
   if (!fs.existsSync(tagsFile)) {
@@ -43,12 +46,39 @@ function seedSettings() {
   }
 }
 
+/**
+ * Give the installed settings any setting a newer version has added.
+ *
+ * The copy in the settings folder is made once and then belongs to whoever
+ * is using it, which is what makes it editable — and also means a setting
+ * introduced later would never appear in it. Somewhere to put a key is no
+ * use if the file you are meant to put it in has never heard of it.
+ *
+ * Only ever adds. Anything already there keeps whatever it was set to, so
+ * this can't quietly move the vault or undo a line that was typed in by hand.
+ */
+function addMissingSettings(source) {
+  let current, wanted
+  try {
+    current = readJson(configFile)
+    wanted = readJson(source)
+  } catch {
+    return // not ours to repair; the real read will report it properly
+  }
+
+  const added = Object.keys(wanted).filter((key) => !(key in current))
+  if (added.length === 0) return
+  for (const key of added) current[key] = wanted[key]
+  fs.writeFileSync(configFile, `${JSON.stringify(current, null, 2)}\n`)
+}
+
 function startServer() {
   const config = readJson(configFile)
   const server = createApp({
     vaultDailyDir: config.vaultDailyDir,
     tagsFile,
     tagIconsDir,
+    rawgKey: config.rawgKey,
     staticDir: path.join(projectRoot, 'dist'),
   })
   return new Promise((resolve, reject) => {

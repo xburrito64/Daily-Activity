@@ -2,6 +2,7 @@ import express from 'express'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createStore, DATE_RE } from './store.js'
+import { createGames } from './games.js'
 import { readJson } from './config.js'
 
 const MAX_RANGE_DAYS = 400
@@ -44,8 +45,14 @@ function withIcons(tags, tagIconsDir) {
  * so the same server runs under `npm start` during development and inside the
  * packaged desktop app, where the files live somewhere else entirely.
  */
-export function createApp({ vaultDailyDir, tagsFile, tagIconsDir, staticDir = null }) {
+export function createApp({ vaultDailyDir, tagsFile, tagIconsDir, rawgKey = '', staticDir = null }) {
   const store = createStore(vaultDailyDir)
+  // Covers sit beside the notes they belong to, in a folder of their own.
+  // Nothing else in the vault is ours to put things in, and a folder full of
+  // pictures next to the days that mention them is the version of this that
+  // still makes sense to somebody reading the vault without the app.
+  const coversDir = path.join(vaultDailyDir, 'covers')
+  const games = createGames({ apiKey: rawgKey, coversDir })
   const app = express()
   app.use(express.json({ limit: '1mb' }))
 
@@ -77,6 +84,32 @@ export function createApp({ vaultDailyDir, tagsFile, tagIconsDir, staticDir = nu
   app.get('/api/days', wrap(async (_req, res) => {
     res.json(await store.listDates())
   }))
+
+  // --- games ------------------------------------------------------------
+  // Under /api, along with everything else the frontend asks for, so the dev
+  // server's proxy carries them without being told about each one.
+
+  /**
+   * Search results, or an honest answer about why there aren't any. A missing
+   * key is not an error — it is a thing that hasn't been set up yet, and the
+   * search box says so itself rather than showing a red banner over the app.
+   */
+  app.get('/api/games', wrap(async (req, res) => {
+    if (!games.configured) {
+      return res.json({ configured: false, results: [] })
+    }
+    res.json({ configured: true, results: await games.search(req.query.q) })
+  }))
+
+  /** Bring a game's cover into the vault. Answers with the file it became. */
+  app.post('/api/games/cover', wrap(async (req, res) => {
+    const { id, name, image } = req.body ?? {}
+    res.json(await games.keep({ id: Number(id), name, image }))
+  }))
+
+  // Covers are read straight off disk. They only ever arrive through the
+  // route above, so this folder holds pictures and nothing else.
+  app.use('/api/covers', express.static(coversDir, { fallthrough: true }))
 
   /** Many days at once, for the stacked review. Missing days come back empty. */
   app.get('/api/range', wrap(async (req, res) => {
