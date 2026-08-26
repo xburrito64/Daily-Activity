@@ -11,31 +11,58 @@
   flex-direction: column;
 }
 
-/* The night the whole app sits on. One element and no DOM per star: a wash
-   for the glow, then repeating radial gradients whose tile sizes share no
-   common factor, so the field never visibly repeats. Fixed, so it stays put
-   while the days scroll over it, and inert to the pointer. */
-.app::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(1200px 500px at 18% -10%, #1a2130 0%, transparent 62%),
-    radial-gradient(1px 1px at 20% 30%, var(--star-colour) 50%, transparent 51%),
-    radial-gradient(1px 1px at 70% 15%, var(--star-colour) 50%, transparent 51%),
-    radial-gradient(2px 2px at 45% 70%, var(--star-colour) 50%, transparent 51%),
-    radial-gradient(1px 1px at 85% 55%, var(--star-colour) 50%, transparent 51%),
-    radial-gradient(1px 1px at 10% 85%, var(--star-colour) 50%, transparent 51%);
-  background-size: 100% 100%, 340px 290px, 470px 410px, 610px 530px, 390px 340px, 520px 450px;
-  opacity: 0.5;
-  animation: twinkle 6s ease-in-out infinite alternate;
-}
 /* Everything real sits above the sky. */
 .app > * { position: relative; z-index: 1; }
 
-@keyframes twinkle { from { opacity: 0.32; } to { opacity: 0.62; } }
+/* The night the whole app sits on: a wash for the glow behind the title,
+   with the stars layered over it. Fixed, so it stays put while the days
+   scroll across it, and inert to the pointer. The wash itself never moves —
+   only the stars do. */
+.app > .sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(1200px 500px at 18% -10%, #1a2130 0%, transparent 62%);
+}
+/* Three layers rather than one. A single layer can only fade as a whole,
+   which reads as nothing happening: with every star dimming in step there is
+   nothing holding still for the rest to be brighter than. Each layer keeps
+   its own time, so some are always coming up while others go out.
+
+   Still no element per star — a layer is a couple of one-pixel gradients
+   tiled at sizes that share no common factor, so the field never visibly
+   repeats. The negative delays start each layer part-way through, so they
+   are out of step from the first frame instead of drifting apart slowly. */
+.sky i {
+  position: absolute;
+  inset: 0;
+  animation: twinkle 5s ease-in-out infinite alternate;
+}
+.sky i:nth-child(1) {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(1px 1px at 70% 15%, var(--star-colour) 50%, transparent 51%);
+  background-size: 620px 520px, 780px 660px;
+}
+.sky i:nth-child(2) {
+  background-image:
+    radial-gradient(2px 2px at 45% 70%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(1px 1px at 85% 55%, var(--star-colour) 50%, transparent 51%);
+  background-size: 700px 580px, 900px 740px;
+  animation-duration: 7.5s;
+  animation-delay: -2.5s;
+}
+.sky i:nth-child(3) {
+  background-image:
+    radial-gradient(1px 1px at 10% 85%, var(--star-colour) 50%, transparent 51%),
+    radial-gradient(1px 1px at 55% 45%, var(--star-colour) 50%, transparent 51%);
+  background-size: 660px 610px, 840px 700px;
+  animation-duration: 11s;
+  animation-delay: -6s;
+}
+
+@keyframes twinkle { from { opacity: 0.18; } to { opacity: 0.85; } }
 
 header { flex: none; margin-bottom: var(--s-5); }
 
@@ -473,10 +500,6 @@ h1 {
   from { clip-path: inset(0 100% 0 0); filter: blur(3px); }
   to { clip-path: inset(0 0 0 0); filter: blur(0); }
 }
-/* Mid-gesture nothing is arriving, so nothing wipes in — see the comment
-   on .scroller in DayList.jsx for what would otherwise restart it. */
-.scroller.dragging .block { animation: none; }
-
 /* At tiny bar heights the inset would eat the block, so drop it. The inline
    top/height calc reads this variable, so zeroing it here is enough. */
 .track.dense { --block-inset: 0px; }
@@ -691,7 +714,7 @@ h1 {
    wiping in, an armed chip breathing. None of it carries information that
    is not also in the colours and the shapes, so all of it can go. */
 @media (prefers-reduced-motion: reduce) {
-  .app::before { animation: none; }
+  .sky i { animation: none; opacity: 0.5; }
   .block { animation: none; }
   .chip.armed { animation: none; box-shadow: var(--glow-armed); }
 }

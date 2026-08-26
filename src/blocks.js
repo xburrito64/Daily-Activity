@@ -113,10 +113,10 @@ export const setNote = (blocks, id, note) =>
  * only ever be the strip along the top of the bar. A block is cut where that
  * changes, so it comes back as one piece per run at the same height.
  *
- * Returns { block, from, to, lane, lanes, top, isFirst, isLast }, where `top`
- * is the lane the piece is drawn from and `lane` is still the block's own —
- * the band its name sits in, and what decides which of two blocks covers the
- * other.
+ * Returns { block, from, to, lane, lanes, top, index, isFirst, isLast }, where
+ * `top` is the lane the piece is drawn from and `lane` is still the block's
+ * own — the band its name sits in, and what decides which of two blocks
+ * covers the other.
  */
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
@@ -183,6 +183,11 @@ export function layoutLanes(blocks) {
     // joins between them are drawn square so a stepped block reads as one.
     mine[0].isFirst = true
     mine[mine.length - 1].isLast = true
+    // Which piece of its block this is. Counting from the start of the block
+    // rather than naming a piece after where it begins gives it an identity
+    // that survives the block being dragged: the same piece stays the same
+    // piece, at new times, instead of looking like a different one.
+    mine.forEach((piece, i) => { piece.index = i })
   }
 
   return pieces

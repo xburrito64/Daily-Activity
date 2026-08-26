@@ -654,11 +654,7 @@ export default function DayList({
       </div>
 
       <div
-        // Nothing inks in mid-gesture. Dragging an edge changes where a block
-        // starts, which changes the key its pieces are drawn under, so React
-        // replaces the element and the wipe starts over — every ten minutes,
-        // under the cursor. The block is being moved, not written.
-        className={`scroller${armedTag ? ' armed' : ''}${drag ? ' dragging' : ''}`}
+        className={`scroller${armedTag ? ' armed' : ''}`}
         ref={scrollRef}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
@@ -731,7 +727,12 @@ export default function DayList({
                 const tag = tagById(b.tag)
                 return (
                   <div
-                    key={`${b.id}:${piece.from}`}
+                    // Named for which piece of its block it is, not for where
+                    // it happens to start. Dragging an edge moves where a
+                    // piece begins, and a key built from that would make every
+                    // step look like a different element: React would replace
+                    // it, and anything that plays on arrival would play again.
+                    key={`${b.id}#${piece.index}`}
                     data-block-id={b.id}
                     className={
                       'block' + (b.id === previewId ? ' preview' : '')
