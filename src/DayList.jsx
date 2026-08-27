@@ -49,14 +49,21 @@ const ICON_GROWTH = 4 // the most an icon may outgrow its normal size
 const ICON_OF_LANE = 0.44 // how much of the row's height an icon reaches for
 const ICON_INSET = 6 // an icon stops short of the lane's edges rather than filling it
 // An upright picture — a game's cover — is bounded by the block it sits in
-// rather than by a size of its own. The clearance is the same all the way
-// round, so the gap either side of it is the gap above and below it, and
-// whichever of the two the block runs out of first is what stops it growing.
-const COVER_ROOM = 14
-// A fixed clearance is no use on a row too short to spare it — seven pixels
-// off each end of a thirty-pixel row is half the row. Below about seventy,
-// a share of the row takes over.
-const COVER_OF_LANE = 0.8
+// rather than by a size of its own.
+//
+// Above and below, by a share of the row rather than a number of pixels, so
+// that it looks like the same margin however tall the bar is. Seven pixels
+// reads as a margin on an eighty-pixel row and as a hairline on a
+// two-hundred-pixel one. Held between a floor and a ceiling: a tenth of a
+// thirty-pixel row is nothing at all, and a tenth of the tallest bar would
+// start being more air than picture.
+const COVER_GAP_SHARE = 0.1
+const COVER_GAP_MIN = 3
+const COVER_GAP_MAX = 22
+// Either side, by a fixed distance. What a cover sits next to sideways is the
+// end of its block and then whatever is next along, and none of that changes
+// with the height of the bar.
+const COVER_SIDE_ROOM = 14
 
 /**
  * Width of a string in the label font, measured once per string. The font is
@@ -185,7 +192,7 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   const widthAt = (px) => px * aspect
 
   const upright = aspect < 1
-  const clearance = upright ? COVER_ROOM : ICON_PADDING
+  const clearance = upright ? COVER_SIDE_ROOM : ICON_PADDING
 
   // How tall it would like to be.
   //
@@ -194,10 +201,10 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   // symbol stops saying any more than it already did.
   //
   // A cover is a picture, and does say more the bigger it is, so nothing caps
-  // it but the block. It stops the same distance from the top and bottom as
-  // it does from the ends.
+  // it but the block — it fills the row bar its margin.
+  const gap = Math.min(COVER_GAP_MAX, Math.max(COVER_GAP_MIN, lanePx * COVER_GAP_SHARE))
   const reach = upright
-    ? Math.max(lanePx - COVER_ROOM, lanePx * COVER_OF_LANE)
+    ? lanePx - 2 * gap
     : Math.min(
       base * ICON_GROWTH,
       Math.max(base, lanePx * ICON_OF_LANE),
