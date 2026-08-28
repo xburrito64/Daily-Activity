@@ -1,6 +1,6 @@
 import { formatDuration, formatShortDate, daysBetween, shiftDate } from './time.js'
 import { coverUrl } from './api.js'
-import { COVER_ASPECT } from './game.js'
+import { COVER_ASPECT } from './face.js'
 import TagIcon from './TagIcon.jsx'
 
 /**
@@ -13,9 +13,11 @@ export default function Totals({ days, tags, range }) {
 
   const span = daysBetween(range.from, range.to) + 1
   const slots = new Map()
-  // What was played, by name rather than by tag. "Game: nineteen hours" is a
-  // number; the list of games is the week.
+  // What was played and what was watched, by name rather than by tag. "Game:
+  // nineteen hours" is a number; the list of games is the week. Two lists,
+  // because playing and watching are two things you did.
   const played = new Map()
+  const watched = new Map()
   let logged = 0
   let busiest = 0
 
@@ -28,11 +30,19 @@ export default function Totals({ days, tags, range }) {
       slots.set(b.tag, next)
       if (next > busiest) busiest = next
 
-      if (!b.game) continue
-      const had = played.get(b.game) ?? { slots: 0, cover: '' }
-      // The first cover seen wins. A game only has one, and a block logged
-      // before the cover was kept simply hasn't got it to offer.
-      played.set(b.game, { slots: had.slots + (b.endSlot - b.startSlot), cover: had.cover || b.cover })
+      // The first cover seen wins. One of these has only one, and a block
+      // logged before the cover was kept simply hasn't got it to offer.
+      const name = b.game || b.show
+      if (!name) continue
+      const into = b.game ? played : watched
+      const had = into.get(name) ?? { slots: 0, cover: '', episodes: 0 }
+      into.set(name, {
+        slots: had.slots + (b.endSlot - b.startSlot),
+        cover: had.cover || b.cover,
+        // Counted rather than listed: over a week the interesting number is
+        // how many, and which ones is a question for the day itself.
+        episodes: had.episodes + (b.episodes?.length ?? 0),
+      })
     }
   }
 
@@ -41,9 +51,11 @@ export default function Totals({ days, tags, range }) {
     .map((t) => ({ tag: t, slots: slots.get(t.id) }))
     .sort((a, b) => b.slots - a.slots)
 
-  const games = [...played]
+  const listOf = (map) => [...map]
     .map(([name, what]) => ({ name, ...what }))
     .sort((a, b) => b.slots - a.slots)
+  const games = listOf(played)
+  const shows = listOf(watched)
 
   return (
     <aside className="totals">
@@ -87,29 +99,49 @@ export default function Totals({ days, tags, range }) {
 
       {/* Under the hours rather than among them: this is the same time said
           again, broken into what it was actually spent on. */}
-      {games.length > 0 && (
-        <div className="played">
-          <span className="eyebrow">What you played</span>
-          <ul className="playedlist">
-            {games.map((game) => (
-              <li key={game.name} className="playedrow">
-                {game.cover
-                  ? (
-                    <img
-                      className="playedcover"
-                      style={{ '--cover-aspect': COVER_ASPECT }}
-                      src={coverUrl(game.cover)}
-                      alt=""
-                    />
-                  )
-                  : <span className="playedcover none" aria-hidden="true">🎮</span>}
-                <span className="playedname">{game.name}</span>
-                <span className="playedtime">{formatDuration(game.slots)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <Shelf title="What you played" rows={games} blank="🎮" />
+      <Shelf title="What you watched" rows={shows} blank="🌸" />
     </aside>
+  )
+}
+
+/**
+ * One list of covers with a name and a total beside each.
+ *
+ * The same shelf twice: what was played and what was watched are the same
+ * kind of answer to the same kind of question, and the day they are drawn
+ * differently is the day the ledger stops reading as one page.
+ */
+function Shelf({ title, rows, blank }) {
+  if (rows.length === 0) return null
+  return (
+    <div className="played">
+      <span className="eyebrow">{title}</span>
+      <ul className="playedlist">
+        {rows.map((row) => (
+          <li key={row.name} className="playedrow">
+            {row.cover
+              ? (
+                <img
+                  className="playedcover"
+                  style={{ '--cover-aspect': COVER_ASPECT }}
+                  src={coverUrl(row.cover)}
+                  alt=""
+                />
+              )
+              : <span className="playedcover none" aria-hidden="true">{blank}</span>}
+            <span className="playedname">{row.name}</span>
+            <span className="playedtime">
+              {formatDuration(row.slots)}
+              {row.episodes > 0 && (
+                <b className="playedeps">
+                  {row.episodes} ep{row.episodes === 1 ? '' : 's'}
+                </b>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

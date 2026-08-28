@@ -62,14 +62,19 @@ folder. Use forward slashes:
 {
   "vaultDailyDir": "C:/Vaults/YourVault/Daily",
   "port": 5274,
-  "rawgKey": ""
+  "rawgKey": "",
+  "anilistClientId": "",
+  "anilistToken": ""
 }
 ```
 
-`rawgKey` is only for naming games — see below. Leave it empty and everything
-else works exactly as before; the search box says what is missing if you open
-it. A setting added by a later version is filled into the installed copy on
-next launch, so there is always a line to put it on.
+`rawgKey` is only for naming games, and the two `anilist` lines only for
+sending anime progress to an account — see below. Leave any of them empty and
+everything else works exactly as before; the box that needs one says so when
+you open it. The AniList lines are written by the app itself, from a panel in
+the note, rather than being something to go and edit. A setting added by a
+later version is filled into the installed copy on next launch, so there is
+always a line to put it on.
 
 Tags live in `tags.json` — name, colour and icon. Edit and refresh; no restart
 needed.
@@ -83,7 +88,8 @@ the format and naming.
 - **Day view** — one full-size bar per day, endlessly scrollable. Scroll up for
   the past, down into the future.
 - **Overview** — the same days compressed, read-only, for spotting patterns,
-  with totals per tag for whatever is on screen beside it.
+  with totals per tag for whatever is on screen beside it, and what you played
+  and watched over that stretch listed with their covers.
 - **ctrl+scroll** resizes the rows. Each view remembers its own size.
 - Click a block for its note, drag its edges to adjust the times, or use the
   red button to clear a whole day.
@@ -135,7 +141,59 @@ Two Game blocks only merge into one when they are the same game — finishing
 one and starting another is two things that happened.
 
 The lookup needs a free key from [rawg.io/apikey](https://rawg.io/apikey) in
-`rawgKey`. Nothing else in the app touches the network.
+`rawgKey`.
+
+### Anime
+
+The same idea, one database lighter. An **Anime** block asks which show, and
+[AniList](https://anilist.co) answers without a key at all — the cover, the
+genres, the year and the episode count all arrive together, so there is no
+second site to fetch the picture from and nothing to sign up for.
+
+It asks in three steps, because each one is only answerable once the one
+before it is: which show, then which season of it, then which episodes. The
+seasons are a real question rather than a field — AniList keeps every season
+as its own record, joined to the last by a sequel link, so the list is a walk
+along that chain. Films, recaps and side stories are related to a show without
+being seasons of it, and are left out.
+
+Only the episodes that have **aired** are offered. Eight of a twelve-episode
+season out so far means eight boxes; there is no honest way to have watched
+the ninth. Episodes already written down on some other day are underlined, so
+a show you are part-way through opens where you left it rather than at one.
+
+The note keeps the name and the numbers in plain text:
+
+```json
+{"tag":"anime","start":"19:00","end":"20:30",
+ "show":"Frieren: Beyond Journey's End","episodes":[5,6,7]}
+```
+
+Two Anime blocks merge only when they are the same show, and when they do the
+episodes join up — one evening in front of it, however it came to be two
+stretches.
+
+#### Sending it to AniList
+
+The card has a button that marks the show watched up to the furthest episode
+on the block. It is a button and never a consequence of typing: this is the
+one thing in the app that leaves your machine.
+
+It only ever moves progress **forwards**. Filling in last month's evenings
+should not un-watch the thirty episodes since, so an episode behind where
+AniList already has you changes nothing and says so.
+
+Connecting takes one visit to AniList and two pastes. The button walks you
+through it: make a client under
+[your developer settings](https://anilist.co/settings/developer) with the
+redirect URL `https://anilist.co/api/v2/oauth/pin`, paste the client id it
+gives you, follow the link that appears, and paste the code that page shows
+back. The code lasts a year. The app writes both into the settings file
+itself and checks the code before keeping it, so a bad paste is refused while
+it can still be explained rather than sitting in a file looking connected.
+
+Nothing else in the app touches the network, and nothing is sent anywhere
+without that button being pressed.
 
 ## Layout
 

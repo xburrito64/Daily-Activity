@@ -1,44 +1,59 @@
 import { useEffect, useRef, useState } from 'react'
 import { slotToTime, formatDuration } from './time.js'
-import { gameFace } from './game.js'
+import { blockFace } from './face.js'
 import GameSearch from './GameSearch.jsx'
 import GameCard from './GameCard.jsx'
+import AnimeSearch from './AnimeSearch.jsx'
+import AnimeCard from './AnimeCard.jsx'
+import { getWatched } from './api.js'
 import TagIcon from './TagIcon.jsx'
 
-/** Only Game blocks ask what they were. */
-const SEARCHABLE = 'game'
+/** The two tags that ask what they were. Everything else is only its tag. */
+const GAME = 'game'
+const ANIME = 'anime'
 
 /**
  * The note for one block. `block` is the one clicked — its own text, its own
  * times, and what Delete removes. `cluster` is everything overlapping it, listed
  * across the top so you can see what else was running at the same time.
  */
-export default function NotePanel({ cluster, block, date, tags, onNote, onGame, onDelete, onClose }) {
+export default function NotePanel({
+  cluster, block, date, tags, onNote, onGame, onShow, onDelete, onClose,
+}) {
   const area = useRef(null)
   const tagFor = (id) => tags.find((t) => t.id === id)
 
   const clickedTag = tagFor(block.tag)
-  const searchable = block.tag === SEARCHABLE
+  const named = block.tag === GAME ? block.game : block.tag === ANIME ? block.show : ''
+  const searchable = block.tag === GAME || block.tag === ANIME
 
-  // Asking to change a game opens the search back over it without taking it
-  // off first: a search that finds nothing should leave you where you were
-  // rather than having thrown away what you had.
-  const [changing, setChanging] = useState(false)
-  useEffect(() => { setChanging(false) }, [block.id])
+  // Asking to change one opens the search back over it without taking it off
+  // first: a search that finds nothing should leave you where you were rather
+  // than having thrown away what you had.
+  //
+  // 'episodes' is the same door held open at a different room — the show is
+  // right, and only which of it was watched is in question.
+  const [changing, setChanging] = useState(null) // null | 'show' | 'episodes'
+  useEffect(() => { setChanging(null) }, [block.id])
 
-  const searching = searchable && (!block.game || changing)
-  // A game block with nothing attached opens on the question, not on the
-  // note: naming what you played is the thing you came here to do, and the
-  // note is still one tab away.
-  const askFirst = searchable && !block.game
+  // Going straight to the episodes needs the id AniList knows the show by,
+  // which lives beside the covers rather than in the note. Asked for only
+  // when that door is opened.
+  const [startWith, setStartWith] = useState(null)
+
+  const searching = searchable && (!named || changing !== null)
+  // A block with nothing attached opens on the question, not on the note:
+  // naming what you did is the thing you came here to do, and the note is
+  // still one tab away.
+  const askFirst = searchable && !named
 
   // Opening the panel should put the cursor straight in the text — unless the
   // search is going to want it.
   //
-  // On opening, and only on opening. Attaching a game turns the question off,
-  // and following that with the cursor would drag it into the note nobody
-  // asked to write — and take ctrl+z with it, which at that moment means
-  // "not that one", and is the first thing you would reach for.
+  // On opening, and only on opening. Attaching something turns the question
+  // off, and following that with the cursor would drag it into the note
+  // nobody asked to write — and take ctrl+z with it, which at that moment
+  // means "not that one", and is the first thing you would reach for.
   const opened = useRef(null)
   useEffect(() => {
     const fresh = opened.current !== block.id
@@ -46,11 +61,28 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
     if (fresh && !askFirst) area.current?.focus()
   }, [block.id, askFirst])
 
+  /**
+   * Straight to the grid of episodes, skipping the two questions already
+   * answered. The show's AniList id is kept beside the covers rather than in
+   * the note, so it is fetched here and handed over; without it the search
+   * simply starts at the top, which is a longer way round rather than a wall.
+   */
+  async function toEpisodes() {
+    try {
+      const all = await getWatched()
+      const id = all[block.show]?.anilistId
+      setStartWith(id ? { id, name: block.show } : null)
+    } catch {
+      setStartWith(null)
+    }
+    setChanging('episodes')
+  }
+
   return (
     <div className="notepanel">
       <div className="notehead">
         {cluster.map((b) => {
-          const tag = gameFace(tagFor(b.tag), b)
+          const tag = blockFace(tagFor(b.tag), b)
           return (
             <span
               key={b.id}
@@ -79,29 +111,51 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
         <button className="notebtn" onClick={onClose}>Close</button>
       </div>
 
-      {/* One column for the game and one for the note, whichever state the
-          game is in. Looking for one and having found one are two things to
-          see in the same place, and the panel changing shape between them
-          reads as having landed somewhere else.
+      {/* One column for what it was and one for the note, whichever state the
+          first of those is in. Looking for something and having found it are
+          two things to see in the same place, and the panel changing shape
+          between them reads as having landed somewhere else.
 
-          Keyed on the block, so clicking a different one starts a fresh search
-          rather than showing the last block's results under it. */}
+          Keyed on the block, so clicking a different one starts a fresh
+          search rather than showing the last block's results under it. */}
       <div className="notebody">
-        {searchable && (searching ? (
+        {block.tag === GAME && (searching ? (
           <GameSearch
             key={block.id}
             block={block}
-            onAttach={(game) => { setChanging(false); onGame(block.id, game) }}
-            onCancel={() => setChanging(false)}
+            onAttach={(game) => { setChanging(null); onGame(block.id, game) }}
+            onCancel={() => setChanging(null)}
           />
         ) : (
           <GameCard
             key={block.id}
             block={block}
-            onChange={() => setChanging(true)}
+            onChange={() => setChanging('show')}
             onRemove={() => onGame(block.id, null)}
           />
         ))}
+
+        {block.tag === ANIME && (searching ? (
+          <AnimeSearch
+            // Keyed on which door was opened as well as which block, so
+            // "change the show" and "change the episodes" are two states of
+            // the box rather than one box being talked into the other.
+            key={`${block.id}:${changing ?? 'new'}`}
+            block={block}
+            startWith={changing === 'episodes' ? startWith : null}
+            onAttach={(show) => { setChanging(null); onShow(block.id, show) }}
+            onCancel={() => setChanging(null)}
+          />
+        ) : (
+          <AnimeCard
+            key={block.id}
+            block={block}
+            onChange={() => setChanging('show')}
+            onEpisodes={toEpisodes}
+            onRemove={() => onShow(block.id, null)}
+          />
+        ))}
+
         <textarea
           ref={area}
           className="notetext"

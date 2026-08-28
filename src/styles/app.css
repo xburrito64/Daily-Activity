@@ -783,10 +783,14 @@ h1 {
 }
 .notetext:focus { outline: none; border-color: var(--c-text-dim); }
 
-/* ============ which game a Game block was ============
+/* ============ what a Game or an Anime block was ============
    Sits between the header and the note: above what you wrote, because it is
    the record rather than a remark on it, and below the times, because it is
-   still one block's business. */
+   still one block's business.
+
+   One set of rules for both. A game and a show are the same kind of card —
+   an upright cover, a name, a few facts and a pen — and the day the two are
+   styled apart is the day they slowly stop looking like one app. */
 /* The same box the card is, so looking for a game and having found one are
    the same shape in the same place. Written once and worn by both. */
 .gamecard,
@@ -1159,6 +1163,143 @@ h1 {
   color: var(--c-text-dim);
 }
 
+/* --- anime: the season, and which episodes ---------------------------- */
+
+/* Where you are and the way back, on one line, because they are the same
+   thought: this is the show, and that is how to leave it. It stands in for
+   the search box, so it takes the height of one. */
+.stepline {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: var(--control-height);
+}
+.stepback {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  font-size: var(--f-md);
+  line-height: 1;
+  color: var(--c-text-dim);
+  background: none;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.stepback:hover { color: var(--c-text); border-color: var(--c-text-dim); }
+.stepwhere {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--f-base);
+  font-weight: var(--w-medium);
+}
+
+/* A season is a row with no blurb on it — there is nothing to tell apart
+   that the name and the year don't already say. So it is drawn shorter, and
+   more of them fit. */
+.gameshot.small { width: 40px; height: 60px; }
+.gamebody.short { height: 60px; }
+.gameresult.season { align-items: center; }
+/* Which season this is, counted rather than read off a title: AniList names
+   them every way there is, and "3" in front of it is the thing you came to
+   the list to find. */
+.seasonno {
+  flex: none;
+  min-width: 17px;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--w-normal);
+  color: var(--c-accent);
+}
+
+/* Every episode that has actually aired, as a box to click. A grid rather
+   than a list: numbers are read by position, and a thousand of them in a
+   column is a thing to scroll through rather than a thing to point at.
+   Five rows deep, so a long-running show scrolls inside the card instead of
+   pushing the note down the page. */
+.epgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  gap: var(--s-2);
+  max-height: calc(5 * 30px + 4 * var(--s-2));
+  padding: 2px;
+  overflow-y: auto;
+}
+.ep {
+  height: 30px;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: var(--f-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.ep:hover { color: var(--c-text); border-color: var(--c-text-dim); }
+/* Picked for this block: filled, because this is the answer being given. */
+.epon {
+  color: var(--c-bg);
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  font-weight: var(--w-medium);
+}
+/* Already written down on some day. Underlined rather than filled — it is
+   something to know, not something you are choosing, and the two must not
+   look alike. */
+.epseen { text-decoration: underline; text-underline-offset: 3px; }
+.epon.epseen { text-decoration-color: var(--c-bg); }
+
+.epnote {
+  margin: 0;
+  font-size: var(--f-md);
+  color: var(--c-text-dim);
+}
+.epnote i { font-family: var(--font-meta); color: var(--c-text-faint); }
+
+/* The one button in this app that sends anything anywhere, so it is lit
+   like a thing you are about to do rather than tucked in with the rest. */
+.anilist {
+  margin-left: auto;
+  padding: var(--s-1) var(--s-3);
+  font-family: var(--font-ui);
+  font-size: var(--f-sm);
+  color: var(--c-text-dim);
+  background: none;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.anilist:hover { color: var(--c-accent); border-color: var(--c-accent); }
+.anilist:disabled { color: var(--c-text-faint); cursor: default; }
+.anilist.done { color: var(--c-accent); border-color: var(--c-accent); }
+/* With a send button beside it the pen is no longer the thing pushed to the
+   end — the pair is, and the pen stays last of the two. */
+.gamefoot .anilist + .gameedit { margin-left: 0; }
+
+/* Connecting the account: three steps, two of them a copy. Numbered, because
+   they only work in order. */
+.setup {
+  margin: 0;
+  padding-left: var(--s-6);
+  font-size: var(--f-md);
+  line-height: 1.5;
+  color: var(--c-text-dim);
+}
+.setup li + li { margin-top: var(--s-4); }
+.setup a { color: var(--c-accent); }
+.setup .gameinput { width: 100%; margin-top: var(--s-2); height: 28px; }
+.setup .gamepath { display: block; width: fit-content; }
+/* Not yet reachable: the step before it hasn't been answered. */
+.setup li.waiting { color: var(--c-text-faint); }
+
+/* The one that finishes what you came here to do. */
+.notebtn.keep { color: var(--c-accent); border-color: var(--c-accent); }
+.notebtn.keep:disabled { color: var(--c-text-faint); border-color: var(--c-line); }
+
 /* ============ totals beside the overview ============ */
 .workspace { flex: 1; display: flex; min-height: 0; gap: var(--s-7); }
 .workspace .daylist { min-width: 0; }
@@ -1260,6 +1401,16 @@ h1 {
 .playedtime {
   font-weight: var(--w-medium);
   font-variant-numeric: tabular-nums;
+}
+/* How many episodes, under the hours rather than beside them: the hours are
+   what the ledger counts, and this is the same evening said the other way. */
+.playedeps {
+  display: block;
+  font-family: var(--font-meta);
+  font-weight: var(--w-normal);
+  font-size: var(--f-sm);
+  color: var(--c-text-faint);
+  text-align: right;
 }
 
 /* ============ motion, for anyone who would rather not ============
