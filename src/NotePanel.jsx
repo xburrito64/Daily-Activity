@@ -79,29 +79,29 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
         <button className="notebtn" onClick={onClose}>Close</button>
       </div>
 
-      {/* The search wants the whole width — it is a list of covers to read
-          across. The game it settles on wants a column beside the note, since
-          by then it is one thing to glance at rather than several to compare.
+      {/* One column for the game and one for the note, whichever state the
+          game is in. Looking for one and having found one are two things to
+          see in the same place, and the panel changing shape between them
+          reads as having landed somewhere else.
+
           Keyed on the block, so clicking a different one starts a fresh search
           rather than showing the last block's results under it. */}
-      {searching && (
-        <GameSearch
-          key={block.id}
-          block={block}
-          onAttach={(game) => { setChanging(false); onGame(block.id, game) }}
-          onCancel={() => setChanging(false)}
-        />
-      )}
-
       <div className="notebody">
-        {searchable && !searching && (
+        {searchable && (searching ? (
+          <GameSearch
+            key={block.id}
+            block={block}
+            onAttach={(game) => { setChanging(false); onGame(block.id, game) }}
+            onCancel={() => setChanging(false)}
+          />
+        ) : (
           <GameCard
             key={block.id}
             block={block}
             onChange={() => setChanging(true)}
             onRemove={() => onGame(block.id, null)}
           />
-        )}
+        ))}
         <textarea
           ref={area}
           className="notetext"

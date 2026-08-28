@@ -787,7 +787,18 @@ h1 {
    Sits between the header and the note: above what you wrote, because it is
    the record rather than a remark on it, and below the times, because it is
    still one block's business. */
-.gamepick { margin-bottom: var(--s-5); }
+/* The same box the card is, so looking for a game and having found one are
+   the same shape in the same place. Written once and worn by both. */
+.gamecard,
+.gamepick {
+  flex: none;
+  width: 390px;
+  padding: var(--s-5);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.gamepick { display: flex; flex-direction: column; gap: var(--s-4); }
 
 /* --- the game once it has one, beside the note rather than above it ---
    The note is what you write; the card is what you played. Two things, so
@@ -796,16 +807,7 @@ h1 {
 .notebody { display: flex; align-items: stretch; gap: var(--s-5); }
 .notebody .notetext { flex: 1; min-width: 0; }
 
-.gamecard {
-  flex: none;
-  display: flex;
-  gap: var(--s-6);
-  width: 390px;
-  padding: var(--s-5);
-  background: var(--c-bg);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-md);
-}
+.gamecard { display: flex; gap: var(--s-6); }
 .gamecover {
   flex: none;
   align-self: flex-start;
@@ -1000,7 +1002,7 @@ h1 {
 .gameedit.on { color: var(--c-accent); border-color: var(--c-accent); }
 
 /* --- the search ------------------------------------------------------- */
-.gamesearch { display: flex; align-items: center; gap: var(--s-5); }
+.gamesearch { display: flex; align-items: center; gap: var(--s-4); }
 .gameinput {
   flex: 1;
   min-width: 0;
@@ -1023,6 +1025,28 @@ h1 {
   font-size: var(--f-md);
   color: var(--c-text-dim);
 }
+/* Not an empty card — an unwritten one, the same as a day with nothing on
+   it yet. It fills the height the results would have taken, so the panel
+   does not jump the moment you start typing. */
+.gameunnamed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 120px;
+  margin: 0;
+  font-size: var(--f-lg);
+  color: var(--c-text-dim);
+}
+.gameunnamed .gamerule { align-self: stretch; margin: 0 0 var(--s-3); }
+.gameunnamed i {
+  font-family: var(--font-meta);
+  font-size: var(--f-md);
+  color: var(--c-text-faint);
+}
+
 .gameproblem {
   margin: var(--s-4) 0 0;
   font-size: var(--f-md);
@@ -1049,9 +1073,12 @@ h1 {
    being sliced through the middle. */
 .gamelist {
   list-style: none;
-  margin: var(--s-4) 0 0;
+  margin: 0;
   padding: 0;
-  max-height: calc(3 * (90px + 2 * var(--s-3)));
+  /* Three at once and no more: the list is something to pick from at a
+     glance, not a catalogue to browse. Counted from the cover so the third
+     row ends where the list does rather than being sliced through. */
+  max-height: calc(3 * (86px + 2 * var(--s-3) + 2px));
   overflow-y: auto;
 }
 .gameresult {
@@ -1078,8 +1105,8 @@ h1 {
    and no wider — the name and the description are doing the telling apart. */
 .gameshot {
   flex: none;
-  width: 60px;
-  height: 90px;
+  width: 57px;
+  height: 86px;
   object-fit: cover;
   border-radius: var(--r-sm);
   background: var(--c-bg);
@@ -1091,7 +1118,15 @@ h1 {
   font-size: 24px;
 }
 
-.gamebody { flex: 1; min-width: 0; }
+/* As tall as the cover beside it, whatever it happens to hold. A row whose
+   height came from its own text would make every row a different height, and
+   "three rows" would then be a number that only sometimes lands on one. */
+.gamebody {
+  flex: 1;
+  min-width: 0;
+  height: 86px;
+  overflow: hidden;
+}
 .gametitle {
   display: flex;
   align-items: baseline;

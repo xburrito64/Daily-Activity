@@ -92,9 +92,10 @@ the format and naming.
 
 ### Games
 
-A **Game** block can say which game. Open its note and a search box is there;
-type a name, pick it, and the block takes the game's name and its cover art in
-place of the tag's own.
+A **Game** block can say which game. Open its note and a search box is there
+beside it; type a name, pick it, and the block takes the game's name and its
+cover art in place of the tag's own. Looking for a game and having found one
+are the same box in the same place, so the panel keeps its shape.
 
 The name is written into the note as plain text, so the day still reads
 sensibly in Obsidian with nothing installed. The cover is *copied* into

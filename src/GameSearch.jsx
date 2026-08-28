@@ -143,11 +143,6 @@ export default function GameSearch({ block, onAttach, onCancel }) {
           onKeyDown={onKeyDown}
         />
         {state === 'searching' && <span className="gamenote">looking…</span>}
-        {block.game && (
-          <button type="button" className="notebtn" onClick={onCancel}>
-            Keep {block.game}
-          </button>
-        )}
       </div>
 
       {configured === false && (
@@ -165,6 +160,16 @@ export default function GameSearch({ block, onAttach, onCancel }) {
       {problem && <p className="gameproblem">{problem}</p>}
       {state === 'done' && results.length === 0 && configured !== false && (
         <p className="gamenote">Nothing by that name.</p>
+      )}
+      {/* The card is not empty, it is unwritten — same as a day with nothing
+          on it. Only before anything is typed, and only when there is no game
+          to go back to; changing one already says what it is changing from. */}
+      {state === 'idle' && !block.game && configured !== false && (
+        <p className="gameunnamed">
+          <span className="gamerule" aria-hidden="true"><i /></span>
+          Somewhere unnamed
+          <i>type a few letters to say where</i>
+        </p>
       )}
 
       {results.length > 0 && (
@@ -197,6 +202,16 @@ export default function GameSearch({ block, onAttach, onCancel }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Where Change and Remove sit on the card, since it is the same kind
+          of thing: the way out of the state you put the card into. */}
+      {block.game && (
+        <span className="gamecardbtns">
+          <button type="button" className="notebtn" onClick={onCancel}>
+            Keep {block.game}
+          </button>
+        </span>
       )}
     </div>
   )
