@@ -96,6 +96,7 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
       <div className="notebody">
         {searchable && !searching && (
           <GameCard
+            key={block.id}
             block={block}
             onChange={() => setChanging(true)}
             onRemove={() => onGame(block.id, null)}

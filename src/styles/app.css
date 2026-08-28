@@ -879,10 +879,21 @@ h1 {
   height: 15px;
   color: var(--c-accent);
 }
-/* The genre row is a handful of things rather than one, so its icon sits at
-   the top of them rather than in the middle of a stack. */
-.gamestat.genres { align-items: flex-start; }
-.gamestat.genres svg { margin-top: 3px; }
+/* Read, the genres are a line like any other stat. Being edited they are a
+   handful of things rather than one, so the icon rises to the top of them
+   instead of centring against a stack. */
+.gamestat.genres.editing { align-items: flex-start; }
+.gamestat.genres.editing svg { margin-top: 3px; }
+
+/* Two lines of genres and then an ellipsis. Six of them is allowed and would
+   run further than the card, and the whole list is in the tooltip. */
+.genretext {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+}
 
 .genrelist {
   display: flex;
@@ -953,8 +964,33 @@ h1 {
 
 /* Pushed to the foot of the card: what the card is for is being looked at,
    and these are only there for the day you got the game wrong. */
-.gamecardbtns { display: flex; gap: var(--s-3); margin-top: auto; padding-top: var(--s-4); }
+.gamecardbtns {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: auto;
+  padding-top: var(--s-4);
+}
 .gamecardbtns .notebtn { font-size: var(--f-sm); padding: var(--s-1) var(--s-4); }
+
+/* The way in, and the only thing in the corner while there is nothing being
+   changed. Lit while it is, so the row of handles beside it reads as a state
+   you are in rather than one that appeared by itself. */
+.gameedit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--c-text-faint);
+  background: none;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.gameedit svg { width: 15px; height: 15px; }
+.gameedit:hover { color: var(--c-text); border-color: var(--c-text-dim); }
+.gameedit.on { color: var(--c-accent); border-color: var(--c-accent); }
 
 /* --- the search ------------------------------------------------------- */
 .gamesearch { display: flex; align-items: center; gap: var(--s-5); }

@@ -123,9 +123,12 @@ The platforms are the ones a game is **sold** on, which is not quite the same
 as the one you played it on — nothing in either database knows that.
 
 Genres start as the database's, which are coarse — there is no "FPS", only
-"Action" — so they are yours to change. Click the `+` to add one, the `x` to
-drop one, up to six per game. Once you have edited them nothing puts the
-database's back, including picking the same game again.
+"Action" — so they are yours to change. The pen in the corner of the card
+turns on editing: genres become chips you can drop, a `+` appears to add your
+own, up to six per game, and so do *Change* and *Remove* for the game itself.
+Click it again and the card goes back to being something to read. Once you
+have edited the genres nothing puts the database's back, including picking the
+same game again.
 
 Two Game blocks only merge into one when they are the same game — finishing
 one and starting another is two things that happened.

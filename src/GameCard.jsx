@@ -22,6 +22,9 @@ export default function GameCard({ block, onChange, onRemove }) {
   // rather than after a round trip.
   const [genres, setLocalGenres] = useState(null)
   const [adding, setAdding] = useState(false)
+  // Off by default. A card is for looking at; the handles for changing it are
+  // clutter every time you are not changing it, which is nearly always.
+  const [editing, setEditing] = useState(false)
 
   // Asked for once per card. It is a count over every day in the vault, so it
   // cannot come from the days the list happens to be holding.
@@ -76,38 +79,45 @@ export default function GameCard({ block, onChange, onRemove }) {
           </span>
         )}
 
-        {genres && (
-          <span className="gamestat genres">
+        {/* Read as a line of text, edited as a row of chips. A chip is a
+            handle, and a handle you are not reaching for is clutter — but
+            there is no way to take one thing off a line of text. */}
+        {(shown.length > 0 || editing) && (
+          <span className={`gamestat genres${editing ? ' editing' : ''}`}>
             <TagsIcon />
-            <span className="genrelist">
-              {shown.map((genre) => (
-                <span className="genre" key={genre} title={genre}>
-                  {/* The name in a box of its own: a flex item will not cut
-                      its own text off, and the cross must survive the cut. */}
-                  <span className="genrename">{genre}</span>
-                  <button
-                    type="button"
-                    className="genrex"
-                    title={`Not ${genre}`}
-                    onClick={() => keep(shown.filter((g) => g !== genre))}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              {adding
-                ? <GenreInput onDone={(g) => (g ? keep([...shown, g]) : setAdding(false))} />
-                : shown.length < MAX_GENRES && (
-                  <button
-                    type="button"
-                    className="genreadd"
-                    title="Add a genre"
-                    onClick={() => setAdding(true)}
-                  >
-                    +
-                  </button>
-                )}
-            </span>
+            {editing ? (
+              <span className="genrelist">
+                {shown.map((genre) => (
+                  <span className="genre" key={genre} title={genre}>
+                    {/* The name in a box of its own: a flex item will not cut
+                        its own text off, and the cross must survive the cut. */}
+                    <span className="genrename">{genre}</span>
+                    <button
+                      type="button"
+                      className="genrex"
+                      title={`Not ${genre}`}
+                      onClick={() => keep(shown.filter((g) => g !== genre))}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {adding
+                  ? <GenreInput onDone={(g) => (g ? keep([...shown, g]) : setAdding(false))} />
+                  : shown.length < MAX_GENRES && (
+                    <button
+                      type="button"
+                      className="genreadd"
+                      title="Add a genre"
+                      onClick={() => setAdding(true)}
+                    >
+                      +
+                    </button>
+                  )}
+              </span>
+            ) : (
+              <span className="genretext" title={shown.join(' · ')}>{shown.join(' · ')}</span>
+            )}
           </span>
         )}
 
@@ -119,8 +129,21 @@ export default function GameCard({ block, onChange, onRemove }) {
         )}
 
         <span className="gamecardbtns">
-          <button type="button" className="notebtn" onClick={onChange}>Change</button>
-          <button type="button" className="notebtn" onClick={onRemove}>Remove</button>
+          <button
+            type="button"
+            className={`gameedit${editing ? ' on' : ''}`}
+            title={editing ? 'Done' : 'Change what this game is'}
+            aria-pressed={editing}
+            onClick={() => { setAdding(false); setEditing(!editing) }}
+          >
+            <PenIcon />
+          </button>
+          {editing && (
+            <>
+              <button type="button" className="notebtn" onClick={onChange}>Change</button>
+              <button type="button" className="notebtn" onClick={onRemove}>Remove</button>
+            </>
+          )}
         </span>
       </div>
     </div>
@@ -174,6 +197,15 @@ function ScreenIcon() {
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
       <rect x="1.5" y="2.5" width="13" height="9" rx="1.2" />
       <path d="M6 14h4M8 11.5V14" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function PenIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+      <path d="M11.2 2.3a1.4 1.4 0 0 1 2 2L6 11.5l-2.7.8.8-2.7Z" strokeLinejoin="round" />
+      <path d="M10 3.5 12.5 6" />
     </svg>
   )
 }
