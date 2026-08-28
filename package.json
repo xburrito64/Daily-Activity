@@ -12,7 +12,7 @@
     "dev": "vite",
     "server": "node server/index.js",
     "stop": "node server/stop.js",
-    "test": "node server/config.test.mjs && node server/fence.test.mjs && node server/store.test.mjs && node server/games.test.mjs && node src/blocks.test.mjs",
+    "test": "node server/config.test.mjs && node server/fence.test.mjs && node server/store.test.mjs && node server/games.test.mjs && node server/anime.test.mjs && node src/episodes.test.mjs && node src/blocks.test.mjs",
     "build": "vite build",
     "app": "npm run build && electron .",
     "package": "npm run build && electron-builder",

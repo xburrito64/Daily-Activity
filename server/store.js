@@ -10,6 +10,13 @@ const TIME_RE = /^([01]\d|2[0-3]|24):([0-5]\d)$/
 // rather than trusted on the way out.
 const COVER_RE = /^[\w][\w .-]{0,119}\.(jpe?g|png|webp|gif)$/i
 
+// One evening of anime is a handful of episodes, not a season — and a number
+// is an episode, so it is a whole one and a small one. The bounds are here
+// rather than trusted from the app because whatever is in a note gets read
+// back and drawn.
+const MAX_EPISODES = 60
+const MAX_EPISODE_NO = 9999
+
 const toMinutes = (t) => {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
@@ -45,7 +52,24 @@ export function validateEntries(entries, { grid = true } = {}) {
     if (end <= start) throw new Error(`${where}: end must come after start`)
     if (e.note != null && typeof e.note !== 'string') throw new Error(`${where}: note must be text`)
     if (e.game != null && typeof e.game !== 'string') throw new Error(`${where}: game must be text`)
+    if (e.show != null && typeof e.show !== 'string') throw new Error(`${where}: show must be text`)
     if (e.cover && !COVER_RE.test(e.cover)) throw new Error(`${where}: bad cover "${e.cover}"`)
+
+    // Which episodes, in order and each of them once. Sorted here rather than
+    // wherever they were picked, so a note reads 3, 4, 5 however they were
+    // clicked — and so two blocks holding the same episodes hold them the
+    // same way round.
+    let episodes
+    if (e.episodes != null) {
+      if (!Array.isArray(e.episodes)) throw new Error(`${where}: episodes must be a list`)
+      if (e.episodes.length > MAX_EPISODES) throw new Error(`${where}: too many episodes`)
+      for (const n of e.episodes) {
+        if (!Number.isInteger(n) || n < 1 || n > MAX_EPISODE_NO) {
+          throw new Error(`${where}: bad episode "${n}"`)
+        }
+      }
+      episodes = [...new Set(e.episodes)].sort((a, b) => a - b)
+    }
 
     // Rebuild rather than pass through, so stray keys never reach the note.
     const clean = { tag: e.tag, start: e.start, end: e.end }
@@ -54,7 +78,12 @@ export function validateEntries(entries, { grid = true } = {}) {
     // without this app — and the file its picture was saved as, which is the
     // only thing here that means nothing on its own.
     if (e.game) clean.game = e.game
-    if (e.game && e.cover) clean.cover = e.cover
+    // The same for what was watched, and which of it. The episodes are the
+    // one part of this that is a number rather than a name, and they still
+    // read plainly in the note: "show", then 3, 4, 5.
+    if (e.show) clean.show = e.show
+    if (e.show && episodes?.length) clean.episodes = episodes
+    if ((e.game || e.show) && e.cover) clean.cover = e.cover
     return { clean, start, end }
   })
 

@@ -1,5 +1,7 @@
 {
   "vaultDailyDir": "C:/Vaults/YourVault/Daily",
   "port": 5274,
-  "rawgKey": ""
+  "rawgKey": "",
+  "anilistClientId": "",
+  "anilistToken": ""
 }

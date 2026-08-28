@@ -109,6 +109,65 @@ await t('a cover without a game is dropped', () => {
   )
 })
 
+await t('a show carries which episodes were watched', () => {
+  assert.deepStrictEqual(
+    validateEntries([{
+      tag: 'anime', start: '20:00', end: '21:00',
+      show: 'Frieren: Beyond Journey’s End', episodes: [5, 6, 7],
+    }]),
+    [{
+      tag: 'anime', start: '20:00', end: '21:00',
+      show: 'Frieren: Beyond Journey’s End', episodes: [5, 6, 7],
+    }],
+  )
+})
+
+await t('episodes are sorted and deduped on the way in', () => {
+  const [entry] = validateEntries([{
+    tag: 'anime', start: '20:00', end: '21:00', show: 'X', episodes: [7, 5, 6, 5],
+  }])
+  assert.deepStrictEqual(entry.episodes, [5, 6, 7])
+})
+
+await t('an episode has to be a whole, sane number', () => {
+  for (const episodes of [[0], [-3], [1.5], ['4'], [99999], [null]]) {
+    assert.throws(
+      () => validateEntries([{ tag: 'anime', start: '01:00', end: '02:00', show: 'X', episodes }]),
+      /bad episode/,
+      JSON.stringify(episodes),
+    )
+  }
+  assert.throws(
+    () => validateEntries([{ tag: 'anime', start: '01:00', end: '02:00', show: 'X', episodes: 7 }]),
+    /episodes must be a list/,
+  )
+  assert.throws(
+    () => validateEntries([{
+      tag: 'anime', start: '01:00', end: '02:00', show: 'X',
+      episodes: Array.from({ length: 61 }, (_, i) => i + 1),
+    }]),
+    /too many episodes/,
+  )
+})
+
+await t('episodes without a show are dropped — they would name nothing', () => {
+  assert.deepStrictEqual(
+    validateEntries([{ tag: 'anime', start: '01:00', end: '02:00', episodes: [1, 2] }]),
+    [{ tag: 'anime', start: '01:00', end: '02:00' }],
+  )
+})
+
+await t('a show and its cover survive being written and read back', async () => {
+  await store.writeDay('2027-06-18', [{
+    tag: 'anime', start: '20:00', end: '21:30',
+    show: 'Frieren', episodes: [1, 2, 3], cover: 'frieren-154587.jpg',
+  }])
+  const back = await store.readDay('2027-06-18')
+  assert.deepStrictEqual(back.entries[0].show, 'Frieren')
+  assert.deepStrictEqual(back.entries[0].episodes, [1, 2, 3])
+  assert.deepStrictEqual(back.entries[0].cover, 'frieren-154587.jpg')
+})
+
 await fs.rm(dir, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

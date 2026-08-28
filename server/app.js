@@ -3,11 +3,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createStore, DATE_RE } from './store.js'
 import { createGames } from './games.js'
+import { createAnime } from './anime.js'
 import { readJson } from './config.js'
 
 const MAX_RANGE_DAYS = 400
-// How long a playtime total may be reused before the vault is read again. Only
-// an edit made outside the app can go stale — our own writes clear it.
+// How long a total may be reused before the vault is read again. Only an edit
+// made outside the app can go stale — our own writes clear it.
 const PLAYED_TTL_MS = 20_000
 
 // Best first: a vector scales to any zoom level without going fuzzy.
@@ -57,8 +58,25 @@ export function createApp({
   // pictures next to the days that mention them is the version of this that
   // still makes sense to somebody reading the vault without the app.
   const coversDir = path.join(vaultDailyDir, 'covers')
+
+  /**
+   * The settings file as it is right now, or nothing at all if it can't be
+   * read. Asked again every time rather than held, since it is a file you
+   * edit — by hand, or through the app — while the app is open.
+   */
+  const settings = () => {
+    try { return settingsFile ? readJson(settingsFile) : {} } catch { return {} }
+  }
+
   const games = createGames({ apiKey: rawgKey, coversDir })
-  const played = createPlayed(store, games)
+  const anime = createAnime({
+    coversDir,
+    token: () => settings().anilistToken ?? '',
+    clientId: () => settings().anilistClientId ?? '',
+  })
+  const played = createTotals(store, games, 'game')
+  const watched = createTotals(store, anime, 'show')
+  const forget = () => { played.forget(); watched.forget() }
   const app = express()
   app.use(express.json({ limit: '1mb' }))
 
@@ -85,7 +103,7 @@ export function createApp({
     const { date } = req.params
     if (!DATE_RE.test(date)) return res.status(400).json({ error: 'bad date' })
     const written = await store.writeDay(date, req.body?.entries ?? [])
-    played.forget() // a day changed, so every total that mentions it has too
+    forget() // a day changed, so every total that mentions it has too
     res.json({ date, ...written })
   }))
 
@@ -124,7 +142,7 @@ export function createApp({
     // that cannot be written down is still perfectly attachable.
     try {
       await games.remember({ ...game, cover: kept.cover })
-      played.forget()
+      forget()
     } catch (err) {
       console.error('could not write down what this game is:', err.message)
     }
@@ -150,12 +168,148 @@ export function createApp({
   app.post('/api/games/genres', wrap(async (req, res) => {
     const { name, genres } = req.body ?? {}
     const saved = await games.setGenres(name, genres)
-    played.forget()
+    forget()
     res.json(saved)
   }))
 
+  // --- anime --------------------------------------------------------------
+  // The same shape as games, one database lighter: AniList wants no key to be
+  // read, so there is no "configured" to answer with. A key only comes into
+  // it further down, where this writes back to an account.
+
+  app.get('/api/anime', wrap(async (req, res) => {
+    res.json({ results: await anime.search(req.query.q) })
+  }))
+
+  /**
+   * Every season of one show, earliest first. Its own route because it costs
+   * a walk along AniList's prequel/sequel links rather than a lookup, and
+   * because it is only wanted once a show has been picked.
+   */
+  app.get('/api/anime/seasons', wrap(async (req, res) => {
+    res.json({ seasons: await anime.seasons(req.query.id) })
+  }))
+
+  /** Take a show: its cover into the vault, and what it is written beside it. */
+  app.post('/api/anime/attach', wrap(async (req, res) => {
+    const show = req.body ?? {}
+    const kept = await anime.keep({ id: Number(show.id), name: show.name, image: show.cover })
+    // The facts are a nicety; the name and the cover are the record.
+    try {
+      await anime.remember({ ...show, id: Number(show.id), cover: kept.cover })
+      forget()
+    } catch (err) {
+      console.error('could not write down what this show is:', err.message)
+    }
+    res.json(kept)
+  }))
+
+  /**
+   * How long has gone into each show across the whole vault, which episodes
+   * of it are already written down somewhere, and what is known about it.
+   */
+  app.get('/api/anime/watched', wrap(async (_req, res) => {
+    res.json(await watched.all())
+  }))
+
+  /** File a show under different genres. Yours, not the database's. */
+  app.post('/api/anime/genres', wrap(async (req, res) => {
+    const { name, genres } = req.body ?? {}
+    const saved = await anime.setGenres(name, genres)
+    forget()
+    res.json(saved)
+  }))
+
+  /**
+   * Where the connection to AniList stands. Asked before anything is sent,
+   * so the button on the card can say "connect" rather than failing at it.
+   *
+   * Checking a token means asking AniList who it belongs to, which is a round
+   * trip — so a name coming back is proof, and a name not coming back says
+   * why rather than leaving the card to guess.
+   */
+  app.get('/api/anilist', wrap(async (_req, res) => {
+    if (!anime.connected) {
+      return res.json({ connected: false, clientId: anime.clientId, settingsFile })
+    }
+    try {
+      const user = await anime.viewer()
+      res.json({ connected: true, clientId: anime.clientId, settingsFile, user })
+    } catch (err) {
+      res.json({
+        connected: false, clientId: anime.clientId, settingsFile, problem: err.message,
+      })
+    }
+  }))
+
+  /**
+   * Keep the AniList connection in the settings file.
+   *
+   * Written from in here rather than left as something to go and edit. There
+   * are two config.json files, only one of them is read, an invisible mark at
+   * the front of it stops the app reading either, and none of that is worth
+   * knowing to connect an account. The token is checked before it is kept, so
+   * a bad paste is refused at the moment it can still be explained.
+   */
+  app.post('/api/anilist', wrap(async (req, res) => {
+    if (!settingsFile) return res.status(400).json({ error: 'no settings file to write to' })
+    const clientId = String(req.body?.clientId ?? '').trim()
+    const token = String(req.body?.token ?? '').trim()
+    if (clientId && !/^\d{1,12}$/.test(clientId)) {
+      return res.status(400).json({ error: 'the client id is the number AniList shows, digits only' })
+    }
+    if (token && /\s/.test(token)) {
+      return res.status(400).json({ error: 'that token has a space in it — copy the whole line, nothing around it' })
+    }
+
+    // Tried before it is kept. A token that doesn't work has no business in
+    // the settings file — it would sit there looking connected and failing
+    // at the one moment it is used.
+    let user = null
+    if (token) {
+      try {
+        user = await anime.viewer(token)
+      } catch (err) {
+        return res.json({ connected: false, clientId, settingsFile, problem: err.message })
+      }
+    }
+
+    // Everything already in the file survives; only these two lines are ours.
+    let current = {}
+    try { current = readJson(settingsFile) } catch { /* start from what we have */ }
+    const next = { ...current }
+    if (clientId) next.anilistClientId = clientId
+    if (token) next.anilistToken = token
+    fs.writeFileSync(settingsFile, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
+
+    res.json({ connected: Boolean(user), clientId, settingsFile, user })
+  }))
+
+  /**
+   * Say on AniList that a show has been watched up to an episode.
+   *
+   * The id AniList knows the show by is looked up here rather than sent from
+   * the app — it lives beside the covers, keyed by the name in the note, and
+   * the note itself has no business carrying a number that means nothing
+   * without a website.
+   */
+  app.post('/api/anime/sync', wrap(async (req, res) => {
+    const name = String(req.body?.name ?? '').trim()
+    const episode = Number(req.body?.episode)
+    if (!name) return res.status(400).json({ error: 'which show?' })
+
+    const known = await anime.known()
+    const mediaId = known[name]?.anilistId
+    if (!mediaId) {
+      return res.status(400).json({
+        error: 'this show has no AniList entry saved — change it and pick it again',
+      })
+    }
+    res.json(await anime.sync({ mediaId, episode }))
+  }))
+
   // Covers are read straight off disk. They only ever arrive through the
-  // route above, so this folder holds pictures and nothing else.
+  // routes above, so this folder holds pictures and nothing else.
   app.use('/api/covers', express.static(coversDir, { fallthrough: true }))
 
   /** Many days at once, for the stacked review. Missing days come back empty. */
@@ -187,14 +341,24 @@ export function createApp({
 }
 
 /**
- * Everything played, totalled across the whole vault.
+ * Everything of one kind, totalled across the whole vault.
+ *
+ * `field` is what a day calls it — `game` on a game block, `show` on an anime
+ * one — and `source` is whichever of the two keeps the facts to go with it.
+ * The counting is the same either way: how long, over how many days, between
+ * which two of them.
+ *
+ * Anime carries one thing more, which is which episodes are already written
+ * down somewhere. That is what lets the grid of them say where you had got
+ * to without having to ask a website, and it costs nothing here — the days
+ * are being read anyway.
  *
  * Reading every day for every question would be silly, and never re-reading
  * them would go stale the moment a day is written — so the answer is kept
  * until something changes it, or until it is old enough that a change made in
  * Obsidian rather than in here will have been noticed.
  */
-function createPlayed(store, games) {
+function createTotals(store, source, field) {
   let cached = null
   let when = 0
 
@@ -214,23 +378,38 @@ function createPlayed(store, games) {
         const day = await store.readDay(date)
         if (day.malformed) continue
         for (const entry of day.entries) {
-          if (!entry.game) continue
-          const had = totals.get(entry.game) ?? { minutes: 0, days: new Set() }
+          const name = entry[field]
+          if (!name) continue
+          const had = totals.get(name) ?? { minutes: 0, days: new Set(), episodes: new Set() }
           had.minutes += minutesOf(entry.end) - minutesOf(entry.start)
           had.days.add(date)
-          totals.set(entry.game, had)
+          for (const episode of entry.episodes ?? []) had.episodes.add(episode)
+          totals.set(name, had)
         }
       }
 
-      const known = await games.known()
+      // Everything counted, and everything merely known. The second half
+      // matters the moment something is attached: the day it was attached on
+      // has not been written yet, so counting alone would find nothing and
+      // the card would open blank on the thing you just picked. What a show
+      // is does not depend on having logged an hour of it.
+      const known = await source.known()
       const out = {}
-      for (const [name, total] of totals) {
+      for (const name of new Set([...totals.keys(), ...Object.keys(known)])) {
+        const total = totals.get(name) ?? { minutes: 0, days: new Set(), episodes: new Set() }
         const dates = [...total.days].sort()
         out[name] = {
           minutes: total.minutes,
           days: dates.length,
           first: dates[0],
           last: dates[dates.length - 1],
+          // `seen`, not `episodes` — the facts beside the covers already use
+          // that word for how many the show has, and the two would land on
+          // each other. How many there are and which ones you watched are
+          // different questions with the same noun in them.
+          ...(total.episodes.size > 0
+            ? { seen: [...total.episodes].sort((a, b) => a - b) }
+            : {}),
           ...(known[name] ?? {}),
         }
       }
