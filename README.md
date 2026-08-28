@@ -109,6 +109,20 @@ top of a store page. The cover itself comes from Steam, which has one for
 every game it sells and asks for no key. A game Steam has never sold gets its
 name and no picture.
 
+Opening a named Game block shows a card beside the note: the cover, what the
+game is, and how long has gone into it across every day in the vault — not
+just that session.
+
+What a game *is* — its platforms, its genres, its year — is kept once per game
+in `covers/games.json` rather than on every entry that mentions it. A day is a
+record of what happened, and "Action, Platformer, PC" is not something that
+happened; it would be the same forty lines of it in a year of playing one
+game, in the file you actually read.
+
+The platforms are the ones a game is **sold** on, which is not quite the same
+as the one you played it on — nothing in either database knows that. Genres
+are the database's own, and coarse: there is no "FPS", only "Action".
+
 Two Game blocks only merge into one when they are the same game — finishing
 one and starting another is two things that happened.
 

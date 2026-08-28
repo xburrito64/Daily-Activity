@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchGames, keepCover, coverUrl } from './api.js'
-import { COVER_ASPECT } from './game.js'
+import { searchGames, attachGame } from './api.js'
 
 // Long enough that typing a name doesn't fire a search per letter, short
 // enough that stopping feels like the results were already waiting.
@@ -11,15 +10,15 @@ const MIN_QUERY = 2
 const KEY_HELP = 'https://rawg.io/apikey'
 
 /**
- * Which game a Game block was. A search box until something is picked, and
- * then the game itself, with a way back.
+ * Finding which game a Game block was.
  *
- * The name is the record — it is what the note in the vault says, and what it
- * will still say with none of this installed. The cover is a copy kept in the
- * vault beside the notes, so the day still shows what was played offline, and
- * after this app is gone.
+ * Only the search: once something is picked the card takes over, and asking to
+ * change one brings this back. The name is the record — it is what the note in
+ * the vault says, and what it will still say with none of this installed. The
+ * cover is a copy kept in the vault beside the notes, so the day still shows
+ * what was played offline, and after this app is gone.
  */
-export default function GameSearch({ block, onAttach }) {
+export default function GameSearch({ block, onAttach, onCancel }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [state, setState] = useState('idle') // idle | searching | done | error
@@ -28,15 +27,9 @@ export default function GameSearch({ block, onAttach }) {
   const [problem, setProblem] = useState('')
   const [cursor, setCursor] = useState(0)
   const [saving, setSaving] = useState(null) // the game whose cover is coming
-  // "Change" reopens the search over a game that is already attached, without
-  // taking it off first — a search that finds nothing should leave you where
-  // you were rather than having thrown away what you had.
-  const [changing, setChanging] = useState(false)
 
   const input = useRef(null)
   const active = useRef(null)
-
-  const searching = !block.game || changing
 
   // Ask once whether there is a key at all, so an empty box can say what is
   // missing instead of waiting for someone to type into a search that was
@@ -53,10 +46,10 @@ export default function GameSearch({ block, onAttach }) {
     return () => { alive = false }
   }, [])
 
-  // Whenever the box appears, the cursor is in it. Opening a Game block with
-  // nothing attached is the question being asked; asking to change one is the
-  // same question again, and neither should need a click to answer.
-  useEffect(() => { if (searching) input.current?.focus() }, [searching])
+  // The box appears, the cursor is in it. Opening a Game block with nothing
+  // attached is the question being asked; asking to change one is the same
+  // question again, and neither should need a click to answer.
+  useEffect(() => { input.current?.focus() }, [])
 
   useEffect(() => {
     const q = query.trim()
@@ -103,13 +96,12 @@ export default function GameSearch({ block, onAttach }) {
     setProblem('')
     let cover = ''
     try {
-      const kept = await keepCover(result)
+      const kept = await attachGame(result)
       cover = kept.cover
     } catch (err) {
       setProblem(`Kept the name, but not the cover — ${err.message}`)
     }
     setSaving(null)
-    setChanging(false)
     setQuery('')
     setResults([])
     onAttach({ name: result.name, cover })
@@ -119,7 +111,10 @@ export default function GameSearch({ block, onAttach }) {
     if (e.key === 'Escape') {
       // Clear the box first; only an empty one lets escape close the note.
       if (query) { e.stopPropagation(); setQuery(''); return }
-      if (changing) { e.stopPropagation(); setChanging(false) }
+      // Nothing typed and a game already attached: escape is "never mind",
+      // which puts the game back rather than closing the note out from under
+      // a question you were only half asking.
+      if (block.game) { e.stopPropagation(); onCancel() }
       return
     }
     if (results.length === 0) return
@@ -135,33 +130,6 @@ export default function GameSearch({ block, onAttach }) {
     }
   }
 
-  if (!searching) {
-    return (
-      <div className="gamepick">
-        <div className="gameheld">
-          {block.cover
-            ? (
-              <img
-                className="gamecover"
-                style={{ '--cover-aspect': COVER_ASPECT }}
-                src={coverUrl(block.cover)}
-                alt=""
-              />
-            )
-            : <span className="gamecover none" aria-hidden="true">🎮</span>}
-          <span className="gamename">{block.game}</span>
-          <button type="button" className="notebtn" onClick={() => { setChanging(true); setQuery('') }}>
-            Change
-          </button>
-          <button type="button" className="notebtn" onClick={() => onAttach(null)}>
-            Remove
-          </button>
-        </div>
-        {problem && <p className="gameproblem">{problem}</p>}
-      </div>
-    )
-  }
-
   return (
     <div className="gamepick">
       <div className="gamesearch">
@@ -175,8 +143,8 @@ export default function GameSearch({ block, onAttach }) {
           onKeyDown={onKeyDown}
         />
         {state === 'searching' && <span className="gamenote">looking…</span>}
-        {changing && (
-          <button type="button" className="notebtn" onClick={() => setChanging(false)}>
+        {block.game && (
+          <button type="button" className="notebtn" onClick={onCancel}>
             Keep {block.game}
           </button>
         )}

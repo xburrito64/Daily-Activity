@@ -789,42 +789,101 @@ h1 {
    still one block's business. */
 .gamepick { margin-bottom: var(--s-5); }
 
-/* --- the game once it has one ---------------------------------------- */
-.gameheld {
+/* --- the game once it has one, beside the note rather than above it ---
+   The note is what you write; the card is what you played. Two things, so
+   two columns — and the card is the one with a fixed width, since a cover
+   has a size it wants and prose does not. */
+.notebody { display: flex; align-items: stretch; gap: var(--s-5); }
+.notebody .notetext { flex: 1; min-width: 0; }
+
+.gamecard {
+  flex: none;
   display: flex;
-  align-items: center;
-  gap: var(--s-5);
-  padding: var(--s-3) var(--s-4);
+  gap: var(--s-6);
+  width: 390px;
+  padding: var(--s-5);
   background: var(--c-bg);
   border: 1px solid var(--c-line);
   border-radius: var(--r-md);
 }
 .gamecover {
   flex: none;
-  height: 68px;
-  width: calc(68px * var(--cover-aspect, 0.667));
+  align-self: flex-start;
+  height: 150px;
+  width: calc(150px * var(--cover-aspect, 0.667));
   object-fit: cover;
   border-radius: var(--r-sm);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 3px 10px rgba(0, 0, 0, 0.45);
 }
-/* No cover kept — the tag's own symbol, at the size the picture would be. */
+/* No cover kept — the tag's own symbol, in the space the picture would have. */
 .gamecover.none {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 40px;
   background: var(--c-surface);
   box-shadow: none;
 }
-.gamename {
+
+.gamefacts {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--f-lg);
-  font-weight: var(--w-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
 }
+.gamename {
+  font-size: var(--f-xl);
+  font-weight: var(--w-medium);
+  line-height: 1.15;
+  /* Long names wrap rather than being cut off — this is the one place the
+     whole name is meant to be readable. */
+  overflow-wrap: anywhere;
+}
+
+/* A hairline under the name with a mark in the middle of it, the same gold
+   the rest of the chronicle uses. Decoration; it carries nothing. */
+.gamerule {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin: var(--s-2) 0 var(--s-3);
+  color: var(--c-accent);
+}
+.gamerule::before,
+.gamerule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #3a3016, transparent);
+}
+.gamerule i {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  opacity: 0.75;
+  transform: rotate(45deg);
+}
+
+.gamestat {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  font-size: var(--f-base);
+  color: var(--c-text);
+}
+.gamestat svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--c-accent);
+}
+
+/* Pushed to the foot of the card: what the card is for is being looked at,
+   and these are only there for the day you got the game wrong. */
+.gamecardbtns { display: flex; gap: var(--s-3); margin-top: auto; padding-top: var(--s-4); }
+.gamecardbtns .notebtn { font-size: var(--f-sm); padding: var(--s-1) var(--s-4); }
 
 /* --- the search ------------------------------------------------------- */
 .gamesearch { display: flex; align-items: center; gap: var(--s-5); }

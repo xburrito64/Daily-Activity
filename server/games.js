@@ -28,6 +28,9 @@ const STEAM_HOST = 'shared.cloudflare.steamstatic.com'
 const STEAM_ART = `https://${STEAM_HOST}/store_item_assets/steam/apps`
 const COVER_FILE = 'library_600x900.jpg'
 
+// What is known about each game, beside the covers it belongs with.
+const FACTS_FILE = 'games.json'
+
 const STEAM_APP_RE = /store\.steampowered\.com\/app\/(\d+)/
 
 const RESULTS = 8          // a screenful; more is a list to read, not a pick
@@ -207,6 +210,11 @@ export function createGames({ apiKey, coversDir }) {
           released: game.released ? game.released.slice(0, 4) : '',
           cover,
           genres: (game.genres ?? []).slice(0, 3).map((g) => g.name),
+          // What it is sold on, which is not quite what it was played on —
+          // see `remember`. PC first, since that is where a cover came from.
+          platforms: (game.parent_platforms ?? [])
+            .map((p) => p.platform.name)
+            .sort((a, b) => (a === 'PC' ? -1 : b === 'PC' ? 1 : 0)),
           description,
         }
       }))
@@ -253,6 +261,49 @@ export function createGames({ apiKey, coversDir }) {
       await fs.writeFile(tmp, bytes)
       await fs.rename(tmp, target)
       return { cover: file, already: false }
+    },
+
+    /**
+     * What is known about a game, kept once for the game rather than once for
+     * every hour spent on it.
+     *
+     * This does not go in the daily notes. A day is a record of what happened,
+     * and "Action, Strategy, PC" is not something that happened — it would be
+     * the same forty lines of it in a year of playing one game, in the file
+     * you actually read. It sits beside the covers instead, keyed by the name
+     * the notes use, so the two halves still find each other offline and a
+     * person opening it can see what it is.
+     *
+     * The platforms are the ones it is sold on rather than the one it was
+     * played on, which nothing here can know. PC comes first because that is
+     * where the cover came from.
+     */
+    async remember(game) {
+      const all = await this.known()
+      all[game.name] = {
+        platforms: game.platforms ?? [],
+        genres: game.genres ?? [],
+        released: game.released ?? '',
+        cover: game.cover ?? '',
+      }
+      await fs.mkdir(coversDir, { recursive: true })
+      const target = path.join(coversDir, FACTS_FILE)
+      const tmp = `${target}.tmp-${process.pid}`
+      await fs.writeFile(tmp, `${JSON.stringify(all, null, 1)}\n`, 'utf8')
+      await fs.rename(tmp, target)
+    },
+
+    /** Everything remembered so far, by game name. Empty if there is none. */
+    async known() {
+      try {
+        const text = await fs.readFile(path.join(coversDir, FACTS_FILE), 'utf8')
+        const parsed = JSON.parse(text.replace(/^﻿/, ''))
+        return parsed && typeof parsed === 'object' ? parsed : {}
+      } catch {
+        // Missing, or edited into something we can't read. Either way there is
+        // nothing to say about a game, which the card is built to survive.
+        return {}
+      }
     },
   }
 }

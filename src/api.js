@@ -25,13 +25,19 @@ export const getRange = (from, to) => request(`/api/range?from=${from}&to=${to}`
 export const searchGames = (query, signal) =>
   request(`/api/games?q=${encodeURIComponent(query)}`, { signal })
 
-/** Copy a game's cover into the vault. Answers with the file it became. */
-export const keepCover = (game) =>
-  request('/api/games/cover', {
+/**
+ * Take a game: its cover into the vault, and what it is written down beside
+ * the covers. Answers with the file the cover became.
+ */
+export const attachGame = (game) =>
+  request('/api/games/attach', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: game.id, name: game.name, image: game.cover }),
+    body: JSON.stringify(game),
   })
+
+/** How long has gone into each game, across every day in the vault. */
+export const getPlayed = () => request('/api/games/played')
 
 /** Where a kept cover is served from. */
 export const coverUrl = (file) => `/api/covers/${encodeURIComponent(file)}`

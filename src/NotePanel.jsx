@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { slotToTime, formatDuration } from './time.js'
 import { gameFace } from './game.js'
 import GameSearch from './GameSearch.jsx'
+import GameCard from './GameCard.jsx'
 import TagIcon from './TagIcon.jsx'
 
 /** Only Game blocks ask what they were. */
@@ -18,6 +19,14 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
 
   const clickedTag = tagFor(block.tag)
   const searchable = block.tag === SEARCHABLE
+
+  // Asking to change a game opens the search back over it without taking it
+  // off first: a search that finds nothing should leave you where you were
+  // rather than having thrown away what you had.
+  const [changing, setChanging] = useState(false)
+  useEffect(() => { setChanging(false) }, [block.id])
+
+  const searching = searchable && (!block.game || changing)
   // A game block with nothing attached opens on the question, not on the
   // note: naming what you played is the thing you came here to do, and the
   // note is still one tab away.
@@ -29,7 +38,7 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
   // On opening, and only on opening. Attaching a game turns the question off,
   // and following that with the cursor would drag it into the note nobody
   // asked to write — and take ctrl+z with it, which at that moment means
-  // "not that one" and is the first thing you would reach for.
+  // "not that one", and is the first thing you would reach for.
   const opened = useRef(null)
   useEffect(() => {
     const fresh = opened.current !== block.id
@@ -70,24 +79,37 @@ export default function NotePanel({ cluster, block, date, tags, onNote, onGame, 
         <button className="notebtn" onClick={onClose}>Close</button>
       </div>
 
-      {/* Keyed on the block, so clicking a different one starts a fresh
-          search rather than showing the last block's results under it. */}
-      {searchable && (
+      {/* The search wants the whole width — it is a list of covers to read
+          across. The game it settles on wants a column beside the note, since
+          by then it is one thing to glance at rather than several to compare.
+          Keyed on the block, so clicking a different one starts a fresh search
+          rather than showing the last block's results under it. */}
+      {searching && (
         <GameSearch
           key={block.id}
           block={block}
-          onAttach={(game) => onGame(block.id, game)}
+          onAttach={(game) => { setChanging(false); onGame(block.id, game) }}
+          onCancel={() => setChanging(false)}
         />
       )}
 
-      <textarea
-        ref={area}
-        className="notetext"
-        placeholder="Anything worth remembering about this…"
-        value={block.note ?? ''}
-        onChange={(e) => onNote(block.id, e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
-      />
+      <div className="notebody">
+        {searchable && !searching && (
+          <GameCard
+            block={block}
+            onChange={() => setChanging(true)}
+            onRemove={() => onGame(block.id, null)}
+          />
+        )}
+        <textarea
+          ref={area}
+          className="notetext"
+          placeholder="Anything worth remembering about this…"
+          value={block.note ?? ''}
+          onChange={(e) => onNote(block.id, e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
+        />
+      </div>
     </div>
   )
 }

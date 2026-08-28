@@ -41,8 +41,13 @@ export function timeToSlot(text) {
 }
 
 /** Slot span -> "7h 15m" / "45m" / "8h". */
-export function formatDuration(slots) {
-  const total = slots * MINUTES_PER_SLOT
+export const formatDuration = (slots) => formatMinutes(slots * MINUTES_PER_SLOT)
+
+/**
+ * The same, from minutes. A total counted off the disk is in minutes, since
+ * what is written there is clock times rather than this app's slots.
+ */
+export function formatMinutes(total) {
   const h = Math.floor(total / 60)
   const m = total % 60
   if (h === 0) return `${m}m`
