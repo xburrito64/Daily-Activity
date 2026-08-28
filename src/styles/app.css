@@ -964,13 +964,19 @@ h1 {
 
 /* Pushed to the foot of the card: what the card is for is being looked at,
    and these are only there for the day you got the game wrong. */
+/* The last line of facts, with the pen at the end of it. */
+.gamefoot { display: flex; align-items: center; gap: var(--s-4); }
+.gamefoot .gameedit { margin-left: auto; }
+
+/* Only out while the card is being edited, so it is the one row allowed to
+   make the card taller than the cover — and only for as long as you are in
+   there. */
 .gamecardbtns {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--s-3);
-  margin-top: auto;
-  padding-top: var(--s-4);
+  padding-top: var(--s-2);
 }
 .gamecardbtns .notebtn { font-size: var(--f-sm); padding: var(--s-1) var(--s-4); }
 

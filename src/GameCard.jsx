@@ -121,21 +121,16 @@ export default function GameCard({ block, onChange, onRemove }) {
           </span>
         )}
 
-        {played && (
-          <span className="gamestat" title={spanOf(played)}>
-            <ClockIcon />
-            {formatMinutes(played.minutes)}
-          </span>
-        )}
-
-        {/* The pen last, so it is the one against the corner however many
-            buttons are out beside it. */}
-        <span className="gamecardbtns">
-          {editing && (
-            <>
-              <button type="button" className="notebtn" onClick={onChange}>Change</button>
-              <button type="button" className="notebtn" onClick={onRemove}>Remove</button>
-            </>
+        {/* The pen rides the last line of facts rather than sitting at the
+            foot of the card. Given a row of its own it stretches the card
+            past the cover, and the gap that opens under the picture is the
+            first thing you see. */}
+        <span className="gamefoot">
+          {played && (
+            <span className="gamestat" title={spanOf(played)}>
+              <ClockIcon />
+              {formatMinutes(played.minutes)}
+            </span>
           )}
           <button
             type="button"
@@ -147,6 +142,13 @@ export default function GameCard({ block, onChange, onRemove }) {
             <PenIcon />
           </button>
         </span>
+
+        {editing && (
+          <span className="gamecardbtns">
+            <button type="button" className="notebtn" onClick={onChange}>Change</button>
+            <button type="button" className="notebtn" onClick={onRemove}>Remove</button>
+          </span>
+        )}
       </div>
     </div>
   )
