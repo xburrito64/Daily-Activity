@@ -5,7 +5,7 @@ import {
   minutesNow, msToNextMinute, paintSpans,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes } from './blocks.js'
-import { gameFace } from './game.js'
+import { blockFace } from './face.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
@@ -826,7 +826,7 @@ export default function DayList({
   // Dragging a named game around should read as that game, not as "Game".
   const readoutTag = painting
     ? armedTag
-    : resizingBlock && gameFace(tagById(resizingBlock.tag), resizingBlock)
+    : resizingBlock && blockFace(tagById(resizingBlock.tag), resizingBlock)
 
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
 
@@ -1003,7 +1003,7 @@ export default function DayList({
                       zIndex: piece.lane,
                       background: tag?.colour ?? '#555',
                     }}
-                    title={`${b.game || tag?.name || b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
+                    title={`${b.game || b.show || tag?.name || b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
                   />
                 )
@@ -1024,7 +1024,7 @@ ${b.note}` : ''}`}
                 // A named game wears its own name and its own cover here.
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
-                const tag = gameFace(tagById(b.tag), b)
+                const tag = blockFace(tagById(b.tag), b)
                 const laneHeight = barHeight / lanes
                 const label = fitLabel(
                   tag, b.tag, ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth, laneHeight,

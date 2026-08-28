@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise, setGame } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise, setGame, setShow } from './blocks.js'
 import { paintSpans, SLOTS_PER_DAY } from './time.js'
 
 let pass = 0, fail = 0
@@ -521,6 +521,84 @@ t('a cover with no game is not written — it would mean nothing on its own', ()
 t('a day written before any of this reads back with no game', () => {
   const back = deserialise([{ tag: 'game', start: '10:00', end: '12:00' }])
   assert.deepStrictEqual([back[0].game, back[0].cover], ['', ''])
+})
+
+// --- anime: the same again, plus which episodes ---------------------------
+
+const a = (id, show, startSlot, endSlot, episodes = [], cover = '') =>
+  ({ ...b(id, 'anime', startSlot, endSlot), show, episodes, cover })
+
+t('two stretches of the same show fold together', () => {
+  const day = [a('a', 'Frieren', 120, 126, [1]), a('c', 'Frieren', 126, 132, [2])]
+  const after = applyResize(day, 'c', 126, 138)
+  assert.equal(after.length, 1)
+  assert.deepStrictEqual([after[0].startSlot, after[0].endSlot, after[0].show],
+    [120, 138, 'Frieren'])
+})
+
+t('and the episodes join up rather than one evening losing half of itself', () => {
+  const day = [a('a', 'Frieren', 120, 126, [1, 2]), a('c', 'Frieren', 126, 132, [3])]
+  const after = applyResize(day, 'c', 126, 138)
+  assert.deepStrictEqual(after[0].episodes, [1, 2, 3])
+})
+
+t('two different shows do not fold, however much they touch', () => {
+  const day = [a('a', 'Frieren', 120, 126, [1]), a('c', 'Dandadan', 126, 132, [1])]
+  const after = applyResize(day, 'c', 124, 132)
+  assert.equal(after.length, 2)
+})
+
+t('a show nobody has named does not fold into a named one', () => {
+  const day = [a('a', 'Frieren', 120, 126, [1]), a('c', '', 126, 132)]
+  const after = applyResize(day, 'c', 126, 138)
+  assert.equal(after.length, 2)
+})
+
+t('naming a block says what was watched, and which of it', () => {
+  const day = [a('a', '', 120, 132)]
+  const after = setShow(day, 'a', { name: 'Frieren', cover: 'frieren-154587.jpg', episodes: [7, 5, 6] })
+  assert.deepStrictEqual(
+    [after[0].show, after[0].cover, after[0].episodes],
+    ['Frieren', 'frieren-154587.jpg', [5, 6, 7]],
+  )
+})
+
+t('changing to another show drops the episodes with it', () => {
+  // Episode 7 of one thing is not episode 7 of another, and carrying the
+  // numbers across would be a quiet lie about the evening.
+  const day = [a('a', 'Frieren', 120, 132, [5, 6, 7])]
+  const after = setShow(day, 'a', { name: 'Dandadan', cover: '', episodes: [] })
+  assert.deepStrictEqual([after[0].show, after[0].episodes], ['Dandadan', []])
+})
+
+t('taking the show back off leaves the block where it was', () => {
+  const day = [a('a', 'Frieren', 120, 132, [5])]
+  const after = setShow(day, 'a', null)
+  assert.equal(after.length, 1)
+  assert.deepStrictEqual(
+    [after[0].show, after[0].episodes, after[0].startSlot, after[0].endSlot],
+    ['', [], 120, 132],
+  )
+})
+
+t('the show, its episodes and its cover survive the round trip', () => {
+  const written = serialise([a('a', 'Frieren', 120, 132, [5, 6, 7], 'frieren-154587.jpg')])
+  assert.deepStrictEqual(written, [{
+    tag: 'anime', start: '20:00', end: '22:00',
+    show: 'Frieren', episodes: [5, 6, 7], cover: 'frieren-154587.jpg',
+  }])
+  const back = deserialise(written)
+  assert.deepStrictEqual([back[0].show, back[0].episodes], ['Frieren', [5, 6, 7]])
+})
+
+t('episodes with no show are not written — they would number nothing', () => {
+  assert.deepStrictEqual(serialise([a('a', '', 120, 132, [5, 6])]),
+    [{ tag: 'anime', start: '20:00', end: '22:00' }])
+})
+
+t('a day written before any of this reads back with no show', () => {
+  const back = deserialise([{ tag: 'anime', start: '20:00', end: '22:00' }])
+  assert.deepStrictEqual([back[0].show, back[0].episodes], ['', []])
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

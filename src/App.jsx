@@ -4,7 +4,7 @@ import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
 import { useDays } from './useDays.js'
 import { getTags } from './api.js'
-import { applyPaint, applyResize, removeBlock, setNote, setGame, newId, overlapCluster } from './blocks.js'
+import { applyPaint, applyResize, removeBlock, setNote, setGame, setShow, newId, overlapCluster } from './blocks.js'
 import { todayISO, formatDotted } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
@@ -174,17 +174,20 @@ export default function App() {
   }
 
   /**
-   * Say what a Game block was, or take the name back off.
+   * Say what a block was — which game, which show — or take the name off.
    *
-   * Naming one can fold it into a stretch of the same game it was already
+   * Naming one can fold it into a stretch of the same thing it was already
    * touching, and the survivor of that is the other block. So the note
    * follows it in rather than closing on an id that no longer exists — from
    * where you are sitting nothing was deleted, two things became one.
+   *
+   * Both kinds go through here because both kinds can vanish that way, and
+   * the note has to land on its feet either way.
    */
-  function handleGame(id, game) {
+  function handleNamed(id, name) {
     const date = selected.date
     const before = days[date]?.blocks ?? []
-    const after = setGame(before, id, game)
+    const after = name(before)
     editDay(date, after)
 
     if (after.some((b) => b.id === id)) return
@@ -194,6 +197,9 @@ export default function App() {
     ))
     if (survivor) setSelected({ date, id: survivor.id })
   }
+
+  const handleGame = (id, game) => handleNamed(id, (blocks) => setGame(blocks, id, game))
+  const handleShow = (id, show) => handleNamed(id, (blocks) => setShow(blocks, id, show))
 
   // `at` is only there when the whole block was slid: it is the height the
   // pointer was holding it at. Dragging an edge sends nothing, and keeps the
@@ -296,6 +302,7 @@ export default function App() {
           tags={tags}
           onNote={(id, note) => editDay(selected.date, (prev) => setNote(prev, id, note))}
           onGame={handleGame}
+          onShow={handleShow}
           onDelete={() => {
             editDay(selected.date, (prev) => removeBlock(prev, selected.id))
             setSelected(null)

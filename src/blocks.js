@@ -34,14 +34,21 @@ function placeFor(blocks, atSlot, lane) {
 /**
  * Whether two blocks are the same activity, and so cannot be two blocks.
  *
- * The tag says it for nineteen tags out of twenty. Games are the exception:
- * finishing one and starting another is two things that happened, and they
- * are both tagged Game. So what is being played counts too, and a game
- * nobody has named yet is its own answer — it never folds into a named one,
- * because there is no way to know it was the same game and getting that
- * wrong would put a name on time that wasn't spent there.
+ * The tag says it for eighteen tags out of twenty. Games and anime are the
+ * exceptions: finishing one and starting another is two things that happened,
+ * and they are both tagged Game, or both tagged Anime. So what is being
+ * played or watched counts too, and one nobody has named yet is its own
+ * answer — it never folds into a named one, because there is no way to know
+ * it was the same thing, and getting that wrong would put a name on time that
+ * wasn't spent there.
+ *
+ * Which episodes deliberately do not count. Two stretches of the same show
+ * back to back are one evening in front of it, whether you sat through three
+ * episodes or one — the episodes join up rather than keeping the blocks
+ * apart.
  */
-const sameThing = (a, b) => a.tag === b.tag && (a.game ?? '') === (b.game ?? '')
+const sameThing = (a, b) =>
+  a.tag === b.tag && (a.game ?? '') === (b.game ?? '') && (a.show ?? '') === (b.show ?? '')
 
 /**
  * Fold a block together with every block of the same activity it meets.
@@ -65,12 +72,16 @@ function mergeSameTag(blocks, block) {
 
   const keep = touching[0]
   const notes = touching.map((b) => b.note).filter(Boolean)
+  const episodes = touching.flatMap((b) => b.episodes ?? [])
   const merged = {
     ...keep,
     startSlot: Math.min(...touching.map((b) => b.startSlot)),
     endSlot: Math.max(...touching.map((b) => b.endSlot)),
     // Don't lose anything that was written on the blocks being absorbed.
     note: [...new Set(notes)].join('\n'),
+    // Nor anything that was watched during them. Two stretches of one show
+    // becoming one stretch means the evening was all of those episodes.
+    ...(episodes.length > 0 ? { episodes: [...new Set(episodes)].sort((a, b) => a - b) } : {}),
   }
   return blocks
     .filter((b) => b === keep || !touching.includes(b))
@@ -149,6 +160,30 @@ export function setGame(blocks, id, game) {
   const named = blocks.map((b) => (
     b.id === id ? { ...b, game: game?.name ?? '', cover: game?.cover ?? '' } : b
   ))
+  const target = named.find((b) => b.id === id)
+  return target ? mergeSameTag(named, target) : named
+}
+
+/**
+ * Say what was being watched, and which of it, or take it back off.
+ *
+ * `show` is { name, cover, episodes } or null. The same bargain the game
+ * above strikes: the name and the episodes are the record and are written out
+ * in the note, the cover is only ever the file the picture was saved as.
+ *
+ * Changing to a different show drops the episodes with it. Episode 7 of one
+ * thing is not episode 7 of another, and carrying the numbers across would be
+ * a quiet lie about an evening rather than an empty field.
+ */
+export function setShow(blocks, id, show) {
+  const named = blocks.map((b) => (b.id === id
+    ? {
+      ...b,
+      show: show?.name ?? '',
+      cover: show?.cover ?? '',
+      episodes: show?.name ? [...new Set(show.episodes ?? [])].sort((a, b2) => a - b2) : [],
+    }
+    : b))
   const target = named.find((b) => b.id === id)
   return target ? mergeSameTag(named, target) : named
 }
@@ -298,13 +333,15 @@ export function overlapCluster(blocks, id) {
 export function serialise(blocks) {
   // Saved in list order, not sorted by time: the order is what decides which
   // block stacks above which, and it has to survive a reload.
-  return blocks.map(({ tag, startSlot, endSlot, note, game, cover }) => {
+  return blocks.map(({ tag, startSlot, endSlot, note, game, show, episodes, cover }) => {
     const entry = { tag, start: slotToTime(startSlot), end: slotToTime(endSlot) }
     if (note) entry.note = note
     // The name goes in whether or not there is a picture; the picture is no
     // use on its own, so it only goes in behind the name.
     if (game) entry.game = game
-    if (game && cover) entry.cover = cover
+    if (show) entry.show = show
+    if (show && episodes?.length) entry.episodes = episodes
+    if ((game || show) && cover) entry.cover = cover
     return entry
   })
 }
@@ -317,6 +354,8 @@ export function deserialise(entries) {
     endSlot: timeToSlot(e.end),
     note: e.note ?? '',
     game: e.game ?? '',
+    show: e.show ?? '',
+    episodes: e.episodes ?? [],
     cover: e.cover ?? '',
   }))
 }
