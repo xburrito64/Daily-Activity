@@ -185,6 +185,46 @@ export function coverSource(raw) {
   return url
 }
 
+/**
+ * What sending an episode should actually do to an AniList entry.
+ *
+ * The awkward case is an episode behind where AniList has you, which is two
+ * completely different things wearing the same number.
+ *
+ * On a show you are part-way through it is almost always a day being filled
+ * in late — episode 3 of something you are twelve into is a record of a
+ * Tuesday, not a reason to un-watch nine episodes. So it changes nothing.
+ *
+ * On a show you have **finished** it can only be a rewatch. There is no
+ * "behind" left to be: the number cannot be filling a gap, because there are
+ * no gaps. So it starts one by itself, which is the whole of what a person
+ * means by putting episode 1 of something they finished last year.
+ *
+ * `asked` is the button on the card, for the case in between — a rewatch of
+ * something you never finished, which nothing here could work out on its own.
+ * Once one is under way AniList remembers it as REPEATING, and that carries
+ * the rest of the way through on its own.
+ *
+ * Finishing a rewatch is what makes it count as one there: the status goes
+ * back to completed and the tally of times through goes up by one.
+ */
+export function sendPlan({ episode, progress = 0, status = '', episodes = null, asked = false }) {
+  const finished = episodes != null && progress >= episodes
+  const behind = episode <= progress
+  const rewatch = Boolean(asked) || status === 'REPEATING' || (finished && behind)
+
+  if (!rewatch && behind) return { already: true, rewatch: false }
+
+  const done = episodes != null && episode >= episodes
+  return {
+    already: false,
+    rewatch,
+    done,
+    status: done ? 'COMPLETED' : rewatch ? 'REPEATING' : 'CURRENT',
+    countRepeat: rewatch && done,
+  }
+}
+
 /** The order seasons happened in, which is the only order to list them in. */
 const startedAt = (m) =>
   (m.startDate?.year ?? m.seasonYear ?? 9999) * 100 + (m.startDate?.month ?? 0)
@@ -479,7 +519,7 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
       if (!Number.isInteger(id) || id <= 0) throw refused('bad show id')
       const data = await ask(
         `query ($id: Int) {
-           Media(id: $id) { id episodes mediaListEntry { id progress status } }
+           Media(id: $id) { id episodes mediaListEntry { id progress status repeat } }
          }`,
         { id },
         { auth: true },
@@ -489,50 +529,113 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
         episodes: Number.isInteger(media?.episodes) ? media.episodes : null,
         progress: media?.mediaListEntry?.progress ?? 0,
         status: media?.mediaListEntry?.status ?? '',
+        // How many times through already. Only ever read to be added to.
+        repeat: media?.mediaListEntry?.repeat ?? 0,
       }
+    },
+
+    /**
+     * Whether a rewatch is under way, and where it has got to.
+     *
+     * Asked when a card opens rather than only when the button is pressed, so
+     * the button can say what it is about to do — "Rewatch · 1" rather than
+     * "AniList · 1" — instead of the answer arriving as a surprise after the
+     * fact. Both halves matter: what AniList thinks, and what was said here.
+     */
+    async standing(name) {
+      const show = String(name ?? '').trim()
+      const all = await this.known()
+      const asked = Boolean(all[show]?.rewatching)
+      const id = all[show]?.anilistId
+      if (!id || !this.connected) return { asked, known: false }
+      try {
+        const at = await this.progressOf(id)
+        return { asked, known: true, ...at }
+      } catch {
+        // Not being able to ask is not worth a red panel on a card. The
+        // button falls back to saying the plain thing.
+        return { asked, known: false }
+      }
+    },
+
+    /**
+     * Remember that a show is being rewatched, so the next evening of it does
+     * not have to be told again.
+     *
+     * Kept beside the covers rather than on the block: it is true of the show
+     * for as long as you are going through it again, not of one evening. The
+     * flag is cleared the moment a rewatch finishes — AniList counts it then,
+     * and there is nothing left to remember.
+     */
+    async setRewatching(name, on) {
+      const show = String(name ?? '').trim()
+      if (!show) throw refused('which show?')
+      const all = await this.known()
+      // Only ever about a show that was actually picked. Without the AniList
+      // id beside it the flag can never mean anything, and writing one anyway
+      // is how a mistyped name becomes a permanent line in the vault.
+      if (!all[show]) throw refused(`nothing is known about "${show}"`)
+      const kept = { ...(all[show] ?? {}) }
+      if (on) kept.rewatching = true
+      else delete kept.rewatching
+      all[show] = kept
+      await this.write(all)
+      return Boolean(kept.rewatching)
     },
 
     /**
      * Tell AniList you have watched up to an episode.
      *
-     * Only ever forwards. A block from last month naming episode 3 is a true
-     * record of that evening and no reason to un-watch the thirty episodes
-     * since — progress there is how far you have got, not what you did on a
-     * Tuesday, and the two are only the same number while you are logging as
-     * you go. So an episode behind where AniList already has you changes
-     * nothing, and says so rather than pretending to have done something.
+     * What that should mean is worked out by `sendPlan`, which is where the
+     * one genuinely awkward question lives: an episode behind where AniList
+     * has you is a day filled in late on a show you are part-way through, and
+     * a rewatch on one you have finished.
      *
      * Finishing the last episode is finishing the show, which is a different
      * word there and worth getting right; anything short of that is watching
-     * it now.
+     * it now, or going through it again.
      */
-    async sync({ mediaId, episode }) {
+    async sync({ mediaId, episode, asked = false }) {
       const id = Number(mediaId)
       const wanted = Number(episode)
       if (!Number.isInteger(id) || id <= 0) throw refused('bad show id')
       if (!Number.isInteger(wanted) || wanted <= 0) throw refused('bad episode')
 
       const before = await this.progressOf(id)
-      if (before.progress >= wanted) {
-        return { already: true, progress: before.progress, status: before.status }
+      const plan = sendPlan({ episode: wanted, asked, ...before })
+      if (plan.already) {
+        return { already: true, rewatch: false, progress: before.progress, status: before.status }
       }
 
-      const done = before.episodes != null && wanted >= before.episodes
+      // `repeat` is only ever sent when it changes. Naming it otherwise would
+      // be handing AniList a number it did not ask us to touch.
+      const bumping = plan.countRepeat
       const data = await ask(
-        `mutation ($id: Int, $p: Int, $s: MediaListStatus) {
-           SaveMediaListEntry(mediaId: $id, progress: $p, status: $s) {
-             id progress status
-           }
-         }`,
-        { id, p: wanted, s: done ? 'COMPLETED' : 'CURRENT' },
+        bumping
+          ? `mutation ($id: Int, $p: Int, $s: MediaListStatus, $r: Int) {
+               SaveMediaListEntry(mediaId: $id, progress: $p, status: $s, repeat: $r) {
+                 id progress status repeat
+               }
+             }`
+          : `mutation ($id: Int, $p: Int, $s: MediaListStatus) {
+               SaveMediaListEntry(mediaId: $id, progress: $p, status: $s) {
+                 id progress status repeat
+               }
+             }`,
+        bumping
+          ? { id, p: wanted, s: plan.status, r: before.repeat + 1 }
+          : { id, p: wanted, s: plan.status },
         { auth: true },
       )
       const saved = data?.SaveMediaListEntry ?? {}
       return {
         already: false,
+        rewatch: plan.rewatch,
+        finished: plan.done,
         was: before.progress,
         progress: saved.progress ?? wanted,
-        status: saved.status ?? (done ? 'COMPLETED' : 'CURRENT'),
+        status: saved.status ?? plan.status,
+        repeat: saved.repeat ?? before.repeat,
       }
     },
   }

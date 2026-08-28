@@ -305,7 +305,40 @@ export function createApp({
         error: 'this show has no AniList entry saved — change it and pick it again',
       })
     }
-    res.json(await anime.sync({ mediaId, episode }))
+
+    const asked = Boolean(req.body?.rewatching ?? known[name]?.rewatching)
+    const done = await anime.sync({ mediaId, episode, asked })
+
+    // A rewatch that has started is remembered, so the next evening of the
+    // show does not have to be told again; one that has just finished is
+    // forgotten, because AniList has counted it and there is nothing left to
+    // carry. Neither is worth failing the send over.
+    try {
+      if (done.rewatch && !done.finished) await anime.setRewatching(name, true)
+      else if (done.finished || !done.rewatch) await anime.setRewatching(name, false)
+      forget()
+    } catch (err) {
+      console.error('could not remember the rewatch:', err.message)
+    }
+    res.json(done)
+  }))
+
+  /**
+   * Where a show stands on AniList, and whether a rewatch is under way.
+   *
+   * Asked when a card opens so its button can say what pressing it would do,
+   * rather than the answer arriving afterwards as a surprise.
+   */
+  app.get('/api/anime/standing', wrap(async (req, res) => {
+    res.json(await anime.standing(req.query.name))
+  }))
+
+  /** Say a show is being watched again, or that it isn't any more. */
+  app.post('/api/anime/rewatch', wrap(async (req, res) => {
+    const { name, rewatching } = req.body ?? {}
+    const on = await anime.setRewatching(name, Boolean(rewatching))
+    forget()
+    res.json({ rewatching: on })
   }))
 
   // Covers are read straight off disk. They only ever arrive through the

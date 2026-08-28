@@ -89,12 +89,28 @@ export const saveAnilist = (clientId, token) =>
     body: JSON.stringify({ clientId, token }),
   })
 
-/** Tell AniList a show has been watched up to an episode. */
-export const syncAnime = (name, episode) =>
+/**
+ * Tell AniList a show has been watched up to an episode. `rewatching` is the
+ * button on the card having been pressed; left off, the server works it out
+ * from where AniList has you and what it was told last time.
+ */
+export const syncAnime = (name, episode, rewatching) =>
   request('/api/anime/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, episode }),
+    body: JSON.stringify({ name, episode, rewatching }),
+  })
+
+/** Where a show stands on AniList, and whether a rewatch is under way. */
+export const getStanding = (name) =>
+  request(`/api/anime/standing?name=${encodeURIComponent(name)}`)
+
+/** Say a show is being watched again, or that it isn't any more. */
+export const setRewatching = (name, rewatching) =>
+  request('/api/anime/rewatch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, rewatching }),
   })
 
 /** Where a kept cover is served from. */

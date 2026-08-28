@@ -1261,6 +1261,31 @@ h1 {
 
 /* The one button in this app that sends anything anywhere, so it is lit
    like a thing you are about to do rather than tucked in with the rest. */
+/* Going round again. A switch rather than a thing that happens: it says how
+   the button beside it should be read, and lights when that reading is the
+   one in force — whether it was pressed, or follows from having finished the
+   show, or is a rewatch AniList already knows about. */
+.rewatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  color: var(--c-text-faint);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.rewatch svg { width: 14px; height: 14px; }
+.rewatch:hover { color: var(--c-text); }
+.rewatch.on { color: var(--c-accent); border-color: var(--c-accent); }
+/* With the switch beside it, the pair is what sits at the end of the row and
+   the send button no longer pushes off on its own. */
+.gamefoot .rewatch + .anilist { margin-left: 0; }
+
 .anilist {
   margin-left: auto;
   padding: var(--s-1) var(--s-3);

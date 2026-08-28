@@ -44,6 +44,16 @@ export function ClockIcon() {
   )
 }
 
+/** Going round again: an arrow that comes back to where it started. */
+export function RewatchIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+      <path d="M13.4 7.1a5.5 5.5 0 1 1-1.7-3.6" strokeLinecap="round" />
+      <path d="M13.9 1.9v3.4h-3.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 /** Episodes: one frame of film with the play mark on it. */
 export function EpisodeIcon() {
   return (

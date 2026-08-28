@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { coverUrl, getWatched, setShowGenres, getAnilist, saveAnilist, syncAnime } from './api.js'
+import {
+  coverUrl, getWatched, setShowGenres, getAnilist, saveAnilist,
+  syncAnime, getStanding, setRewatching,
+} from './api.js'
 import { COVER_ASPECT } from './face.js'
 import { formatMinutes } from './time.js'
 import { episodeLabel, furthest } from './episodes.js'
-import { PenIcon, TagsIcon, ClockIcon, EpisodeIcon } from './icons.jsx'
+import { PenIcon, TagsIcon, ClockIcon, EpisodeIcon, RewatchIcon } from './icons.jsx'
 
 // Kept level with MAX_GENRES in server/anime.js: the server is the one that
 // enforces it, this only stops the + offering a slot there is no room for.
@@ -35,6 +38,7 @@ export default function AnimeCard({ block, onChange, onEpisodes, onRemove }) {
   const [editing, setEditing] = useState(false)
 
   const [link, setLink] = useState(null) // null until AniList has been asked
+  const [standing, setStanding] = useState(null) // where the show is, over there
   const [connecting, setConnecting] = useState(false)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(null)
@@ -62,6 +66,18 @@ export default function AnimeCard({ block, onChange, onEpisodes, onRemove }) {
     return () => { alive = false }
   }, [])
 
+  // Where the show stands: how far AniList has you, and whether a rewatch is
+  // already under way. Asked on opening so the button can say what pressing
+  // it would do rather than the answer arriving afterwards.
+  useEffect(() => {
+    let alive = true
+    if (!block.show) return () => { alive = false }
+    getStanding(block.show)
+      .then((state) => { if (alive) setStanding(state) })
+      .catch(() => { if (alive) setStanding(null) })
+    return () => { alive = false }
+  }, [block.show, link?.connected])
+
   // A different evening is a different thing to have sent.
   useEffect(() => { setSent(null); setProblem('') }, [block.id, block.show])
 
@@ -75,13 +91,44 @@ export default function AnimeCard({ block, onChange, onEpisodes, onRemove }) {
 
   const episode = furthest(block.episodes)
 
+  // Where AniList has you, when it could be asked. A show finished there and
+  // an episode at or before the end of it can only be a rewatch: there is no
+  // gap left for the number to be filling.
+  const at = standing?.known ? standing : null
+  const ended = Boolean(at && at.episodes != null && at.progress >= at.episodes)
+  const again = Boolean(
+    standing?.asked
+    || at?.status === 'REPEATING'
+    || (ended && episode > 0 && episode <= at.progress),
+  )
+
+  /**
+   * Say this is being watched again, or that it isn't.
+   *
+   * The light on it is what the send would actually do rather than only what
+   * was last pressed — a rewatch AniList already knows about, or one that
+   * follows from having finished the show, lights it too. A button that
+   * claimed otherwise would be lying about what pressing the one beside it
+   * is going to do.
+   */
+  async function toggleAgain() {
+    const next = !again
+    setStanding((was) => ({ ...(was ?? {}), asked: next }))
+    // Nothing to do if it fails: the flag on disk stays as it was, and
+    // reopening the card shows that.
+    setRewatching(block.show, next).catch(() => {})
+  }
+
   async function send() {
     if (!episode) return
     if (!link?.connected) { setConnecting(true); return }
     setSending(true)
     setProblem('')
     try {
-      setSent(await syncAnime(block.show, episode))
+      setSent(await syncAnime(block.show, episode, again))
+      // Ask again rather than working it out: a rewatch that just finished is
+      // over, and the card should say so without being reopened.
+      getStanding(block.show).then(setStanding).catch(() => {})
     } catch (err) {
       setProblem(err.message)
     }
@@ -190,15 +237,26 @@ export default function AnimeCard({ block, onChange, onEpisodes, onRemove }) {
               and never a consequence. It says what it would do before it
               does it, and what it did afterwards. */}
           {episode > 0 && (
-            <button
-              type="button"
-              className={`anilist${sent ? ' done' : ''}`}
-              disabled={sending}
-              title={sendTitle({ link, sent, episode, show: block.show })}
-              onClick={send}
-            >
-              {sendLabel({ link, sent, sending, episode })}
-            </button>
+            <>
+              <button
+                type="button"
+                className={`rewatch${again ? ' on' : ''}`}
+                aria-pressed={again}
+                title={againTitle({ again, at, ended, show: block.show })}
+                onClick={toggleAgain}
+              >
+                <RewatchIcon />
+              </button>
+              <button
+                type="button"
+                className={`anilist${sent ? ' done' : ''}`}
+                disabled={sending}
+                title={sendTitle({ link, sent, at, again, episode, show: block.show })}
+                onClick={send}
+              >
+                {sendLabel({ link, sent, sending, again, episode })}
+              </button>
+            </>
           )}
 
           <button
@@ -232,20 +290,47 @@ export default function AnimeCard({ block, onChange, onEpisodes, onRemove }) {
  * but is the right answer, which is being told you are already further on
  * than the evening you are looking at.
  */
-function sendLabel({ link, sent, sending, episode }) {
+function sendLabel({ link, sent, sending, again, episode }) {
   if (sending) return 'sending…'
   if (sent?.already) return `already at ${sent.progress}`
+  if (sent?.rewatch) return sent.finished ? '✓ rewatched' : `✓ again at ${sent.progress}`
   if (sent) return `✓ episode ${sent.progress}`
   if (link && !link.connected) return 'Connect AniList'
-  return `AniList · ${episode}`
+  // The word changes before the press, not after it. Finding out that
+  // something counted as a rewatch once it already has is how you end up
+  // undoing it on a website.
+  return `${again ? 'Rewatch' : 'AniList'} · ${episode}`
 }
 
-function sendTitle({ link, sent, episode, show }) {
+function sendTitle({ link, sent, at, again, episode, show }) {
   if (sent?.already) return `AniList already had you at episode ${sent.progress} of ${show}`
+  if (sent?.rewatch) {
+    return sent.finished
+      ? `AniList has counted a rewatch of ${show}${sent.repeat ? ` — ${ordinal(sent.repeat)} time through` : ''}`
+      : `AniList now has you rewatching ${show}, at episode ${sent.progress}`
+  }
   if (sent) return `AniList now says episode ${sent.progress} of ${show}`
   if (link && !link.connected) return 'Connect an AniList account to send progress'
+
   const who = link?.user?.name ? ` as ${link.user.name}` : ''
-  return `Mark ${show} watched to episode ${episode} on AniList${who}`
+  const where = at ? ` AniList has you at ${at.progress}${at.episodes ? ` of ${at.episodes}` : ''}.` : ''
+  return again
+    ? `Rewatch ${show} from episode ${episode}${who}.${where}`
+    : `Mark ${show} watched to episode ${episode} on AniList${who}.${where}`
+}
+
+/** Why the light is on, which is not always because it was pressed. */
+function againTitle({ again, at, ended, show }) {
+  if (!again) return `Watching ${show} again? Say so, and the next evening of it will know`
+  if (at?.status === 'REPEATING') return `AniList already has a rewatch of ${show} under way`
+  if (ended) return `You finished ${show}, so this counts as watching it again`
+  return `Watching ${show} again — press to stop counting it that way`
+}
+
+/** "second", "third" — for a number of times through, which is small. */
+function ordinal(n) {
+  const words = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh']
+  return words[n] ?? `${n}th`
 }
 
 /** Which episodes, in full, for the line that has room for a range. */

@@ -179,9 +179,29 @@ The card has a button that marks the show watched up to the furthest episode
 on the block. It is a button and never a consequence of typing: this is the
 one thing in the app that leaves your machine.
 
-It only ever moves progress **forwards**. Filling in last month's evenings
-should not un-watch the thirty episodes since, so an episode behind where
-AniList already has you changes nothing and says so.
+An episode **behind** where AniList has you is two different things wearing
+the same number, and which one it is depends on whether you finished the show.
+
+On something you are part-way through, it is a day being filled in late:
+episode 3 of a show you are twelve into is a record of a Tuesday, not a reason
+to un-watch nine episodes. So it changes nothing, and says so.
+
+On something you **finished**, it can only be a rewatch — there is no gap left
+for the number to be filling — so it starts one by itself. The button says
+*Rewatch · 1* rather than *AniList · 1* before you press it, so this is never
+something you find out afterwards.
+
+The circular arrow beside the button is for the case in between: watching
+something again that you never finished, which nothing here could work out on
+its own. It lights whenever the send would count as a rewatch, whether you
+pressed it, or you had finished the show, or AniList already has one under
+way — a switch that claimed otherwise would be lying about what the button
+next to it is about to do.
+
+Once a rewatch has started it is remembered, so the next evening of that show
+already knows. Finishing it puts the show back to completed on AniList, adds
+one to its tally of times through, and forgets the flag — there is nothing
+left to carry.
 
 Connecting takes one visit to AniList and two pastes. The button walks you
 through it: make a client under

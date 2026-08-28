@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { slugify, coverSource, cleanGenres, plainText, titleOf, airedCount } from './anime.js'
+import { slugify, coverSource, cleanGenres, plainText, titleOf, airedCount, sendPlan } from './anime.js'
 
 let pass = 0, fail = 0
 const t = (name, fn) => {
@@ -77,6 +77,73 @@ t('genres are trimmed, deduped and capped, however they arrive', () => {
   assert.deepStrictEqual(cleanGenres(null), [])
   assert.equal(cleanGenres(['a', 'b', 'c', 'd', 'e', 'f', 'g']).length, 6)
   assert.equal(cleanGenres(['x'.repeat(90)])[0].length, 40)
+})
+
+// --- what sending an episode should do ------------------------------------
+
+// Dr. Stone S2: eleven episodes, finished last year.
+const finished = { progress: 11, episodes: 11, status: 'COMPLETED' }
+// Something twelve episodes in, still going.
+const midway = { progress: 12, episodes: 24, status: 'CURRENT' }
+
+t('watching on from where you are is just watching on', () => {
+  const plan = sendPlan({ episode: 13, ...midway })
+  assert.deepStrictEqual(
+    [plan.already, plan.rewatch, plan.status], [false, false, 'CURRENT'])
+})
+
+t('the last episode finishes the show', () => {
+  const plan = sendPlan({ episode: 24, ...midway })
+  assert.deepStrictEqual([plan.done, plan.status, plan.countRepeat], [true, 'COMPLETED', false])
+})
+
+t('a day filled in late on a show you are part-way through changes nothing', () => {
+  // The number is a record of a Tuesday, not a reason to un-watch nine.
+  assert.deepStrictEqual(sendPlan({ episode: 3, ...midway }), { already: true, rewatch: false })
+})
+
+t('but on a show you finished, an earlier episode can only be a rewatch', () => {
+  // There is no gap left for the number to be filling.
+  const plan = sendPlan({ episode: 1, ...finished })
+  assert.deepStrictEqual(
+    [plan.already, plan.rewatch, plan.status, plan.countRepeat],
+    [false, true, 'REPEATING', false])
+})
+
+t('and it does not have to be episode one', () => {
+  assert.equal(sendPlan({ episode: 5, ...finished }).rewatch, true)
+})
+
+t('a rewatch under way carries on by itself', () => {
+  // AniList remembers it as REPEATING, so nothing has to be said twice.
+  const plan = sendPlan({ episode: 2, progress: 1, episodes: 11, status: 'REPEATING' })
+  assert.deepStrictEqual([plan.rewatch, plan.status], [true, 'REPEATING'])
+})
+
+t('finishing a rewatch counts it and puts the show back to finished', () => {
+  const plan = sendPlan({ episode: 11, progress: 10, episodes: 11, status: 'REPEATING' })
+  assert.deepStrictEqual(
+    [plan.rewatch, plan.done, plan.status, plan.countRepeat],
+    [true, true, 'COMPLETED', true])
+})
+
+t('the button says so for the case nothing could work out on its own', () => {
+  // A rewatch of something never finished. Only a person knows.
+  const plan = sendPlan({ episode: 3, ...midway, asked: true })
+  assert.deepStrictEqual([plan.already, plan.rewatch, plan.status], [false, true, 'REPEATING'])
+})
+
+t('a show with no announced total is never guessed at', () => {
+  // Nothing here can call a thousand-episode show finished, so an earlier
+  // episode stays what it looks like: a day being filled in.
+  assert.equal(sendPlan({ episode: 40, progress: 1175, episodes: null, status: 'CURRENT' }).already, true)
+  // Asked outright, it still obeys.
+  assert.equal(sendPlan({ episode: 40, progress: 1175, episodes: null, asked: true }).rewatch, true)
+})
+
+t('nothing watched yet is not a rewatch of anything', () => {
+  const plan = sendPlan({ episode: 1 })
+  assert.deepStrictEqual([plan.already, plan.rewatch, plan.status], [false, false, 'CURRENT'])
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)
