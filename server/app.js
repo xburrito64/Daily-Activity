@@ -143,6 +143,17 @@ export function createApp({
     res.json(await played.all())
   }))
 
+  /**
+   * File a game under different genres. Yours, not the database's, and kept
+   * against it: nothing written later puts its own back.
+   */
+  app.post('/api/games/genres', wrap(async (req, res) => {
+    const { name, genres } = req.body ?? {}
+    const saved = await games.setGenres(name, genres)
+    played.forget()
+    res.json(saved)
+  }))
+
   // Covers are read straight off disk. They only ever arrive through the
   // route above, so this folder holds pictures and nothing else.
   app.use('/api/covers', express.static(coversDir, { fallthrough: true }))

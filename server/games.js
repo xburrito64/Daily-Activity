@@ -31,6 +31,12 @@ const COVER_FILE = 'library_600x900.jpg'
 // What is known about each game, beside the covers it belongs with.
 const FACTS_FILE = 'games.json'
 
+// Genres are yours to edit, so they need bounds. Three is what the database
+// offers and what a card was drawn for; six is where a row of them stops
+// reading as a handful and starts reading as a list.
+const MAX_GENRES = 6
+const GENRE_CHARS = 40
+
 const STEAM_APP_RE = /store\.steampowered\.com\/app\/(\d+)/
 
 const RESULTS = 8          // a screenful; more is a list to read, not a pick
@@ -86,6 +92,27 @@ function shorten(text) {
   const cut = clean.slice(0, DESCRIPTION_CHARS)
   const stop = cut.lastIndexOf('. ')
   return stop > DESCRIPTION_CHARS * 0.6 ? cut.slice(0, stop + 1) : `${cut.trimEnd()}…`
+}
+
+/**
+ * A list of genres fit to write down: trimmed, nothing blank, nothing twice,
+ * and few enough and short enough to sit on a card.
+ *
+ * The same name in different capitals is the same genre — "FPS" typed once as
+ * "fps" should not become a second one. The first spelling wins, since that
+ * is the one already on screen.
+ */
+export function cleanGenres(list) {
+  const seen = new Set()
+  const out = []
+  for (const raw of Array.isArray(list) ? list : []) {
+    const genre = String(raw ?? '').replace(/\s+/g, ' ').trim().slice(0, GENRE_CHARS)
+    if (!genre || seen.has(genre.toLowerCase())) continue
+    seen.add(genre.toLowerCase())
+    out.push(genre)
+    if (out.length === MAX_GENRES) break
+  }
+  return out
 }
 
 /** Where Steam keeps a game's cover. */
@@ -209,7 +236,7 @@ export function createGames({ apiKey, coversDir }) {
           name: game.name,
           released: game.released ? game.released.slice(0, 4) : '',
           cover,
-          genres: (game.genres ?? []).slice(0, 3).map((g) => g.name),
+          genres: cleanGenres((game.genres ?? []).slice(0, 3).map((g) => g.name)),
           // What it is sold on, which is not quite what it was played on —
           // see `remember`. PC first, since that is where a cover came from.
           platforms: (game.parent_platforms ?? [])
@@ -280,12 +307,38 @@ export function createGames({ apiKey, coversDir }) {
      */
     async remember(game) {
       const all = await this.known()
+      const had = all[game.name]
       all[game.name] = {
         platforms: game.platforms ?? [],
-        genres: game.genres ?? [],
+        // Genres are the one thing here you can change by hand, so a game
+        // already on the list keeps the ones it has. Picking the same game
+        // again — to fix a cover, or by way of changing your mind back —
+        // must not quietly throw your own filing away.
+        genres: had?.genres?.length ? had.genres : cleanGenres(game.genres),
         released: game.released ?? '',
         cover: game.cover ?? '',
       }
+      await this.write(all)
+    },
+
+    /**
+     * File a game under different genres.
+     *
+     * The database's are a starting point and a coarse one — it has no name
+     * for the difference between a shooter and a first-person shooter, and no
+     * idea which of the five it lists is the one you would have said. These
+     * are yours, and nothing overwrites them afterwards.
+     */
+    async setGenres(name, genres) {
+      const game = String(name ?? '').trim()
+      if (!game) throw refused('which game?')
+      const all = await this.known()
+      all[game] = { ...(all[game] ?? {}), genres: cleanGenres(genres) }
+      await this.write(all)
+      return all[game]
+    },
+
+    async write(all) {
       await fs.mkdir(coversDir, { recursive: true })
       const target = path.join(coversDir, FACTS_FILE)
       const tmp = `${target}.tmp-${process.pid}`

@@ -39,5 +39,13 @@ export const attachGame = (game) =>
 /** How long has gone into each game, across every day in the vault. */
 export const getPlayed = () => request('/api/games/played')
 
+/** File a game under your own genres. Answers with the list as it was kept. */
+export const setGenres = (name, genres) =>
+  request('/api/games/genres', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, genres }),
+  })
+
 /** Where a kept cover is served from. */
 export const coverUrl = (file) => `/api/covers/${encodeURIComponent(file)}`

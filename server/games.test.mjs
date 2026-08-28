@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { slugify, steamCover, coverSource } from './games.js'
+import { slugify, steamCover, coverSource, cleanGenres } from './games.js'
 
 let pass = 0, fail = 0
 const t = (name, fn) => {
@@ -53,6 +53,29 @@ t('and only the cover, not anything else that host serves', () => {
   const host = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/620'
   for (const file of ['header.jpg', 'capsule_231x87.jpg', 'movie480.webm', '']) {
     assert.throws(() => coverSource(`${host}/${file}`), new RegExp('not a Steam cover'), file)
+  }
+})
+
+t('genres are tidied on the way in', () => {
+  // They are typed by hand, so they arrive however they were typed.
+  assert.deepStrictEqual(cleanGenres(['  Turn-Based  Strategy ', '', null, 'Indie']),
+    ['Turn-Based Strategy', 'Indie'])
+})
+
+t('the same genre twice is one genre', () => {
+  // "FPS" and "fps" are the same filing, and the spelling already on screen
+  // is the one that stays.
+  assert.deepStrictEqual(cleanGenres(['FPS', 'fps', 'Fps']), ['FPS'])
+})
+
+t('a card cannot be flooded with genres', () => {
+  assert.equal(cleanGenres(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']).length, 6)
+  assert.equal(cleanGenres(['x'.repeat(200)])[0].length, 40)
+})
+
+t('nothing at all is a perfectly good answer', () => {
+  for (const bad of [null, undefined, 'Action', 42, {}]) {
+    assert.deepStrictEqual(cleanGenres(bad), [], String(bad))
   }
 })
 

@@ -879,6 +879,77 @@ h1 {
   height: 15px;
   color: var(--c-accent);
 }
+/* The genre row is a handful of things rather than one, so its icon sits at
+   the top of them rather than in the middle of a stack. */
+.gamestat.genres { align-items: flex-start; }
+.gamestat.genres svg { margin-top: 3px; }
+
+.genrelist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  min-width: 0;
+}
+.genre {
+  display: inline-flex;
+  align-items: center;
+  /* Long enough for the ones a database actually uses, short enough that
+     three fit across the card. Anything longer is cut with an ellipsis
+     rather than pushing the row wider — the whole name is in the tooltip.
+     min-width overrides the automatic minimum a flex item is given, which is
+     the width of its own text and would make the cap do nothing. */
+  max-width: 118px;
+  min-width: 0;
+  padding: 1px var(--s-2) 1px var(--s-3);
+  font-size: var(--f-sm);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+}
+/* The name is what gets cut, not the cross beside it. */
+.genrename {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.genre > .genrex { flex: none; }
+
+.genrex {
+  margin-left: 2px;
+  padding: 0 3px;
+  font-size: var(--f-md);
+  line-height: 1;
+  color: var(--c-text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.genrex:hover { color: var(--c-danger-soft); }
+
+.genreadd {
+  padding: 0 var(--s-3);
+  font-size: var(--f-md);
+  line-height: 1.5;
+  color: var(--c-text-dim);
+  background: none;
+  border: 1px dashed var(--c-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.genreadd:hover { color: var(--c-accent); border-color: var(--c-accent); }
+
+.genreinput {
+  width: 96px;
+  padding: 1px var(--s-3);
+  font-family: var(--font-ui);
+  font-size: var(--f-sm);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-accent);
+  border-radius: 999px;
+}
+.genreinput:focus { outline: none; }
 
 /* Pushed to the foot of the card: what the card is for is being looked at,
    and these are only there for the day you got the game wrong. */
