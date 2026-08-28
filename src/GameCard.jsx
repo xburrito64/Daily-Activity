@@ -128,7 +128,15 @@ export default function GameCard({ block, onChange, onRemove }) {
           </span>
         )}
 
+        {/* The pen last, so it is the one against the corner however many
+            buttons are out beside it. */}
         <span className="gamecardbtns">
+          {editing && (
+            <>
+              <button type="button" className="notebtn" onClick={onChange}>Change</button>
+              <button type="button" className="notebtn" onClick={onRemove}>Remove</button>
+            </>
+          )}
           <button
             type="button"
             className={`gameedit${editing ? ' on' : ''}`}
@@ -138,12 +146,6 @@ export default function GameCard({ block, onChange, onRemove }) {
           >
             <PenIcon />
           </button>
-          {editing && (
-            <>
-              <button type="button" className="notebtn" onClick={onChange}>Change</button>
-              <button type="button" className="notebtn" onClick={onRemove}>Remove</button>
-            </>
-          )}
         </span>
       </div>
     </div>
