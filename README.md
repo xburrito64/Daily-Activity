@@ -126,6 +126,14 @@ API. Without one this ends where it used to: a name and no picture.
 
 A game with no cover anywhere still keeps its name, which is the record.
 
+A cover that was found stays found; a cover that was *not* found is believed
+for five minutes and then asked about again. Steam does drop art it used to
+serve, and one request going wrong should not turn into a picture that never
+comes back until the app is closed. For the same reason a lookup that answers
+with nothing falls back to whatever is already in the covers folder, and never
+overwrites a cover already written down — a game's picture is only replaced by
+a better one, never by a blank.
+
 Opening a named Game block shows a card beside the note: the cover, what the
 game is, and how long has gone into it across every day in the vault — not
 just that session.

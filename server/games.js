@@ -60,6 +60,19 @@ const MAX_COVER_BYTES = 6 * 1024 * 1024
 
 const CACHE_LIMIT = 120
 
+// How long an answer may be reused.
+//
+// A cover that was found is found for good — the address is worked out from
+// an id and does not move. A cover that was *not* found is a different kind
+// of answer: it may mean the game has no art anywhere, or it may mean one
+// request out of twenty failed on its way. Remembering the second forever is
+// how a moment's trouble becomes a permanent hole that closing the app is the
+// only cure for, which is exactly the sort of thing nobody would guess.
+const MISS_TTL_MS = 5 * 60_000
+// Searches carry covers with them, so they expire on the same clock rather
+// than holding yesterday's blank pictures over a fresh lookup.
+const SEARCH_TTL_MS = 5 * 60_000
+
 /**
  * Something went wrong out on the network rather than in here. Said with a
  * status of its own so a cover that will not download reads as what it is,
@@ -239,8 +252,21 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     if (res.status === 401 || res.status === 403) {
       throw upstream('SteamGridDB turned the key down — check steamGridKey in config.json')
     }
+    // Nothing filed under that id. An answer, not a failure — and treating it
+    // as one used to abandon the search by name that should have followed it.
+    if (res.status === 404) return { data: [] }
     if (!res.ok) throw upstream(`SteamGridDB answered ${res.status}`)
     return res.json()
+  }
+
+  /** One question to SteamGridDB, where not getting an answer is allowed. */
+  async function someGrid(pathname, params) {
+    try {
+      return pickGrid(await askGrid(pathname, params))
+    } catch (err) {
+      console.error(`SteamGridDB: ${err.message}`)
+      return ''
+    }
   }
 
   /**
@@ -258,15 +284,20 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
   async function gridCover(name, appId) {
     if (!gridNow()) return ''
     const wanted = { dimensions: '600x900', types: 'static', nsfw: 'false', humor: 'false' }
+
+    // By Steam id first, where there is one.
+    if (appId) {
+      const found = await someGrid(`/grids/steam/${appId}`, wanted)
+      if (found) return found
+    }
+
+    // Then by name — reached whether the id found nothing or went wrong, since
+    // a game can be filed there under its own id rather than Steam's.
     try {
-      if (appId) {
-        const found = pickGrid(await askGrid(`/grids/steam/${appId}`, wanted))
-        if (found) return found
-      }
       const hits = await askGrid(`/search/autocomplete/${encodeURIComponent(name)}`)
       const game = (hits?.data ?? [])[0]
       if (!game?.id) return ''
-      return pickGrid(await askGrid(`/grids/game/${game.id}`, wanted))
+      return await someGrid(`/grids/game/${game.id}`, wanted)
     } catch (err) {
       // Said out loud rather than only swallowed. A game with no cover
       // anywhere and a game whose key was typed wrong look identical from
@@ -283,7 +314,11 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     // like it did nothing until the app was restarted.
     const at = `${id}:${gridNow() ? 'grid' : 'steam'}`
     const had = covers.get(at)
-    if (had !== undefined) return had
+    // A cover once found stays found. A cover not found is only believed for
+    // a few minutes: it may be the truth about the game, or it may be one
+    // request that went wrong, and there is no way to tell the two apart at
+    // the moment it happens.
+    if (had && (had.cover || Date.now() - had.when < MISS_TTL_MS)) return had.cover
 
     let found = ''
     let appId = ''
@@ -305,7 +340,7 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     // just released, and looks identical from here.
     if (!found) found = await gridCover(name, appId)
 
-    covers.set(at, found)
+    covers.set(at, { cover: found, when: Date.now() })
     return found
   }
 
@@ -327,7 +362,10 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
       // must not keep answering with the covers it could not find then.
       const at = `${q.toLowerCase()}:${gridNow() ? 'grid' : 'steam'}`
       const had = searches.get(at)
-      if (had) return had
+      // Held only briefly. Results carry their covers with them, so a search
+      // kept for ever would keep handing back the blanks of a bad minute
+      // long after the minute had passed.
+      if (had && Date.now() - had.when < SEARCH_TTL_MS) return had.results
 
       const body = await ask('/games', { search: q, page_size: String(RESULTS) }, SEARCH_TIMEOUT_MS)
       const found = (body.results ?? []).slice(0, RESULTS)
@@ -354,7 +392,7 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
         }
       }))
 
-      searches.set(at, results)
+      searches.set(at, { results, when: Date.now() })
       return results
     },
 
@@ -371,7 +409,22 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
      */
     async keep({ id, name, image }) {
       if (!Number.isInteger(id) || id <= 0) throw refused('bad game id')
-      if (!image) return { cover: '' }
+
+      // Nothing came back this time. That is not the same as the game having
+      // no cover: it may already be sitting in the vault from the day the
+      // lookup did work, and a picture we have beats a picture we failed to
+      // fetch. The name is worked out from the game rather than the day, so
+      // finding it is a matter of looking.
+      if (!image) {
+        const base = `${slugify(name)}-${id}`
+        for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
+          try {
+            await fs.access(path.join(coversDir, `${base}.${ext}`))
+            return { cover: `${base}.${ext}`, already: true }
+          } catch { /* not that one */ }
+        }
+        return { cover: '' }
+      }
 
       const url = coverSource(image)
       // Named for the game as RAWG knows it, since that is what was searched
@@ -427,7 +480,12 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
         // must not quietly throw your own filing away.
         genres: had?.genres?.length ? had.genres : cleanGenres(game.genres),
         released: game.released ?? '',
-        cover: game.cover ?? '',
+        // The same care the genres get, and for a sharper reason: this is
+        // written every time a game is picked, and a pick whose lookup came
+        // back empty would otherwise rub out the cover recorded on the day it
+        // worked. Nothing is better than something only when there was
+        // nothing before.
+        cover: game.cover || had?.cover || '',
       }
       await this.write(all)
     },
