@@ -1,16 +1,20 @@
 // Finding a game, and keeping its cover in the vault.
 //
-// Two databases, because neither one does both jobs. RAWG knows about nine
-// hundred thousand games including everything that never came to a PC, which
-// makes it the right thing to search — but it has no cover art at all. What
-// it has is `background_image`, which is key art or a screenshot: the picture
-// across the top of a store page, not the box. Steam has the actual cover for
-// every game it sells, at a fixed address worked out from the game's id, and
-// wants no key to hand it over. So: RAWG finds the game, Steam draws it.
+// Three databases, because no one of them does the whole job. RAWG knows
+// about nine hundred thousand games including everything that never came to a
+// PC, which makes it the right thing to search — but it has no cover art at
+// all. What it has is `background_image`, which is key art or a screenshot:
+// the picture across the top of a store page, not the box. Steam has the
+// actual cover for every game it sells, at a fixed address worked out from
+// the game's id, and wants no key to hand it over. So: RAWG finds the game,
+// Steam draws it.
 //
-// A game Steam has never sold has no cover here. That is most console
-// exclusives, and they get their name and nothing else, which is honest — a
-// screenshot standing in for a cover is what this replaced.
+// Steam cannot draw all of them. It never sold Minecraft, and a game it does
+// sell can still have no library art up yet, which is ordinary for something
+// just released. SteamGridDB is people collecting the covers for both cases,
+// at the size Steam uses, so it stands behind Steam rather than beside it: it
+// is only ever asked once Steam has come back empty. It wants a free key, and
+// without one this simply ends where it used to — a name and no picture.
 //
 // Copying the cover into the vault is the part that matters. The folder still
 // reads offline, still reads in five years, and still reads if this app is
@@ -27,6 +31,15 @@ const API = 'https://api.rawg.io/api'
 const STEAM_HOST = 'shared.cloudflare.steamstatic.com'
 const STEAM_ART = `https://${STEAM_HOST}/store_item_assets/steam/apps`
 const COVER_FILE = 'library_600x900.jpg'
+
+// Where a cover comes from when Steam has none, which happens two ways: a
+// game Steam never sold — Minecraft is on five shops and not that one — and a
+// game with a Steam page whose library art was never published. SteamGridDB
+// is people drawing and collecting the covers for both, at the size Steam
+// uses, so it slots in behind without anything downstream noticing.
+const GRID_API = 'https://www.steamgriddb.com/api/v2'
+const GRID_HOST_RE = /^cdn\d*\.steamgriddb\.com$/
+const GRID_SIZE = { width: 600, height: 900 }
 
 // What is known about each game, beside the covers it belongs with.
 const FACTS_FILE = 'games.json'
@@ -127,12 +140,40 @@ export const steamCover = (appId) => `${STEAM_ART}/${appId}/${COVER_FILE}`
  */
 export function coverSource(raw) {
   const url = new URL(raw)
-  if (url.hostname !== STEAM_HOST) throw refused('not a Steam cover')
-  if (path.basename(url.pathname) !== COVER_FILE) throw refused('not a Steam cover')
-  return url
+  if (url.protocol !== 'https:') throw refused('not a cover')
+  // Steam's, at the one address that is a cover rather than a banner.
+  if (url.hostname === STEAM_HOST) {
+    if (path.basename(url.pathname) !== COVER_FILE) throw refused('not a Steam cover')
+    return url
+  }
+  // SteamGridDB's, which are named by a hash rather than by a size, so the
+  // check is on the host and on it being a picture at all.
+  if (GRID_HOST_RE.test(url.hostname)) {
+    if (!/\.(jpe?g|png|webp)$/i.test(url.pathname)) throw refused('not a SteamGridDB cover')
+    return url
+  }
+  throw refused('not a cover we know')
 }
 
-export function createGames({ apiKey, coversDir }) {
+/**
+ * The best of the covers offered for one game.
+ *
+ * SteamGridDB is people uploading art, so a game can have fifty and they are
+ * not all the box: some are fan-made, some are the wrong shape, some are a
+ * joke. Only the ones at exactly the size Steam's own covers are, and then
+ * the one the site's own voting likes most — which is as close to "the
+ * obvious one" as anything here can get.
+ */
+export function pickGrid(body) {
+  const best = (body?.data ?? [])
+    .filter((g) => (
+      g?.width === GRID_SIZE.width && g?.height === GRID_SIZE.height && typeof g.url === 'string'
+    ))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]
+  return best?.url ?? ''
+}
+
+export function createGames({ apiKey, gridKey = '', coversDir }) {
   const searches = boundedCache(CACHE_LIMIT)
   const details = boundedCache(CACHE_LIMIT * 4)
   const covers = boundedCache(CACHE_LIMIT * 4)
@@ -147,6 +188,7 @@ export function createGames({ apiKey, coversDir }) {
    * for the same reason.
    */
   const keyNow = () => String(typeof apiKey === 'function' ? apiKey() : apiKey ?? '').trim()
+  const gridNow = () => String(typeof gridKey === 'function' ? gridKey() : gridKey ?? '').trim()
 
   async function ask(pathname, params, timeout) {
     const url = new URL(API + pathname)
@@ -187,24 +229,83 @@ export function createGames({ apiKey, coversDir }) {
    * No Steam page, or no cover on it, and the answer is nothing at all. A
    * screenshot in a cover's place is what this replaced.
    */
-  async function coverOf(id) {
-    const had = covers.get(id)
+  async function askGrid(pathname, params) {
+    const url = new URL(GRID_API + pathname)
+    if (params) url.search = new URLSearchParams(params).toString()
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${gridNow()}` },
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    })
+    if (res.status === 401 || res.status === 403) {
+      throw upstream('SteamGridDB turned the key down — check steamGridKey in config.json')
+    }
+    if (!res.ok) throw upstream(`SteamGridDB answered ${res.status}`)
+    return res.json()
+  }
+
+  /**
+   * A cover for a game Steam has none for.
+   *
+   * By Steam id where there is one, because an id names one game exactly and
+   * a search by name never can — a game with a Steam page but no library art
+   * is still the same game over there. Only then by name, which is the only
+   * handle left for something Steam has never sold.
+   *
+   * Every failure here is a shrug. This is already the second place asked,
+   * and a game is allowed to end up with no picture — that is what it did
+   * before any of this existed.
+   */
+  async function gridCover(name, appId) {
+    if (!gridNow()) return ''
+    const wanted = { dimensions: '600x900', types: 'static', nsfw: 'false', humor: 'false' }
+    try {
+      if (appId) {
+        const found = pickGrid(await askGrid(`/grids/steam/${appId}`, wanted))
+        if (found) return found
+      }
+      const hits = await askGrid(`/search/autocomplete/${encodeURIComponent(name)}`)
+      const game = (hits?.data ?? [])[0]
+      if (!game?.id) return ''
+      return pickGrid(await askGrid(`/grids/game/${game.id}`, wanted))
+    } catch (err) {
+      // Said out loud rather than only swallowed. A game with no cover
+      // anywhere and a game whose key was typed wrong look identical from
+      // the outside, and only one of them is worth doing something about.
+      console.error(`no SteamGridDB cover for "${name}": ${err.message}`)
+      return ''
+    }
+  }
+
+  async function coverOf(id, name) {
+    // The key is part of what was asked, not just how. A cover looked for
+    // before there was a SteamGridDB key must not be remembered as "there
+    // isn't one" after the key is put in — that would make adding it look
+    // like it did nothing until the app was restarted.
+    const at = `${id}:${gridNow() ? 'grid' : 'steam'}`
+    const had = covers.get(at)
     if (had !== undefined) return had
 
     let found = ''
+    let appId = ''
     try {
       const body = await ask(`/games/${id}/stores`, {}, SEARCH_TIMEOUT_MS)
       const app = (body.results ?? [])
         .map((s) => STEAM_APP_RE.exec(s.url ?? ''))
         .find(Boolean)
       if (app) {
-        const url = steamCover(app[1])
+        appId = app[1]
+        const url = steamCover(appId)
         const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
         if (res.ok) found = url
       }
     } catch { /* no cover, which a game is allowed not to have */ }
 
-    covers.set(id, found)
+    // Steam had nothing. Either it never sold the game, or it sells it and
+    // the library art was never put up — the second is common for something
+    // just released, and looks identical from here.
+    if (!found) found = await gridCover(name, appId)
+
+    covers.set(at, found)
     return found
   }
 
@@ -221,7 +322,11 @@ export function createGames({ apiKey, coversDir }) {
       const q = String(query ?? '').trim()
       if (q === '') return []
 
-      const had = searches.get(q.toLowerCase())
+      // Keyed on the second database being available too, for the same
+      // reason the cover cache is: a search run before the key was put in
+      // must not keep answering with the covers it could not find then.
+      const at = `${q.toLowerCase()}:${gridNow() ? 'grid' : 'steam'}`
+      const had = searches.get(at)
       if (had) return had
 
       const body = await ask('/games', { search: q, page_size: String(RESULTS) }, SEARCH_TIMEOUT_MS)
@@ -230,7 +335,10 @@ export function createGames({ apiKey, coversDir }) {
       // Every result is worked out beside every other one. Eight games one
       // after another would be a wait; eight at once is one.
       const results = await Promise.all(found.map(async (game) => {
-        const [description, cover] = await Promise.all([describe(game.id), coverOf(game.id)])
+        const [description, cover] = await Promise.all([
+          describe(game.id),
+          coverOf(game.id, game.name),
+        ])
         return {
           id: game.id,
           name: game.name,
@@ -246,7 +354,7 @@ export function createGames({ apiKey, coversDir }) {
         }
       }))
 
-      searches.set(q.toLowerCase(), results)
+      searches.set(at, results)
       return results
     },
 
@@ -268,7 +376,10 @@ export function createGames({ apiKey, coversDir }) {
       const url = coverSource(image)
       // Named for the game as RAWG knows it, since that is what was searched
       // and picked. Where the picture came from is not the game's identity.
-      const file = `${slugify(name)}-${id}.jpg`
+      // SteamGridDB serves png and webp as well as jpg, so the name follows
+      // the picture rather than assuming what Steam alone used to send.
+      const ext = /\.(png|webp)$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? 'jpg'
+      const file = `${slugify(name)}-${id}.${ext}`
       const target = path.join(coversDir, file)
       try {
         await fs.access(target)

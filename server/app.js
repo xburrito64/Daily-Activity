@@ -68,7 +68,13 @@ export function createApp({
     try { return settingsFile ? readJson(settingsFile) : {} } catch { return {} }
   }
 
-  const games = createGames({ apiKey: rawgKey, coversDir })
+  const games = createGames({
+    apiKey: rawgKey,
+    // Read off the settings each time, like everything else here: a key put
+    // in while the app is open should count without closing it.
+    gridKey: () => settings().steamGridKey ?? '',
+    coversDir,
+  })
   const anime = createAnime({
     coversDir,
     token: () => settings().anilistToken ?? '',

@@ -63,13 +63,14 @@ folder. Use forward slashes:
   "vaultDailyDir": "C:/Vaults/YourVault/Daily",
   "port": 5274,
   "rawgKey": "",
+  "steamGridKey": "",
   "anilistClientId": "",
   "anilistToken": ""
 }
 ```
 
-`rawgKey` is only for naming games, and the two `anilist` lines only for
-sending anime progress to an account — see below. Leave any of them empty and
+`rawgKey` and `steamGridKey` are only for naming games, and the two `anilist`
+lines only for sending anime progress to an account — see below. Leave any of them empty and
 everything else works exactly as before; the box that needs one says so when
 you open it. The AniList lines are written by the app itself, from a panel in
 the note, rather than being something to go and edit. A setting added by a
@@ -109,12 +110,21 @@ sensibly in Obsidian with nothing installed. The cover is *copied* into
 and the vault stays self-contained. One file per game, however many days
 mention it.
 
-It takes two databases, because neither does both jobs. RAWG is the search:
-nine hundred thousand games including everything that never came to a PC. It
-has no cover art at all — what it has is key art, the wide picture across the
-top of a store page. The cover itself comes from Steam, which has one for
-every game it sells and asks for no key. A game Steam has never sold gets its
-name and no picture.
+It takes three databases, because no one of them does the whole job. RAWG is
+the search: nine hundred thousand games including everything that never came
+to a PC. It has no cover art at all — what it has is key art, the wide picture
+across the top of a store page. The cover itself comes from Steam, which has
+one for every game it sells and asks for no key.
+
+Steam cannot dress all of them. It never sold Minecraft, and a game it *does*
+sell can still have no library art published yet, which is ordinary for
+something just released. So a third place is asked, but only once Steam has
+come back empty: [SteamGridDB](https://www.steamgriddb.com), where people
+collect the covers for both cases at the size Steam uses. It wants a free key
+in `steamGridKey` — sign in there with your Steam account, then Preferences →
+API. Without one this ends where it used to: a name and no picture.
+
+A game with no cover anywhere still keeps its name, which is the record.
 
 Opening a named Game block shows a card beside the note: the cover, what the
 game is, and how long has gone into it across every day in the vault — not
@@ -140,8 +150,9 @@ same game again.
 Two Game blocks only merge into one when they are the same game — finishing
 one and starting another is two things that happened.
 
-The lookup needs a free key from [rawg.io/apikey](https://rawg.io/apikey) in
-`rawgKey`.
+The search needs a free key from [rawg.io/apikey](https://rawg.io/apikey) in
+`rawgKey`. The fallback covers need one from SteamGridDB in `steamGridKey`,
+and everything else works without it.
 
 ### Anime
 

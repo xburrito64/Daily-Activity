@@ -2,6 +2,7 @@
   "vaultDailyDir": "C:/Vaults/YourVault/Daily",
   "port": 5274,
   "rawgKey": "",
+  "steamGridKey": "",
   "anilistClientId": "",
   "anilistToken": ""
 }
