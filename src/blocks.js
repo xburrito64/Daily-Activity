@@ -130,7 +130,15 @@ export function applyResize(blocks, id, startSlot, endSlot, at) {
     return mergeSameTag([...rest.slice(0, index), moved, ...rest.slice(index)], moved)
   }
 
-  const drawn = layoutLanes(blocks).find((p) => p.block.id === id)
+  // Which of its pieces says where the block stands. A stretch it has to
+  // itself says nothing — every block is lane 0 of 1 when it is alone — so
+  // the answer comes from where it actually shares the bar, and from the
+  // longest such stretch, which is the one you would point at.
+  const mine = layoutLanes(blocks).filter((p) => p.block.id === id)
+  const shared = mine.filter((p) => p.lanes > 1)
+  const drawn = (shared.length > 0 ? shared : mine)
+    .reduce((a, b) => (b.to - b.from > a.to - a.from ? b : a))
+
   // Sharing with nothing means there is no height to keep.
   const placed = drawn.lanes === 1 || drawn.lane === drawn.lanes - 1
     ? [...rest, moved]
@@ -192,118 +200,76 @@ export function setShow(blocks, id, show) {
  * Work out where every block should be drawn once overlaps are allowed.
  *
  * One rectangle per block, the same height and position for its whole length.
- * Blocks that overlap — directly, or through a chain of others — form a group
- * that divides the bar into lanes between them; everything else has the bar
- * to itself.
+ * The bar is divided by how many things were happening **at that moment** —
+ * nothing else. Two at once is halves, three is thirds, one is the whole bar.
+ *
+ * That "at that moment" is the whole of it. It used to be worked out per
+ * group: everything joined by a chain of overlaps was divided by the deepest
+ * pile-up anywhere in that chain. So two hours of music with a walk during it
+ * were drawn a third of the bar high, because the music brushed a game that
+ * brushed a ten-minute meal four hours earlier — and nothing was three-deep at
+ * the moment you were walking the dog. Height meant "how busy was the day
+ * around here", which is not a thing anyone reads a bar for.
  *
  * A lane is where a block *starts*: it is drawn from there down to the floor
  * of the bar, and whatever is layered over it covers the lower part. So a
- * block is never left as a thin band floating in empty space, and every block
- * ends on the same line.
+ * block is never left as a thin band floating in empty space, every block ends
+ * on the same line, and the moment a neighbour stops the block beneath it
+ * grows into the room that just came free.
  *
- * Then whatever is still empty is given to the block beneath it, which can
- * only ever be the strip along the top of the bar. A block is cut where that
- * changes, so it comes back as one piece per run at the same height.
+ * Which lane is list order, and list order is yours: paint or drop one block
+ * over another and it goes above it. Nothing here reorders that.
  *
- * Returns { block, from, to, lane, lanes, top, index, isFirst, isLast }, where
- * `top` is the lane the piece is drawn from and `lane` is still the block's
- * own — the band its name sits in, and what decides which of two blocks
- * covers the other.
+ * A block is cut only where the count beside it genuinely changes, and each
+ * run comes back as one piece.
+ *
+ * Returns { block, from, to, lane, lanes, top, index, isFirst, isLast }.
  */
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
 
-  // List order is stacking order, so a block sits one lane below the lowest
-  // of the blocks it overlaps that were added before it. That is the least
-  // deep it can go without ending up above something that should cover it.
-  const lane = new Map()
-  for (const block of blocks) {
-    let above = -1
-    for (const earlier of blocks) {
-      if (earlier === block) break
-      if (overlaps(earlier, block)) above = Math.max(above, lane.get(earlier))
-    }
-    lane.set(block, above + 1)
-  }
+  // Every moment the picture can change: a block starting or ending.
+  const cuts = [...new Set(blocks.flatMap((b) => [b.startSlot, b.endSlot]))].sort((a, b) => a - b)
 
-  // Everything in one group is divided by the same number, or the blocks in
-  // it wouldn't line up with each other. A group is as deep as its deepest
-  // stack, and a block that overlaps nothing is a group of one at full
-  // height.
-  const lanes = new Map()
-  for (const group of clustersOf(blocks)) {
-    const depth = Math.max(...group.map((b) => lane.get(b))) + 1
-    for (const block of group) lanes.set(block, depth)
-  }
-
-  // Second pass: fill what the first one leaves empty. A block reaches the
-  // floor, so the only space that can be left is the strip along the top,
-  // above whichever block is shallowest at that moment. That block gets it —
-  // it is what was happening — but only across the stretch where nothing sits
-  // above it, so the block is cut where it rises.
-  const placed = blocks.map((block) => ({
-    block,
-    from: block.startSlot,
-    to: block.endSlot,
-    lane: lane.get(block),
-    lanes: lanes.get(block),
-  }))
-
-  const cuts = [...new Set(placed.flatMap((p) => [p.from, p.to]))].sort((a, b) => a - b)
   const pieces = []
-  for (const p of placed) {
-    for (let i = 0; i < cuts.length - 1; i++) {
-      const from = Math.max(p.from, cuts[i])
-      const to = Math.min(p.to, cuts[i + 1])
-      if (from >= to) continue
-      const shallowest = placed
-        .filter((o) => o.from <= from && o.to >= to)
-        .reduce((a, b) => (a.lane <= b.lane ? a : b))
-      const top = shallowest === p ? 0 : p.lane
+  const open = new Map() // block -> the run being extended
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const from = cuts[i]
+    const to = cuts[i + 1]
+    // What is actually running here, in list order — which is stacking order.
+    const here = blocks.filter((b) => b.startSlot <= from && b.endSlot >= to)
+    const lanes = here.length
 
-      // One rectangle per run at the same height, so a block is only ever cut
-      // where its top actually steps.
-      const last = pieces[pieces.length - 1]
-      if (last && last.block === p.block && last.to === from && last.top === top) last.to = to
-      else pieces.push({ ...p, from, to, top })
-    }
+    here.forEach((block, lane) => {
+      const last = open.get(block)
+      // One rectangle per run at the same height, so a block is only cut
+      // where the number of things beside it really changes.
+      if (last && last.to === from && last.lane === lane && last.lanes === lanes) {
+        last.to = to
+        return
+      }
+      const piece = { block, from, to, lane, lanes, top: lane }
+      open.set(block, piece)
+      pieces.push(piece)
+    })
   }
 
-  for (const p of placed) {
-    const mine = pieces.filter((piece) => piece.block === p.block)
+  for (const block of blocks) {
+    const mine = pieces.filter((p) => p.block === block)
+    if (mine.length === 0) continue
     // Rounded ends and grab strips belong to the outermost pieces only; the
     // joins between them are drawn square so a stepped block reads as one.
     mine[0].isFirst = true
     mine[mine.length - 1].isLast = true
     // Which piece of its block this is. Counting from the start of the block
     // rather than naming a piece after where it begins gives it an identity
-    // that survives the block being dragged: the same piece stays the same
-    // piece, at new times, instead of looking like a different one.
-    mine.forEach((piece, i) => { piece.index = i })
+    // that survives the block being dragged.
+    mine.forEach((piece, at) => { piece.index = at })
   }
 
   return pieces
 }
 
-/** The blocks split into groups that overlap, directly or through others. */
-function clustersOf(blocks) {
-  const groups = []
-  const seen = new Set()
-  for (const block of blocks) {
-    if (seen.has(block)) continue
-    const group = [block]
-    seen.add(block)
-    for (let i = 0; i < group.length; i++) {
-      for (const other of blocks) {
-        if (seen.has(other) || !overlaps(group[i], other)) continue
-        seen.add(other)
-        group.push(other)
-      }
-    }
-    groups.push(group)
-  }
-  return groups
-}
 
 /**
  * Every block joined to this one by overlap, directly or through others.
