@@ -169,6 +169,65 @@ function silhouette(mine, pieces) {
  * and scales with the size it is drawn at; a game's cover is upright, and is
  * the one of the three that is bounded by the block rather than by a size.
  */
+/**
+ * Where a block's name sits, and how tall the strip it sits in is.
+ *
+ * The name is centred on the block, so it can reach a long way either side of
+ * the middle — far enough to cross into a stretch where the block is a
+ * different height, because something short started beside it there. The
+ * strip has to be one the block holds along the whole of that reach, or the
+ * name spills onto whatever is stacked over it: a game's name written across
+ * the chat block underneath it.
+ *
+ * So: measure the name against the height at the middle, see how far it
+ * reaches, then narrow the strip to what the block holds across that reach —
+ * and measure once more, since a shorter strip may only have room for the
+ * picture. Twice is enough; a narrower strip can only ever shrink the reach.
+ *
+ * A block whose lane moves under the name — rising as the thing above it ends
+ * — has no strip that works for all of it. There the name goes back to the
+ * middle's own strip and is cut to what fits inside that one piece, which is
+ * the only width that cannot spill.
+ */
+function bandFor(mine, middle, tag, fallback, block, barHeight, trackWidth) {
+  const strip = (p) => ({ top: p.lane / p.lanes, bottom: (p.lane + 1) / p.lanes })
+  const pxOf = (slots) => (slots / SLOTS_PER_DAY) * trackWidth
+  const at = mine.find((p) => p.from <= middle && middle < p.to) ?? mine[0]
+  const wide = pxOf(block.endSlot - block.startSlot)
+
+  // Centred on the whole block, in the strip the block holds along the whole
+  // width the name reaches. Measured twice: once against the height at the
+  // middle to learn the reach, then again against whatever strip that reach
+  // turns out to leave.
+  let centred = null
+  const first = fitLabel(tag, fallback, wide, barHeight * (strip(at).bottom - strip(at).top))
+  if (first) {
+    const reach = (first.widthPx / trackWidth) * SLOTS_PER_DAY / 2
+    const under = mine.filter((p) => p.from < middle + reach && p.to > middle - reach)
+    const held = {
+      top: Math.max(...under.map((p) => strip(p).top)),
+      bottom: Math.min(...under.map((p) => strip(p).bottom)),
+    }
+    const unchanged = held.top === strip(at).top && held.bottom === strip(at).bottom
+    if (unchanged) centred = { label: first, ...held }
+    else if (held.bottom > held.top) {
+      const again = fitLabel(tag, fallback, wide, barHeight * (held.bottom - held.top))
+      if (again) centred = { label: again, ...held }
+    }
+  }
+  if (centred) centred = { ...centred, from: block.startSlot, to: block.endSlot }
+
+  // The fallback: give up true centring and sit inside the one piece the
+  // middle falls in, where the strip cannot change under it. A whole name a
+  // little off centre beats a bare picture in the middle.
+  const inside = fitLabel(tag, fallback, pxOf(at.to - at.from), barHeight * (strip(at).bottom - strip(at).top))
+  const kept = inside ? { label: inside, ...strip(at), from: at.from, to: at.to } : null
+
+  if (!centred) return kept
+  if (!kept) return centred
+  return centred.label.mode === 'full' || kept.label.mode !== 'full' ? centred : kept
+}
+
 function fitLabel(tag, fallback, widthPx, lanePx) {
   const room = widthPx - LABEL_PADDING
   const named = lanePx >= LABEL_MIN_LANE
@@ -943,19 +1002,23 @@ export default function DayList({
           // block's own ends rather than to any slice of it.
           const wholes = drawn.filter((p) => p.isFirst)
           // A name belongs to the block rather than to any slice of it, so it
-          // is centred on the whole block. Which band it sits in comes from
-          // the piece the middle of the block falls in — the band the block
-          // itself has right where the name is drawn.
+          // is centred on the whole block. Choosing a slice and centring in
+          // that instead is what pushed names off to one side: the roomiest
+          // slice of a two-hour block can sit right at one end of it.
           //
-          // Choosing a piece and centring in that instead is what pushed the
-          // name off to one side: the roomiest slice of a two-hour block can
-          // sit right at one end of it.
-          const named = [...drawn.reduce((best, p) => {
-            const middle = (p.block.startSlot + p.block.endSlot) / 2
-            const holdsMiddle = p.from <= middle && middle < p.to
-            if (holdsMiddle || !best.has(p.block)) best.set(p.block, p)
-            return best
-          }, new Map()).values()]
+          // Each block keeps its pieces, though, because the band a name sits
+          // in has to be one the block holds along the whole width the name
+          // reaches — see below.
+          const named = [...drawn.reduce((byBlock, p) => {
+            const had = byBlock.get(p.block) ?? []
+            had.push(p)
+            byBlock.set(p.block, had)
+            return byBlock
+          }, new Map())].map(([block, mine]) => ({
+            block,
+            mine,
+            middle: (block.startSlot + block.endSlot) / 2,
+          }))
           const selectedPieces = selected?.date === date
             ? pieces.filter((p) => p.block.id === selected.id)
             : []
@@ -1034,24 +1097,26 @@ ${b.note}` : ''}`}
                   one per piece: a block cut where it steps up is still one
                   thing with one name, sitting in its own lane across the whole
                   of it. */}
-              {!day?.malformed && named.map(({ block: b, lane, lanes }) => {
+              {!day?.malformed && named.map(({ block: b, mine, middle }) => {
                 // A named game wears its own name and its own cover here.
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
                 const tag = blockFace(tagById(b.tag), b)
-                const laneHeight = barHeight / lanes
-                const label = fitLabel(
-                  tag, b.tag, ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth, laneHeight,
-                )
-                if (!label) return null
+                const band = bandFor(mine, middle, tag, b.tag, b, barHeight, trackWidth)
+                if (!band) return null
+                const { label, top, bottom, from, to } = band
                 return (
                   <span
                     key={`l${b.id}`}
                     className="block-label"
+                    // Names its block, the way the block itself does. It is
+                    // not always drawn across the whole of it, so there is
+                    // otherwise no way to tell from the page which is which.
+                    data-block-id={b.id}
                     style={{
-                      ...spanAt(b.startSlot, b.endSlot),
-                      top: `${(lane / lanes) * 100}%`,
-                      height: `${100 / lanes}%`,
+                      ...spanAt(from, to),
+                      top: `${top * 100}%`,
+                      height: `${(bottom - top) * 100}%`,
                     }}
                   >
                     <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
