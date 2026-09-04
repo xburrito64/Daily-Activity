@@ -170,62 +170,81 @@ function silhouette(mine, pieces) {
  * the one of the three that is bounded by the block rather than by a size.
  */
 /**
- * Where a block's name sits, and how tall the strip it sits in is.
+ * Which piece of a block carries its name, and the strip that piece occupies.
  *
- * The name is centred on the block, so it can reach a long way either side of
- * the middle — far enough to cross into a stretch where the block is a
- * different height, because something short started beside it there. The
- * strip has to be one the block holds along the whole of that reach, or the
- * name spills onto whatever is stacked over it: a game's name written across
- * the chat block underneath it.
+ * Inside one piece the strip is the block's alone — nothing else is drawn
+ * there — so a name that stays within a piece can never end up written across
+ * whatever is stacked over the block. Between pieces it can: the block
+ * changes height wherever something short starts beside it, and a name
+ * reaching past that point spills onto its neighbour.
  *
- * So: measure the name against the height at the middle, see how far it
- * reaches, then narrow the strip to what the block holds across that reach —
- * and measure once more, since a shorter strip may only have room for the
- * picture. Twice is enough; a narrower strip can only ever shrink the reach.
+ * So a name is placed in a whole piece rather than measured against the block
+ * and then hemmed in. Nearest the middle that has room for it, so a block with
+ * one piece — nearly all of them — is simply labelled in its middle.
  *
- * A block whose lane moves under the name — rising as the thing above it ends
- * — has no strip that works for all of it. There the name goes back to the
- * middle's own strip and is cut to what fits inside that one piece, which is
- * the only width that cannot spill.
+ * Room, not the middle, decides. A name in the second-nearest piece reads far
+ * better than a bare picture in the nearest, and a strip pinched thin by a
+ * neighbour is no reason to drop a name the block has room for elsewhere.
  */
-function bandFor(mine, middle, tag, fallback, block, barHeight, trackWidth) {
-  const strip = (p) => ({ top: p.lane / p.lanes, bottom: (p.lane + 1) / p.lanes })
+function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
   const pxOf = (slots) => (slots / SLOTS_PER_DAY) * trackWidth
-  const at = mine.find((p) => p.from <= middle && middle < p.to) ?? mine[0]
-  const wide = pxOf(block.endSlot - block.startSlot)
 
-  // Centred on the whole block, in the strip the block holds along the whole
-  // width the name reaches. Measured twice: once against the height at the
-  // middle to learn the reach, then again against whatever strip that reach
-  // turns out to leave.
-  let centred = null
-  const first = fitLabel(tag, fallback, wide, barHeight * (strip(at).bottom - strip(at).top))
-  if (first) {
-    const reach = (first.widthPx / trackWidth) * SLOTS_PER_DAY / 2
-    const under = mine.filter((p) => p.from < middle + reach && p.to > middle - reach)
-    const held = {
-      top: Math.max(...under.map((p) => strip(p).top)),
-      bottom: Math.min(...under.map((p) => strip(p).bottom)),
-    }
-    const unchanged = held.top === strip(at).top && held.bottom === strip(at).bottom
-    if (unchanged) centred = { label: first, ...held }
-    else if (held.bottom > held.top) {
-      const again = fitLabel(tag, fallback, wide, barHeight * (held.bottom - held.top))
-      if (again) centred = { label: again, ...held }
+  // What can actually be seen of a piece: from where it starts down to
+  // whatever is painted over it, or to the floor when nothing is. A block
+  // alone in a stretch fills the bar there even where the count says
+  // otherwise, and that room is its to use.
+  const seen = (p) => {
+    // Anything that reaches into this stretch at all counts, even if it only
+    // covers part of it. Two blocks can hand over mid-piece without the count
+    // changing, and asking only for ones that cover the whole piece would
+    // then find neither and hand the name room that belongs to both.
+    const under = pieces.filter((q) => (
+      q.block !== p.block && q.lane > p.lane && q.from < p.to && q.to > p.from
+    ))
+    const floor = under.length > 0 ? Math.min(...under.map((q) => q.lane)) : p.lanes
+    return { top: p.lane / p.lanes, bottom: floor / p.lanes }
+  }
+
+  // Every run of touching pieces, with the band all of them have in common.
+  // A name may sit across a run like that without ever leaving its block —
+  // the two hours of music broken up by a walk are still one place to write
+  // "Music", even though the block is three pieces there.
+  const runs = []
+  for (let i = 0; i < mine.length; i++) {
+    let top = 0
+    let bottom = 1
+    for (let j = i; j < mine.length; j++) {
+      if (j > i && mine[j].from !== mine[j - 1].to) break
+      const band = seen(mine[j])
+      top = Math.max(top, band.top)
+      bottom = Math.min(bottom, band.bottom)
+      if (bottom <= top) break
+      runs.push({ from: mine[i].from, to: mine[j].to, top, bottom })
     }
   }
-  if (centred) centred = { ...centred, from: block.startSlot, to: block.endSlot }
 
-  // The fallback: give up true centring and sit inside the one piece the
-  // middle falls in, where the strip cannot change under it. A whole name a
-  // little off centre beats a bare picture in the middle.
-  const inside = fitLabel(tag, fallback, pxOf(at.to - at.from), barHeight * (strip(at).bottom - strip(at).top))
-  const kept = inside ? { label: inside, ...strip(at), from: at.from, to: at.to } : null
+  const measure = (run, from, to) => {
+    const label = fitLabel(tag, fallback, pxOf(to - from), barHeight * (run.bottom - run.top))
+    return label
+      ? { label, top: run.top, bottom: run.bottom, from, to, off: Math.abs((from + to) / 2 - middle) }
+      : null
+  }
 
-  if (!centred) return kept
-  if (!kept) return centred
-  return centred.label.mode === 'full' || kept.label.mode !== 'full' ? centred : kept
+  const tries = []
+  for (const run of runs) {
+    tries.push(measure(run, run.from, run.to))
+    // Truly centred: the widest stretch centred on the middle that still lies
+    // inside this run. Nearly every block is one run, and then this is the
+    // whole block.
+    const room = 2 * Math.min(middle - run.from, run.to - middle)
+    if (room > 0) tries.push(measure(run, middle - room / 2, middle + room / 2))
+  }
+
+  const found = tries.filter(Boolean)
+  if (found.length === 0) return null
+  // The name first, and among those the one nearest the middle.
+  const whole = found.filter((f) => f.label.mode === 'full')
+  return (whole.length > 0 ? whole : found).sort((a, b) => a.off - b.off)[0]
 }
 
 function fitLabel(tag, fallback, widthPx, lanePx) {
@@ -1102,7 +1121,7 @@ ${b.note}` : ''}`}
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
                 const tag = blockFace(tagById(b.tag), b)
-                const band = bandFor(mine, middle, tag, b.tag, b, barHeight, trackWidth)
+                const band = bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn)
                 if (!band) return null
                 const { label, top, bottom, from, to } = band
                 return (

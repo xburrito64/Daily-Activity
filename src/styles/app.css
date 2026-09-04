@@ -645,9 +645,28 @@ h1 {
    the finished block will sit. */
 .block.joined-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .block.joined-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+/* Where the block carries on, the outline does not stop. */
+.block.preview.joined-start { --paint-left: inset 0 0 0 0 transparent; }
+.block.preview.joined-end { --paint-right: inset 0 0 0 0 transparent; }
+/* The one outline in here that is drawn down the sides as well as along the
+   top and bottom — you are being shown the edges of the stretch you are
+   painting, and where it starts and stops is the whole question.
+
+   Which means the sides have to be left off at a join. A preview cut where it
+   steps is several rectangles, and an edge down each one draws a line through
+   the middle of the stretch, exactly the seam --block-ring is shaped to
+   avoid. Kept as two variables so a join can drop one side without
+   redeclaring the rest. */
 .block.preview {
+  --paint-edge: rgba(255, 255, 255, 0.5);
+  --paint-left: inset 2px 0 0 0 var(--paint-edge);
+  --paint-right: inset -2px 0 0 0 var(--paint-edge);
   opacity: 0.7;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 2px 0 0 var(--paint-edge),
+    inset 0 -2px 0 0 var(--paint-edge),
+    var(--paint-left),
+    var(--paint-right);
   /* The preview is redrawn on every pointermove, so letting it animate would
      restart the wipe each time and strobe under the cursor. */
   animation: none;
