@@ -144,8 +144,11 @@ t('a block gives up room when a third thing starts, and takes it back after', ()
     b('s', 'sleep', 0, 60), b('m', 'music', 0, 60), b('a', 'anime', 20, 40),
   ])
   const music = pieces.filter((p) => p.block.id === 'm')
+  // A block early at each end: the bar gives way ahead of anime arriving and
+  // keeps the lane a moment after it has gone, so music steps once each way
+  // rather than on the very slot.
   assert.deepStrictEqual(music.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
-    ['0-19 1/2', '19-40 1/3', '40-60 1/2'])
+    ['0-19 1/2', '19-41 1/3', '41-60 1/2'])
 })
 
 t('a block rises to fill the top once nothing is above it', () => {

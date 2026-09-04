@@ -8,24 +8,6 @@ const byStart = (a, b) =>
 
 const overlaps = (a, b) => a.startSlot < b.endSlot && a.endSlot > b.startSlot
 
-// The two ends of a shelf are not the same thing.
-//
-// Room is always made ten minutes *before* something starts, whatever it is.
-// The bar giving way just ahead of a block reads as the day making space for
-// it; the same change landing on the very slot the block appears reads as a
-// jolt.
-//
-// Room is only *kept* after something ends if it was short. Ten minutes of
-// food in the middle of an evening would otherwise cut a notch exactly its own
-// width — a spike, rather than somewhere the day made room — so its shelf
-// stays open a block after it. An hour of something needs no such help, and
-// holding its room open once it is over leaves the block beside it standing
-// higher than anything running there could account for.
-const SHELF_MAX = 3
-
-/** Whether a block is short enough that its shelf stays open after it. */
-const isShort = (b) => b.endSlot - b.startSlot <= SHELF_MAX
-
 /*
  * Lane order is list order: the first block in the list is drawn in the top
  * lane wherever things overlap. Which one that should be can't be worked out
@@ -265,13 +247,6 @@ export function layoutLanes(blocks) {
     running[slot] = blocks.filter((b) => b.startSlot <= slot && b.endSlot > slot)
   }
 
-  /** Where down the bar a block starts at a moment, or -1 if it isn't there. */
-  const shareAt = (block, slot) => {
-    const here = running[slot] ?? []
-    const at = here.indexOf(block)
-    return at < 0 ? -1 : at / here.length
-  }
-
   const pieces = []
   const open = new Map() // block -> the run being extended
   for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
@@ -280,43 +255,34 @@ export function layoutLanes(blocks) {
     const here = running[slot]
     if (here.length === 0) continue
 
-    // Is anything here going to have to move ten minutes from now, when
-    // whatever starts then arrives? Did anything have to move coming into
-    // this moment, because something stopped? Either way the bar makes the
-    // change a block early and holds it a block late, so that a block steps
-    // aside once, ahead of the new one, rather than being shoved on the very
-    // slot it appears — and so that a short block sits in a shelf rather than
-    // in a notch exactly its own width.
+    // The bar makes its change ten minutes early and holds it ten minutes
+    // late: a lane is kept for a block that starts next, and kept a moment
+    // longer for one that has just stopped. So a block steps aside once,
+    // ahead of the new one, rather than being shoved on the very slot it
+    // appears — and a short block sits in a shelf rather than in a notch
+    // exactly its own width.
     //
-    // The lane is what is held, not merely the room: the block that will be
-    // pushed down goes straight to the place it is going to hold, instead of
-    // rising into the gap and dropping out of it again ten minutes later.
-    // Nothing shows through the held lane, because whatever is above it
-    // reaches the floor and fills it until the new block lands there.
+    // The lane is what is kept, not merely the room. The block that has to
+    // move goes straight to the place it will hold, instead of rising into
+    // the gap and dropping back out of it ten minutes later. Nothing shows
+    // through a kept lane: whatever is above it reaches the floor and fills
+    // it until the new block lands there.
     //
-    // Only where it can be seen. A share of the bar that works out the same
-    // either way is not worth cutting the block for, a block on its way out
-    // has nothing to step aside for, and a lane held above everything drawn
-    // would be empty air with nothing above it to fill it.
-    const moved = (block, then) => shareAt(block, then) >= 0
-      && shareAt(block, then) !== shareAt(block, slot)
-    const ahead = here.some((b) => moved(b, to))
-    const behind = here.some((b) => moved(b, slot - 1))
-
+    // Only underneath everything drawn, though. A lane kept above something
+    // running would push that block down for ten minutes and let it back up
+    // the moment the new one arrived — and the block on top of the pile,
+    // which reaches the floor, would swell down into the kept lane and shrink
+    // out of it again, the line under it dipping and coming back for no
+    // reason anybody watching could see. Room made early has to lift what is
+    // already there, or it is not worth making.
+    const lowest = blocks.indexOf(here[here.length - 1])
     const held = blocks.filter((b) => here.includes(b)
-      || (ahead && b.startSlot === to)
-      || (behind && isShort(b) && b.endSlot === from))
-    while (held.length > 0 && !here.includes(held[0])) held.shift()
+      || ((b.startSlot === to || b.endSlot === from) && blocks.indexOf(b) > lowest))
 
-    // Room is only ever made early upwards. Holding a lane that lands above
-    // something pushes that block down for ten minutes and lets it back up
-    // again the moment the new one arrives — and the block on top of the pile,
-    // which reaches the floor, swells down into the held lane and shrinks out
-    // of it, so the line between them dips and comes back for no reason
-    // anybody watching could see. Better to let the whole thing happen at once
-    // where it really happens.
-    const shoved = here.some((b) => held.indexOf(b) * here.length > here.indexOf(b) * held.length)
-    const claiming = shoved ? here : held
+    // And only where it can be seen: a share of the bar that works out the
+    // same either way is not worth cutting the block for.
+    const same = here.every((b) => held.indexOf(b) * here.length === here.indexOf(b) * held.length)
+    const claiming = same ? here : held
     const lanes = claiming.length
 
     here.forEach((block) => {
