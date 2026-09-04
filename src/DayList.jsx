@@ -942,15 +942,18 @@ export default function DayList({
           // One piece per block, for the grab strips: they belong to the
           // block's own ends rather than to any slice of it.
           const wholes = drawn.filter((p) => p.isFirst)
-          // A name goes in the roomiest piece of its block — how long it runs
-          // for divided by how many ways the bar is split there, which is the
-          // piece with the most actual room on screen. Widest alone would send
-          // it to a long thin sliver; first-piece, as it used to be, could
-          // drop it into a two-minute slice or a band a neighbour is using.
-          const roomOf = (p) => (p.to - p.from) / p.lanes
+          // A name belongs to the block rather than to any slice of it, so it
+          // is centred on the whole block. Which band it sits in comes from
+          // the piece the middle of the block falls in — the band the block
+          // itself has right where the name is drawn.
+          //
+          // Choosing a piece and centring in that instead is what pushed the
+          // name off to one side: the roomiest slice of a two-hour block can
+          // sit right at one end of it.
           const named = [...drawn.reduce((best, p) => {
-            const had = best.get(p.block)
-            if (!had || roomOf(p) > roomOf(had)) best.set(p.block, p)
+            const middle = (p.block.startSlot + p.block.endSlot) / 2
+            const holdsMiddle = p.from <= middle && middle < p.to
+            if (holdsMiddle || !best.has(p.block)) best.set(p.block, p)
             return best
           }, new Map()).values()]
           const selectedPieces = selected?.date === date
@@ -1031,14 +1034,14 @@ ${b.note}` : ''}`}
                   one per piece: a block cut where it steps up is still one
                   thing with one name, sitting in its own lane across the whole
                   of it. */}
-              {!day?.malformed && named.map(({ block: b, from, to, lane, lanes }) => {
+              {!day?.malformed && named.map(({ block: b, lane, lanes }) => {
                 // A named game wears its own name and its own cover here.
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
                 const tag = blockFace(tagById(b.tag), b)
                 const laneHeight = barHeight / lanes
                 const label = fitLabel(
-                  tag, b.tag, ((to - from) / SLOTS_PER_DAY) * trackWidth, laneHeight,
+                  tag, b.tag, ((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth, laneHeight,
                 )
                 if (!label) return null
                 return (
@@ -1046,7 +1049,7 @@ ${b.note}` : ''}`}
                     key={`l${b.id}`}
                     className="block-label"
                     style={{
-                      ...spanAt(from, to),
+                      ...spanAt(b.startSlot, b.endSlot),
                       top: `${(lane / lanes) * 100}%`,
                       height: `${100 / lanes}%`,
                     }}
