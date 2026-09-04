@@ -115,6 +115,31 @@ t('but never early when the new block lands above it', () => {
     ['0-3 0/2', '3-7 0/3'])
 })
 
+t('no lane is kept for a block nothing here will be around to meet', () => {
+  // The reported fault: a stub at the start and end of blocks all over the
+  // bar. dgg stops exactly where youtube starts, so nothing running at the
+  // handover has to step aside for anything — game is on top throughout and
+  // is drawn from the ceiling either way — and there is nothing to keep a
+  // lane for.
+  const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 5, 10), b('y', 'youtube', 10, 15)])
+  assert.deepStrictEqual(shape(pieces),
+    ['d 5-10 1/2', 'g 0-5 0/1', 'g 15-20 0/1', 'g 5-15 0/2', 'y 10-15 1/2'])
+})
+
+t('and a shelf is one block wide, not two', () => {
+  // The other half of the same fault. The room kept past the end of dgg and
+  // food is ten minutes; the shower arriving ten minutes after that keeps
+  // nothing, because anything stops on the slot the shower starts and is
+  // never there to meet it.
+  const pieces = layoutLanes([
+    b('m', 'music', 7, 14), b('d', 'dgg', 0, 7), b('a', 'anything', 3, 9),
+    b('s', 'shower', 9, 13), b('f', 'food', 0, 7),
+  ])
+  const anything = pieces.filter((p) => p.block.id === 'a')
+  assert.deepStrictEqual(anything.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['3-8 1/3', '8-9 1/2'], 'one block past the end of the two it was sharing with')
+})
+
 t('a lone block fills the bar', () => {
   assert.deepStrictEqual(shape(layoutLanes([b('g', 'game', 0, 10)])), ['g 0-10 0/1'])
 })

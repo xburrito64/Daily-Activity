@@ -247,6 +247,12 @@ export function layoutLanes(blocks) {
     running[slot] = blocks.filter((b) => b.startSlot <= slot && b.endSlot > slot)
   }
 
+  /** Where down the bar a block starts at a moment, or -1 if it isn't there. */
+  const shareAt = (block, slot) => {
+    const at = running[slot]?.indexOf(block) ?? -1
+    return at < 0 ? -1 : at / running[slot].length
+  }
+
   const pieces = []
   const open = new Map() // block -> the run being extended
   for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
@@ -268,16 +274,33 @@ export function layoutLanes(blocks) {
     // through a kept lane: whatever is above it reaches the floor and fills
     // it until the new block lands there.
     //
-    // Only underneath everything drawn, though. A lane kept above something
-    // running would push that block down for ten minutes and let it back up
-    // the moment the new one arrived — and the block on top of the pile,
-    // which reaches the floor, would swell down into the kept lane and shrink
-    // out of it again, the line under it dipping and coming back for no
-    // reason anybody watching could see. Room made early has to lift what is
-    // already there, or it is not worth making.
+    // Two things have to be true before a lane is kept, and both of them
+    // matter.
+    //
+    // Something that is still going to be here has to actually move. A block
+    // on its way out has nothing to step aside for, and keeping a lane on its
+    // account only pushes it about on the way — which is how a bar ended up
+    // with a stub at the start and end of every block on it, and how a shelf
+    // came out twenty minutes wide instead of ten, one moment held for a
+    // block leaving and the next for one arriving that nothing there would
+    // ever meet.
+    //
+    // And the lane has to be underneath everything drawn. A lane kept above
+    // something running would push that block down for ten minutes and let it
+    // back up the moment the new one arrived — and the block on top of the
+    // pile, which reaches the floor, would swell down into the kept lane and
+    // shrink out of it again, the line under it dipping and coming back for
+    // no reason anybody watching could see. Room made early has to lift what
+    // is already there, or it is not worth making.
+    const stirs = (then) => here.some((b) => {
+      const share = shareAt(b, then)
+      return share >= 0 && share !== shareAt(b, slot)
+    })
+    const ahead = stirs(to)
+    const behind = stirs(slot - 1)
     const lowest = blocks.indexOf(here[here.length - 1])
-    const held = blocks.filter((b) => here.includes(b)
-      || ((b.startSlot === to || b.endSlot === from) && blocks.indexOf(b) > lowest))
+    const held = blocks.filter((b) => here.includes(b) || (blocks.indexOf(b) > lowest
+      && ((ahead && b.startSlot === to) || (behind && b.endSlot === from))))
 
     // And only where it can be seen: a share of the bar that works out the
     // same either way is not worth cutting the block for.
