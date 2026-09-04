@@ -1,4 +1,4 @@
-import { slotToTime, timeToSlot } from './time.js'
+import { slotToTime, timeToSlot, SLOTS_PER_DAY } from './time.js'
 
 let seq = 0
 export const newId = () => `b${Date.now().toString(36)}${(seq++).toString(36)}`
@@ -7,6 +7,11 @@ const byStart = (a, b) =>
   a.startSlot - b.startSlot || a.endSlot - b.endSlot || (a.id < b.id ? -1 : 1)
 
 const overlaps = (a, b) => a.startSlot < b.endSlot && a.endSlot > b.startSlot
+
+// How far either side of a moment the bar looks when deciding how many ways to
+// divide itself. One ten-minute block, so a short thing sits in a shelf a
+// block wider than itself at each end rather than in a notch its own width.
+const SHELF_PAD = 1
 
 /*
  * Lane order is list order: the first block in the list is drawn in the top
@@ -220,25 +225,45 @@ export function setShow(blocks, id, show) {
  * Which lane is list order, and list order is yours: paint or drop one block
  * over another and it goes above it. Nothing here reorders that.
  *
- * A block is cut only where the count beside it genuinely changes, and each
- * run comes back as one piece.
+ * The one softening: the room a moment is divided into is the deepest it gets
+ * within ten minutes either side, not just at that instant. A ten-minute meal
+ * in the middle of a long evening would otherwise cut a notch exactly its own
+ * width — a spike one block wide, which reads as a glitch rather than as a
+ * shelf. Widened by one block at each end it reads as somewhere the day made
+ * room. It costs nothing: the extra room is always beneath the blocks that are
+ * there, and they still reach the floor, so nothing is left empty.
+ *
+ * A block is cut only where that count genuinely changes, and each run comes
+ * back as one piece.
  *
  * Returns { block, from, to, lane, lanes, top, index, isFirst, isLast }.
  */
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
 
-  // Every moment the picture can change: a block starting or ending.
-  const cuts = [...new Set(blocks.flatMap((b) => [b.startSlot, b.endSlot]))].sort((a, b) => a - b)
+  // How many things are running at each ten minutes of the day.
+  const busy = []
+  for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
+    busy[slot] = blocks.filter((b) => b.startSlot <= slot && b.endSlot > slot).length
+  }
+  // And the deepest it gets near there, which is what the bar is divided by.
+  const deep = busy.map((_, slot) => {
+    let most = 0
+    for (let near = slot - SHELF_PAD; near <= slot + SHELF_PAD; near++) {
+      if (near >= 0 && near < SLOTS_PER_DAY) most = Math.max(most, busy[near])
+    }
+    return most
+  })
 
   const pieces = []
   const open = new Map() // block -> the run being extended
-  for (let i = 0; i < cuts.length - 1; i++) {
-    const from = cuts[i]
-    const to = cuts[i + 1]
+  for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
+    const from = slot
+    const to = slot + 1
     // What is actually running here, in list order — which is stacking order.
     const here = blocks.filter((b) => b.startSlot <= from && b.endSlot >= to)
-    const lanes = here.length
+    if (here.length === 0) continue
+    const lanes = Math.max(deep[slot], here.length)
 
     here.forEach((block, lane) => {
       const last = open.get(block)
