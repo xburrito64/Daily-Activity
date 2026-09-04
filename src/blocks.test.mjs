@@ -60,17 +60,36 @@ t('what is seen of the block underneath stops at the one on top', () => {
   assert.deepStrictEqual(seen(blocks, 'g'), ['0-4 0..1', '4-8 0..0.5', '8-10 0..1'])
 })
 
+t('a long block asks for no shelf, and nothing beside it moves early', () => {
+  // The reported fault: an hour of one thing starting inside another had the
+  // block above it rise ten minutes before it began, so the bar changed shape
+  // in front of nothing at all.
+  const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('f', 'food', 0, 7), b('a', 'anything', 3, 9)])
+  const food = pieces.filter((p) => p.block.id === 'f')
+  assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['0-3 1/2', '3-7 1/3'], 'it gives up its room exactly when anything else starts')
+})
+
+t('a short one still does, and still sits in its shelf', () => {
+  const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('f', 'food', 0, 7), b('a', 'anything', 3, 5)])
+  const food = pieces.filter((p) => p.block.id === 'f')
+  assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['0-2 1/2', '2-6 1/3', '6-7 1/2'])
+})
+
 t('a lone block fills the bar', () => {
   assert.deepStrictEqual(shape(layoutLanes([b('g', 'game', 0, 10)])), ['g 0-10 0/1'])
 })
 
-t('the bar is shared while it is shared, and a block either side', () => {
+t('the bar is shared exactly while it is shared', () => {
+  // Forty minutes of dgg is long enough to make its own room, so the bar
+  // halves where the two actually run together and nowhere else.
   const pieces = layoutLanes([b('g', 'game', 0, 12), b('d', 'dgg', 4, 8)])
   assert.deepStrictEqual(shape(pieces), [
     'd 4-8 1/2',    // dgg underneath, exactly where it runs
-    'g 0-3 0/1',    // game has the bar to itself
-    'g 3-9 0/2',    // halves — from one block before dgg to one block after
-    'g 9-12 0/1',   // and the whole bar again
+    'g 0-4 0/1',    // game has the bar to itself
+    'g 4-8 0/2',    // halves while the two are both running
+    'g 8-12 0/1',   // and the whole bar again
   ])
 })
 
@@ -85,7 +104,7 @@ t('a block gives up room when a third thing starts, and takes it back after', ()
   ])
   const music = pieces.filter((p) => p.block.id === 'm')
   assert.deepStrictEqual(music.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
-    ['0-19 1/2', '19-41 1/3', '41-60 1/2'])
+    ['0-20 1/2', '20-40 1/3', '40-60 1/2'])
 })
 
 t('a block rises to fill the top once nothing is above it', () => {
@@ -94,21 +113,19 @@ t('a block rises to fill the top once nothing is above it', () => {
   const pieces = layoutLanes([b('g', 'game', 6, 11), b('d', 'dgg', 10, 13)])
   assert.deepStrictEqual(shape(pieces), [
     'd 10-11 1/2',   // under game
-    'd 11-12 0/2',   // top of the bar the moment game ends, still in halves
-    'd 12-13 0/1',   // and the whole bar a block later
+    'd 11-13 0/2',   // and up to the ceiling after it, in the room it asked for
     'g 6-9 0/1',
-    'g 9-11 0/2',    // halves from a block before dgg starts
+    'g 9-11 0/2',    // halves from a block before dgg, whose shelf reaches back
   ])
 })
 
 t('a block cut where it rises is still one block', () => {
   const pieces = layoutLanes([b('g', 'game', 6, 11), b('d', 'dgg', 10, 13)])
   const dgg = pieces.filter((p) => p.block.id === 'd')
-  assert.strictEqual(dgg.length, 3)
-  assert.deepStrictEqual(dgg.map((p) => [p.isFirst, p.isLast]),
-    [[true, undefined], [undefined, undefined], [undefined, true]],
+  assert.strictEqual(dgg.length, 2)
+  assert.deepStrictEqual(dgg.map((p) => [p.isFirst, p.isLast]), [[true, undefined], [undefined, true]],
     'only the outer ends are rounded, and only they carry handles')
-  assert.deepStrictEqual(dgg.map((p) => p.lane), [1, 0, 0], 'it rises when the block above it ends')
+  assert.deepStrictEqual(dgg.map((p) => p.lane), [1, 0], 'it rises when the block above it ends')
 })
 
 t('nothing is left empty above the shallowest block', () => {
@@ -128,7 +145,7 @@ t('blocks that miss each other never thin one another', () => {
   // third here, because nothing was ever three-deep.
   const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 0, 4), b('a', 'anime', 16, 20)])
   assert.deepStrictEqual(shape(pieces),
-    ['a 16-20 1/2', 'd 0-4 1/2', 'g 0-5 0/2', 'g 15-20 0/2', 'g 5-15 0/1'])
+    ['a 16-20 1/2', 'd 0-4 1/2', 'g 0-4 0/2', 'g 16-20 0/2', 'g 4-16 0/1'])
 })
 
 t('a block that overlaps nothing keeps the full height', () => {
@@ -196,9 +213,9 @@ t('three at once split into thirds, and only then', () => {
   const pieces = layoutLanes([
     b('a', 'game', 0, 10), b('b', 'dgg', 2, 10), b('c', 'anime', 4, 10),
   ])
-  // The whole bar, then halves, then thirds, each arriving a block early.
+  // The whole bar, then halves, then thirds, as each one starts.
   assert.deepStrictEqual(shape(pieces),
-    ['a 0-1 0/1', 'a 1-3 0/2', 'a 3-10 0/3', 'b 2-3 1/2', 'b 3-10 1/3', 'c 4-10 2/3'])
+    ['a 0-2 0/1', 'a 2-4 0/2', 'a 4-10 0/3', 'b 2-4 1/2', 'b 4-10 1/3', 'c 4-10 2/3'])
 })
 
 t('identical ranges share evenly', () => {

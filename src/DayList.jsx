@@ -48,13 +48,11 @@ const INK_MS = 600
 const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 // How much of a block's width an icon on its own may fill.
 //
-// A share rather than a number of pixels. Four pixels of room is two pixels
-// either side, which on a ten-minute block is all there is to give and on an
-// hour-long one leaves the picture jammed against both edges of a block with
-// room to spare. A share gives the same margin at every width — and at ten
-// minutes it comes to the same four pixels, so nothing that used to carry an
-// icon loses one for the sake of the air.
-const ICON_FILL = 0.8
+// A share rather than a number of pixels, so the air reads the same at every
+// width. Two thirds: an icon taking four fifths of its block looks wedged
+// into it, and the width only ever binds on a narrow block anyway — a wide
+// one runs out of height long before it runs out of room at the sides.
+const ICON_FILL = 0.66
 // How far along its block a picture may drift and still count as being in the
 // middle of it, and how far off the middle of what it stands on it may sit
 // before it counts as stranded at an edge. Both are shares: of the block's
@@ -76,8 +74,12 @@ const ICON_INSET = 6 // an icon stops short of the lane's edges rather than fill
 // two-hundred-pixel one. Held between a floor and a ceiling: a tenth of a
 // thirty-pixel row is nothing at all, and a tenth of the tallest bar would
 // start being more air than picture.
+//
+// The floor has to clear the block's rounded corners and the bar's own inset
+// with something to spare, or a cover in a half-height row is drawn across
+// the very corner of the block it belongs to.
 const COVER_GAP_SHARE = 0.1
-const COVER_GAP_MIN = 3
+const COVER_GAP_MIN = 8
 const COVER_GAP_MAX = 22
 // Either side, by a fixed distance. What a cover sits next to sideways is the
 // end of its block and then whatever is next along, and none of that changes
@@ -238,15 +240,20 @@ function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
   }
 
   const upright = tag?.aspect > 0 && tag.aspect < 1
+  // A name beats no name — for an icon. A cover is the exception: it is a
+  // picture of the thing itself and says more than its name ever will, so it
+  // takes the room over the words rather than sitting small beside them.
   const named = found.filter((f) => f.label.mode === 'full')
   const order = upright
-    ? (a, b) => b.label.iconPx - a.label.iconPx || a.off - b.off
+    ? (a, b) => b.label.iconPx - a.label.iconPx
+      || (b.label.mode === 'full') - (a.label.mode === 'full')
+      || a.off - b.off
     : (a, b) => adrift(a) - adrift(b)
       || centred(a) - centred(b)
       || b.label.iconPx - a.label.iconPx
       || (b.bottom - b.top) - (a.bottom - a.top)
       || a.off - b.off
-  return [...(named.length > 0 ? named : found)].sort(order)[0]
+  return [...(!upright && named.length > 0 ? named : found)].sort(order)[0]
 }
 
 /**

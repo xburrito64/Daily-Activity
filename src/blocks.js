@@ -8,10 +8,21 @@ const byStart = (a, b) =>
 
 const overlaps = (a, b) => a.startSlot < b.endSlot && a.endSlot > b.startSlot
 
-// How far either side of a moment the bar looks when deciding how many ways to
-// divide itself. One ten-minute block, so a short thing sits in a shelf a
-// block wider than itself at each end rather than in a notch its own width.
+// How much room a block asks for beyond its own length, so that what it sits
+// in reads as a shelf rather than as a notch its own width.
+//
+// One ten-minute block at each end, and only for a block short enough to need
+// it. Ten minutes of food in the middle of an evening cuts a notch exactly
+// its own width, which reads as a spike; half an hour of it already reads as
+// somewhere the day made room. An hour does too — and asking for the extra
+// block there only moves everything beside it ten minutes before anything has
+// actually happened, which is a lie about the day rather than a kindness to
+// the eye.
 const SHELF_PAD = 1
+const SHELF_MAX = 3
+
+/** How far either side of itself a block asks the bar to make room. */
+const shelfOf = (b) => (b.endSlot - b.startSlot <= SHELF_MAX ? SHELF_PAD : 0)
 
 /*
  * Lane order is list order: the first block in the list is drawn in the top
@@ -225,13 +236,18 @@ export function setShow(blocks, id, show) {
  * Which lane is list order, and list order is yours: paint or drop one block
  * over another and it goes above it. Nothing here reorders that.
  *
- * The one softening: the room a moment is divided into is the deepest it gets
- * within ten minutes either side, not just at that instant. A ten-minute meal
- * in the middle of a long evening would otherwise cut a notch exactly its own
- * width — a spike one block wide, which reads as a glitch rather than as a
- * shelf. Widened by one block at each end it reads as somewhere the day made
- * room. It costs nothing: the extra room is always beneath the blocks that are
- * there, and they still reach the floor, so nothing is left empty.
+ * The one softening: a short block asks for ten minutes of room either side of
+ * itself. A ten-minute meal in the middle of a long evening would otherwise
+ * cut a notch exactly its own width — a spike one block wide, which reads as a
+ * glitch rather than as a shelf. Widened by one block at each end it reads as
+ * somewhere the day made room. It costs nothing: the extra room is always
+ * beneath the blocks that are there, and they still reach the floor, so
+ * nothing is left empty.
+ *
+ * Only a short block asks. An hour of something makes room enough of its own,
+ * and asking for more there would move every block beside it ten minutes
+ * before the hour began — a block rising out of the way of something that has
+ * not started yet.
  *
  * A block is cut only where that count genuinely changes, and each run comes
  * back as one piece.
@@ -246,14 +262,28 @@ export function layoutLanes(blocks) {
   for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
     busy[slot] = blocks.filter((b) => b.startSlot <= slot && b.endSlot > slot).length
   }
-  // And the deepest it gets near there, which is what the bar is divided by.
-  const deep = busy.map((_, slot) => {
+
+  // And how many ways the bar divides there: the same count, except that a
+  // short block carries the depth it makes a block further either side of
+  // itself, so what it sits in is a shelf rather than a notch its own width.
+  //
+  // Carried, not added: a ten-minute walk that ends where an evening begins
+  // is not a third thing happening during that evening, and counting it as
+  // one would push the evening about before it had started.
+  const deep = [...busy]
+  for (const block of blocks) {
+    const pad = shelfOf(block)
+    if (pad === 0) continue
     let most = 0
-    for (let near = slot - SHELF_PAD; near <= slot + SHELF_PAD; near++) {
-      if (near >= 0 && near < SLOTS_PER_DAY) most = Math.max(most, busy[near])
+    for (let slot = block.startSlot; slot < block.endSlot; slot++) {
+      most = Math.max(most, busy[slot] ?? 0)
     }
-    return most
-  })
+    for (let slot = block.startSlot - pad; slot < block.endSlot + pad; slot++) {
+      if (slot >= 0 && slot < SLOTS_PER_DAY && busy[slot] > 0) {
+        deep[slot] = Math.max(deep[slot], most)
+      }
+    }
+  }
 
   const pieces = []
   const open = new Map() // block -> the run being extended
