@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { applyPaint, applyResize, layoutLanes, overlapCluster, serialise, deserialise, setGame, setShow } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, stripsOf, overlapCluster, serialise, deserialise, setGame, setShow } from './blocks.js'
 import { paintSpans, SLOTS_PER_DAY } from './time.js'
 
 let pass = 0, fail = 0
@@ -13,6 +13,52 @@ const b = (id, tag, startSlot, endSlot, note = '') => ({ id, tag, startSlot, end
 const shape = (pieces) => pieces
   .map((p) => `${p.block.id} ${p.from}-${p.to} ${p.top}/${p.lanes}`)
   .sort()
+
+/** compact view of what can be seen of one block: "from-to top..bottom" */
+const seen = (blocks, id) => {
+  const pieces = layoutLanes(blocks)
+  return stripsOf(pieces.filter((p) => p.block.id === id), pieces)
+    .map((s) => `${s.from}-${s.to} ${s.top}..${s.bottom}`)
+}
+
+t('a block with nothing on it is one strip, the whole bar deep', () => {
+  assert.deepStrictEqual(seen([b('g', 'game', 0, 10)], 'g'), ['0-10 0..1'])
+})
+
+t('a strip stops where something is laid over the block, and starts again after', () => {
+  // The reported fault, and the reason a picture came out sized for a sliver:
+  // one neighbour on each end of a half-hour block left it cut into a single
+  // piece, and asking that piece how deep it was gave the answer from its
+  // worst moment across the whole width — even the middle, where the block
+  // stood at full height with nothing on it at all.
+  const blocks = [b('g', 'game', 10, 13), b('d', 'dgg', 9, 11), b('y', 'youtube', 12, 14)]
+  assert.deepStrictEqual(seen(blocks, 'g'), [
+    '10-11 0..0.5',   // dgg underneath it here
+    '11-12 0..1',     // and nothing at all here, so the whole bar
+    '12-13 0..0.5',   // youtube underneath it here
+  ])
+})
+
+t('a block only covered for part of its length keeps the rest of its depth', () => {
+  const blocks = [b('g', 'game', 0, 20), b('d', 'dgg', 0, 4)]
+  assert.deepStrictEqual(seen(blocks, 'g'), ['0-4 0..0.5', '4-20 0..1'])
+})
+
+t('touching strips of the same depth are one strip', () => {
+  // game is cut in two by the room the bar makes for the meal beside it, but
+  // nothing is ever drawn over game, so what you see of it is one rectangle.
+  const blocks = [b('g', 'game', 0, 20), b('d', 'dgg', 30, 32)]
+  assert.deepStrictEqual(seen(blocks, 'g'), ['0-20 0..1'])
+})
+
+t('what is seen of the block underneath stops at the one on top', () => {
+  const blocks = [b('g', 'game', 0, 10), b('d', 'dgg', 4, 8)]
+  assert.deepStrictEqual(seen(blocks, 'd'), ['4-8 0.5..1'])
+  // Cut into four pieces by the room the bar makes either side of dgg, but
+  // only three of what you can see: the shelf is game's own, so it reads as
+  // one rectangle up to where dgg starts and one again after it ends.
+  assert.deepStrictEqual(seen(blocks, 'g'), ['0-4 0..1', '4-8 0..0.5', '8-10 0..1'])
+})
 
 t('a lone block fills the bar', () => {
   assert.deepStrictEqual(shape(layoutLanes([b('g', 'game', 0, 10)])), ['g 0-10 0/1'])

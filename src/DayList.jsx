@@ -4,7 +4,7 @@ import {
   daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
   minutesNow, msToNextMinute, paintSpans,
 } from './time.js'
-import { applyPaint, applyResize, layoutLanes } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace } from './face.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
@@ -40,8 +40,21 @@ const PREVIEW_ID = '__preview' // the block being painted, not yet committed
 // day and a half of the same thing.
 const PAINT_REACH_DAYS = 1
 
+// How long a block's wipe-in runs for, from the CSS. A block older than
+// this is settled, and dropping the animation from it is not something
+// anyone can see.
+const INK_MS = 600
+
 const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
-const ICON_PADDING = 4 // an icon on its own can sit much closer to the edges
+// How much of a block's width an icon on its own may fill.
+//
+// A share rather than a number of pixels. Four pixels of room is two pixels
+// either side, which on a ten-minute block is all there is to give and on an
+// hour-long one leaves the picture jammed against both edges of a block with
+// room to spare. A share gives the same margin at every width — and at ten
+// minutes it comes to the same four pixels, so nothing that used to carry an
+// icon loses one for the sake of the air.
+const ICON_FILL = 0.8
 const ICON_GAP = 6
 const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
 const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
@@ -113,47 +126,94 @@ function textWidth(text) {
  * outline traces the tops left to right and the bottoms back again.
  */
 function silhouette(mine, pieces) {
-  const block = mine[0].block
-  const depth = (lane, lanes) => (lane / lanes) * 100
-
-  const over = pieces.filter(
-    (p) => p.block !== block && p.lane > mine[0].lane
-      && p.from < block.endSlot && p.to > block.startSlot,
-  )
-  const cuts = [...new Set([
-    ...mine.flatMap((p) => [p.from, p.to]),
-    ...over.flatMap((p) => [p.from, p.to]),
-  ])]
-    .filter((slot) => slot >= block.startSlot && slot <= block.endSlot)
-    .sort((a, b) => a - b)
-
-  const steps = []
-  for (let i = 0; i < cuts.length - 1; i++) {
-    const from = cuts[i]
-    const to = cuts[i + 1]
-    const piece = mine.find((p) => p.from <= from && p.to >= to)
-    if (!piece) continue
-    const covering = over.filter((p) => p.from <= from && p.to >= to)
-    const top = depth(piece.top, piece.lanes)
-    const bottom = covering.length
-      ? Math.min(...covering.map((p) => depth(p.lane, p.lanes)))
-      : 100
-    const last = steps[steps.length - 1]
-    if (last && last.to === from && last.top === top && last.bottom === bottom) last.to = to
-    else steps.push({ from, to, top, bottom })
-  }
-
+  const steps = stripsOf(mine, pieces)
   const x = (slot) => (slot / SLOTS_PER_DAY) * 100
   const points = []
-  for (const s of steps) points.push(`${x(s.from)},${s.top}`, `${x(s.to)},${s.top}`)
-  for (const s of [...steps].reverse()) points.push(`${x(s.to)},${s.bottom}`, `${x(s.from)},${s.bottom}`)
+  for (const s of steps) points.push(`${x(s.from)},${s.top * 100}`, `${x(s.to)},${s.top * 100}`)
+  for (const s of [...steps].reverse()) {
+    points.push(`${x(s.to)},${s.bottom * 100}`, `${x(s.from)},${s.bottom * 100}`)
+  }
   return points.join(' ')
 }
 
 /**
- * How to draw a block's label: how much of it fits, how big to draw the icon,
- * and how wide the result comes out. Returns { mode: 'full' | 'icon', iconPx,
- * widthPx }, or nothing when even an icon would be a smudge.
+ * Where a block's name goes, and the rectangle it gets to itself there.
+ *
+ * Every run of touching strips is a candidate, along with the band all of
+ * them have in common — a name may sit across a run like that without ever
+ * leaving its block, so the two hours of music broken up by a walk are still
+ * one place to write "Music". Each run is offered twice: as itself, and
+ * trimmed to the widest stretch of it that is centred on the block's middle.
+ *
+ * Then, in order:
+ *
+ * A name beats no name. A block with room for one somewhere should say what
+ * it is, and a bare picture in a slightly better spot says less.
+ *
+ * A cover goes where there is the most room for it. It is a picture of the
+ * thing itself, it says more the bigger it is, and half a bar of it beside a
+ * neighbour is worth less than a whole bar of it in the clear.
+ *
+ * An icon stays in the middle. It is a symbol, it stops saying anything more
+ * past a certain size, and moving it off the middle of its own block to buy
+ * a few pixels would be a bad trade. Anything within a twentieth of the
+ * block's length of the middle counts as the middle, so where two places are
+ * both centred the roomier one wins — which is the whole of what fixes a
+ * picture squeezed by a neighbour that only covers part of the block.
+ */
+function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
+  const pxOf = (slots) => (slots / SLOTS_PER_DAY) * trackWidth
+  const strips = stripsOf(mine, pieces)
+
+  const measure = (top, bottom, from, to) => {
+    const label = fitLabel(tag, fallback, pxOf(to - from), barHeight * (bottom - top))
+    return label
+      ? { label, top, bottom, from, to, off: Math.abs((from + to) / 2 - middle) }
+      : null
+  }
+
+  const tries = []
+  for (let i = 0; i < strips.length; i++) {
+    let top = 0
+    let bottom = 1
+    for (let j = i; j < strips.length; j++) {
+      if (j > i && strips[j].from !== strips[j - 1].to) break
+      top = Math.max(top, strips[j].top)
+      bottom = Math.min(bottom, strips[j].bottom)
+      if (bottom <= top) break
+      const from = strips[i].from
+      const to = strips[j].to
+      tries.push(measure(top, bottom, from, to))
+      // Truly centred: the widest stretch of this run that has the middle of
+      // the block at its own middle. Nearly every block is one run, and then
+      // this is simply the block.
+      const room = 2 * Math.min(middle - from, to - middle)
+      if (room > 0) tries.push(measure(top, bottom, middle - room / 2, middle + room / 2))
+    }
+  }
+
+  const found = tries.filter(Boolean)
+  if (found.length === 0) return null
+
+  const block = mine[0].block
+  const span = block.endSlot - block.startSlot
+  const centred = (f) => Math.round((f.off / span) * 20)
+  const upright = tag?.aspect > 0 && tag.aspect < 1
+
+  const named = found.filter((f) => f.label.mode === 'full')
+  const order = upright
+    ? (a, b) => b.label.iconPx - a.label.iconPx || a.off - b.off
+    : (a, b) => centred(a) - centred(b)
+      || b.label.iconPx - a.label.iconPx
+      || (b.bottom - b.top) - (a.bottom - a.top)
+      || a.off - b.off
+  return [...(named.length > 0 ? named : found)].sort(order)[0]
+}
+
+/**
+ * How to draw a block's label: how much of it fits, and how big to draw the
+ * icon. Returns { mode: 'full' | 'icon', iconPx }, or nothing at all when even
+ * an icon would be a smudge.
  *
  * The icon is sized to the room available rather than fixed, and grows with
  * the height of the row. It never gives that height back to make room for the
@@ -169,91 +229,13 @@ function silhouette(mine, pieces) {
  * and scales with the size it is drawn at; a game's cover is upright, and is
  * the one of the three that is bounded by the block rather than by a size.
  */
-/**
- * Which piece of a block carries its name, and the strip that piece occupies.
- *
- * Inside one piece the strip is the block's alone — nothing else is drawn
- * there — so a name that stays within a piece can never end up written across
- * whatever is stacked over the block. Between pieces it can: the block
- * changes height wherever something short starts beside it, and a name
- * reaching past that point spills onto its neighbour.
- *
- * So a name is placed in a whole piece rather than measured against the block
- * and then hemmed in. Nearest the middle that has room for it, so a block with
- * one piece — nearly all of them — is simply labelled in its middle.
- *
- * Room, not the middle, decides. A name in the second-nearest piece reads far
- * better than a bare picture in the nearest, and a strip pinched thin by a
- * neighbour is no reason to drop a name the block has room for elsewhere.
- */
-function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
-  const pxOf = (slots) => (slots / SLOTS_PER_DAY) * trackWidth
-
-  // What can actually be seen of a piece: from where it starts down to
-  // whatever is painted over it, or to the floor when nothing is. A block
-  // alone in a stretch fills the bar there even where the count says
-  // otherwise, and that room is its to use.
-  const seen = (p) => {
-    // Anything that reaches into this stretch at all counts, even if it only
-    // covers part of it. Two blocks can hand over mid-piece without the count
-    // changing, and asking only for ones that cover the whole piece would
-    // then find neither and hand the name room that belongs to both.
-    const under = pieces.filter((q) => (
-      q.block !== p.block && q.lane > p.lane && q.from < p.to && q.to > p.from
-    ))
-    const floor = under.length > 0 ? Math.min(...under.map((q) => q.lane)) : p.lanes
-    return { top: p.lane / p.lanes, bottom: floor / p.lanes }
-  }
-
-  // Every run of touching pieces, with the band all of them have in common.
-  // A name may sit across a run like that without ever leaving its block —
-  // the two hours of music broken up by a walk are still one place to write
-  // "Music", even though the block is three pieces there.
-  const runs = []
-  for (let i = 0; i < mine.length; i++) {
-    let top = 0
-    let bottom = 1
-    for (let j = i; j < mine.length; j++) {
-      if (j > i && mine[j].from !== mine[j - 1].to) break
-      const band = seen(mine[j])
-      top = Math.max(top, band.top)
-      bottom = Math.min(bottom, band.bottom)
-      if (bottom <= top) break
-      runs.push({ from: mine[i].from, to: mine[j].to, top, bottom })
-    }
-  }
-
-  const measure = (run, from, to) => {
-    const label = fitLabel(tag, fallback, pxOf(to - from), barHeight * (run.bottom - run.top))
-    return label
-      ? { label, top: run.top, bottom: run.bottom, from, to, off: Math.abs((from + to) / 2 - middle) }
-      : null
-  }
-
-  const tries = []
-  for (const run of runs) {
-    tries.push(measure(run, run.from, run.to))
-    // Truly centred: the widest stretch centred on the middle that still lies
-    // inside this run. Nearly every block is one run, and then this is the
-    // whole block.
-    const room = 2 * Math.min(middle - run.from, run.to - middle)
-    if (room > 0) tries.push(measure(run, middle - room / 2, middle + room / 2))
-  }
-
-  const found = tries.filter(Boolean)
-  if (found.length === 0) return null
-  // The name first, and among those the one nearest the middle.
-  const whole = found.filter((f) => f.label.mode === 'full')
-  return (whole.length > 0 ? whole : found).sort((a, b) => a.off - b.off)[0]
-}
-
 function fitLabel(tag, fallback, widthPx, lanePx) {
   const room = widthPx - LABEL_PADDING
   const named = lanePx >= LABEL_MIN_LANE
   if (!tag) {
     if (!named) return null
     const width = textWidth(fallback)
-    return width <= room ? { mode: 'full', iconPx: 0, widthPx: width + LABEL_PADDING } : null
+    return width <= room ? { mode: 'full', iconPx: 0 } : null
   }
 
   const iconPx = baseIconPx()
@@ -270,7 +252,9 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   const widthAt = (px) => px * aspect
 
   const upright = aspect < 1
-  const clearance = upright ? COVER_SIDE_ROOM : ICON_PADDING
+  // What is left of the block's width once the picture has been given room to
+  // stand clear of its edges.
+  const sideways = upright ? widthPx - COVER_SIDE_ROOM : widthPx * ICON_FILL
 
   // How tall it would like to be.
   //
@@ -296,7 +280,7 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   // The width only ever holds it back from growing, and never shrinks it
   // below its normal size: a narrow block keeps its picture, which is the
   // whole reason one is drawn without a name.
-  const wanted = Math.min(reach, Math.max(base, sizeFor(widthPx - clearance)))
+  const wanted = Math.min(reach, Math.max(base, sizeFor(sideways)))
   // Never insist on more than the tag asked for: a deliberately small icon
   // shouldn't be dropped for being small. Measured against what the tag asks
   // for rather than what the lane allows, or a lane too short for anything
@@ -305,15 +289,15 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
 
   const withName = widthAt(wanted) + ICON_GAP + textWidth(tag.name)
   if (named && withName <= room) {
-    return { mode: 'full', iconPx: wanted, widthPx: withName + LABEL_PADDING }
+    return { mode: 'full', iconPx: wanted }
   }
 
   // Only now does the icon give any ground, and only because at this width
-  // there is nothing else to give.
-  const alone = Math.min(wanted, sizeFor(widthPx - ICON_PADDING))
-  return alone >= floor
-    ? { mode: 'icon', iconPx: alone, widthPx: widthAt(alone) + ICON_PADDING }
-    : null
+  // there is nothing else to give. A picture with no name beside it may fill
+  // the block right up to the share it is allowed — the room a cover keeps
+  // clear at its sides is room for a name, and there is no name here.
+  const alone = Math.min(wanted, sizeFor(widthPx * ICON_FILL))
+  return alone >= floor ? { mode: 'icon', iconPx: alone } : null
 }
 
 /**
@@ -408,6 +392,40 @@ export default function DayList({
 
   const datesRef = useRef(dates)
   datesRef.current = dates
+
+  /**
+   * Which blocks have already wiped themselves in, and when.
+   *
+   * A block wipes in when it arrives — painted, or the day it belongs to
+   * being read for the first time. It should not do it again for anything
+   * else, and until now it did: a block cut around an overlap is several
+   * elements, and dragging one block's edge changes how many pieces its
+   * neighbours are cut into. Every piece that appears is a new element, and a
+   * new element plays whatever it plays on arrival. So a neighbour nobody
+   * touched wiped itself in again, in the middle of a drag, for no reason
+   * anyone watching could see.
+   *
+   * Remembered per block rather than per piece, and the time is kept rather
+   * than a flag: a redraw a tenth of a second after a block appears must not
+   * take the animation off it half way through. Once the wipe is over,
+   * dropping it changes nothing on screen.
+   *
+   * Filled in after the frame is on screen, so the frame a block arrives on
+   * is the one that animates.
+   */
+  const inked = useRef(new Map())
+  const wiping = (date, block) => {
+    const at = inked.current.get(`${date}:${block.id}`)
+    return at === undefined || performance.now() - at < INK_MS
+  }
+  useEffect(() => {
+    const now = performance.now()
+    for (const date of dates) {
+      for (const b of days[date]?.blocks ?? []) {
+        if (!inked.current.has(`${date}:${b.id}`)) inked.current.set(`${date}:${b.id}`, now)
+      }
+    }
+  })
 
   const rowTotalRef = useRef(rowTotal)
   rowTotalRef.current = rowTotal
@@ -1081,6 +1099,9 @@ export default function DayList({
                     data-block-id={b.id}
                     className={
                       'block' + (b.id === previewId ? ' preview' : '')
+                      // Only on the way in. A piece that appears because
+                      // something else moved is not an arrival.
+                      + (wiping(date, b) ? '' : ' settled')
                       // Square where the block carries on: a block cut where
                       // it steps up has to read as one shape.
                       + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`

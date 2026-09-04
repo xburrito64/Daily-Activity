@@ -297,6 +297,53 @@ export function layoutLanes(blocks) {
 
 
 /**
+ * The strips of a block that can actually be seen, left to right.
+ *
+ * A block is cut into pieces where the bar changes how many ways it divides.
+ * That is not the only thing that changes how much of the block shows,
+ * though: a neighbour can start and stop inside one piece without the count
+ * ever changing. Ask a piece how much room it has and the answer is the one
+ * from its worst moment, applied across its whole width — which is how a
+ * block standing at full height for most of its length ended up wearing a
+ * picture sized for the sliver a neighbour was sitting on, drawn up in the
+ * corner rather than in the middle of it.
+ *
+ * So the cuts come from both: the block's own pieces, and the edges of
+ * everything drawn over it. Each strip is then a rectangle that is the
+ * block's alone, and neighbouring strips with the same top and bottom are one
+ * rectangle again.
+ */
+export function stripsOf(mine, pieces) {
+  const block = mine[0].block
+  const over = pieces.filter(
+    (p) => p.block !== block && p.from < block.endSlot && p.to > block.startSlot,
+  )
+  const cuts = [...new Set([
+    ...mine.flatMap((p) => [p.from, p.to]),
+    ...over.flatMap((p) => [p.from, p.to]),
+  ])]
+    .filter((slot) => slot >= block.startSlot && slot <= block.endSlot)
+    .sort((a, b) => a - b)
+
+  const strips = []
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const from = cuts[i]
+    const to = cuts[i + 1]
+    const piece = mine.find((p) => p.from <= from && p.to >= to)
+    if (!piece) continue
+    // A strip lies inside one cut, so anything over it covers all of it.
+    const under = over.filter((p) => p.lane > piece.lane && p.from <= from && p.to >= to)
+    const floor = under.length > 0 ? Math.min(...under.map((p) => p.lane)) : piece.lanes
+    const top = piece.lane / piece.lanes
+    const bottom = floor / piece.lanes
+    const last = strips[strips.length - 1]
+    if (last && last.to === from && last.top === top && last.bottom === bottom) last.to = to
+    else strips.push({ from, to, top, bottom })
+  }
+  return strips
+}
+
+/**
  * Every block joined to this one by overlap, directly or through others.
  * Each keeps its own note; this is only so the note panel can name what else
  * was running at the time. Sorted by start, so it reads in order.

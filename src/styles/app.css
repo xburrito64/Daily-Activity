@@ -606,6 +606,10 @@ h1 {
   from { clip-path: inset(0 100% 0 0); filter: blur(3px); }
   to { clip-path: inset(0 0 0 0); filter: blur(0); }
 }
+/* Already here. A block is cut into more or fewer pieces as its neighbours
+   are dragged about, and each new piece is a new element — which would wipe
+   itself in again, on a block nobody was touching. */
+.block.settled { animation: none; }
 /* At tiny bar heights the inset would eat the block, so drop it. The inline
    top/height calc reads this variable, so zeroing it here is enough. */
 .track.dense { --block-inset: 0px; }
