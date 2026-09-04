@@ -55,6 +55,12 @@ const LABEL_PADDING = 16 // matches the label's horizontal padding in the CSS
 // minutes it comes to the same four pixels, so nothing that used to carry an
 // icon loses one for the sake of the air.
 const ICON_FILL = 0.8
+// How far along its block a picture may drift and still count as being in the
+// middle of it, and how far off the middle of what it stands on it may sit
+// before it counts as stranded at an edge. Both are shares: of the block's
+// length, and of the bar's height.
+const MIDDLE_ENOUGH = 0.15
+const STRANDED = 0.2
 const ICON_GAP = 6
 const ICON_MIN_PX = 11 // any smaller and it reads as a smudge, not a picture
 const LABEL_MIN_LANE = 34 // a lane shorter than this has no room for a name
@@ -163,6 +169,7 @@ function silhouette(mine, pieces) {
  */
 function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
   const pxOf = (slots) => (slots / SLOTS_PER_DAY) * trackWidth
+  const inSlots = (px) => (px / Math.max(1, trackWidth)) * SLOTS_PER_DAY
   const strips = stripsOf(mine, pieces)
 
   const measure = (top, bottom, from, to) => {
@@ -197,13 +204,45 @@ function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
 
   const block = mine[0].block
   const span = block.endSlot - block.startSlot
-  const centred = (f) => Math.round((f.off / span) * 20)
-  const upright = tag?.aspect > 0 && tag.aspect < 1
+  // How far off the middle of its block, as a share of the block's length —
+  // and near enough is the middle. A picture that has drifted a tenth of the
+  // way along has not drifted anywhere anyone would notice, and refusing it
+  // the room it could have there would be pedantry.
+  const centred = (f) => (f.off <= span * MIDDLE_ENOUGH ? 0 : Math.round((f.off / span) * 20))
 
+  // Whether the picture is stranded near an edge of its own block.
+  //
+  // A picture centred in its band still reads as pushed against an edge when
+  // the block carries on past that band underneath it. Forty minutes of
+  // Youtube with ten minutes of it under a game is drawn as one band, the
+  // lower half — and the picture ends up along the bottom of a block that is
+  // full height for three quarters of its width, with nothing above it.
+  //
+  // Measured over the picture's own width, so a step somewhere else along the
+  // block is not this picture's problem, and only past a fifth of the bar: a
+  // picture that half stands on a neighbour and half doesn't is sitting where
+  // it should, between the two.
+  const adrift = (f) => {
+    const wide = inSlots(f.label.iconPx)
+    const at = (f.from + f.to) / 2
+    let width = 0
+    let middle = 0
+    for (const s of strips) {
+      const w = Math.min(s.to, at + wide / 2) - Math.max(s.from, at - wide / 2)
+      if (w <= 0) continue
+      width += w
+      middle += w * (s.top + s.bottom) / 2
+    }
+    if (width === 0) return 0
+    return Math.abs((f.top + f.bottom) / 2 - middle / width) > STRANDED ? 1 : 0
+  }
+
+  const upright = tag?.aspect > 0 && tag.aspect < 1
   const named = found.filter((f) => f.label.mode === 'full')
   const order = upright
     ? (a, b) => b.label.iconPx - a.label.iconPx || a.off - b.off
-    : (a, b) => centred(a) - centred(b)
+    : (a, b) => adrift(a) - adrift(b)
+      || centred(a) - centred(b)
       || b.label.iconPx - a.label.iconPx
       || (b.bottom - b.top) - (a.bottom - a.top)
       || a.off - b.off
