@@ -303,10 +303,20 @@ export function layoutLanes(blocks) {
     const ahead = here.some((b) => moved(b, to))
     const behind = here.some((b) => moved(b, slot - 1))
 
-    const claiming = blocks.filter((b) => here.includes(b)
+    const held = blocks.filter((b) => here.includes(b)
       || (ahead && b.startSlot === to)
       || (behind && isShort(b) && b.endSlot === from))
-    while (claiming.length > 0 && !here.includes(claiming[0])) claiming.shift()
+    while (held.length > 0 && !here.includes(held[0])) held.shift()
+
+    // Room is only ever made early upwards. Holding a lane that lands above
+    // something pushes that block down for ten minutes and lets it back up
+    // again the moment the new one arrives — and the block on top of the pile,
+    // which reaches the floor, swells down into the held lane and shrinks out
+    // of it, so the line between them dips and comes back for no reason
+    // anybody watching could see. Better to let the whole thing happen at once
+    // where it really happens.
+    const shoved = here.some((b) => held.indexOf(b) * here.length > here.indexOf(b) * held.length)
+    const claiming = shoved ? here : held
     const lanes = claiming.length
 
     here.forEach((block) => {

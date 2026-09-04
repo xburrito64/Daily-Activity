@@ -88,18 +88,31 @@ t('a short one keeps its shelf at both ends', () => {
 })
 
 t('a block steps aside once, into the place it is going to hold', () => {
-  // The reported fault: with the new block landing above it, food rose into
-  // the room made ahead of it and then dropped back out of it ten minutes
-  // later, when the block it was making room for actually arrived. It should
-  // go straight to where it ends up, and stay there.
+  // The reported fault: food rose into the room made ahead of it and then
+  // dropped back out of it ten minutes later, when the block it was making
+  // room for actually arrived. It goes straight to where it ends up instead,
+  // and stays there — a third of the bar rather than a half, a block early.
+  const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('f', 'food', 0, 7), b('a', 'anything', 3, 9)])
+  const food = pieces.filter((p) => p.block.id === 'f')
+  assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['0-2 1/2', '2-7 1/3'], 'up to its final lane a block before anything arrives')
+})
+
+t('but never early when the new block lands above it', () => {
+  // The same day with anything else dropped on top of food instead. Making
+  // room early would push food *down* for ten minutes and let it back up the
+  // moment the new block arrived — and dgg, which reaches the floor, would
+  // swell down into the held lane and shrink out of it again, so the line
+  // under dgg dipped and came back for no reason anyone watching could see.
+  // Everything happens at once, where it really happens.
   const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('a', 'anything', 3, 9), b('f', 'food', 0, 7)])
   const food = pieces.filter((p) => p.block.id === 'f')
   assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
-    ['0-2 1/2', '2-7 2/3'], 'down to its final lane a block before anything arrives')
-  // And nothing shows through the lane held for it: dgg is above it and
-  // reaches the floor.
+    ['0-3 1/2', '3-7 2/3'])
+  // dgg is drawn from the ceiling throughout and is never cut at all.
   const dgg = pieces.filter((p) => p.block.id === 'd')
-  assert.deepStrictEqual(dgg.map((p) => p.lane), [0, 0])
+  assert.deepStrictEqual(dgg.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['0-3 0/2', '3-7 0/3'])
 })
 
 t('a lone block fills the bar', () => {
