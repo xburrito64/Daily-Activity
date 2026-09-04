@@ -60,21 +60,46 @@ t('what is seen of the block underneath stops at the one on top', () => {
   assert.deepStrictEqual(seen(blocks, 'g'), ['0-4 0..1', '4-8 0..0.5', '8-10 0..1'])
 })
 
-t('a long block asks for no shelf, and nothing beside it moves early', () => {
-  // The reported fault: an hour of one thing starting inside another had the
-  // block above it rise ten minutes before it began, so the bar changed shape
-  // in front of nothing at all.
+t('the bar gives way a block before something starts, however long it is', () => {
+  // Asked for: the block above should be out of the way by the time the new
+  // one arrives, rather than moving on the very slot it appears.
   const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('f', 'food', 0, 7), b('a', 'anything', 3, 9)])
   const food = pieces.filter((p) => p.block.id === 'f')
   assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
-    ['0-3 1/2', '3-7 1/3'], 'it gives up its room exactly when anything else starts')
+    ['0-2 1/2', '2-7 1/3'], 'it makes room a block before anything else starts')
 })
 
-t('a short one still does, and still sits in its shelf', () => {
+t('but a long block keeps no room once it is over', () => {
+  // The other end of the same day: nothing is running there but the two that
+  // are, so the bar says two. Holding the third lane open for ten minutes
+  // after an hour of something ended left the block beside it standing higher
+  // than the day could account for.
+  const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('f', 'food', 0, 7), b('a', 'anything', 3, 9)])
+  const anything = pieces.filter((p) => p.block.id === 'a')
+  assert.deepStrictEqual(anything.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['3-7 2/3', '7-9 0/1'])
+})
+
+t('a short one keeps its shelf at both ends', () => {
   const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('f', 'food', 0, 7), b('a', 'anything', 3, 5)])
   const food = pieces.filter((p) => p.block.id === 'f')
   assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
     ['0-2 1/2', '2-6 1/3', '6-7 1/2'])
+})
+
+t('a block steps aside once, into the place it is going to hold', () => {
+  // The reported fault: with the new block landing above it, food rose into
+  // the room made ahead of it and then dropped back out of it ten minutes
+  // later, when the block it was making room for actually arrived. It should
+  // go straight to where it ends up, and stay there.
+  const pieces = layoutLanes([b('d', 'dgg', 0, 7), b('a', 'anything', 3, 9), b('f', 'food', 0, 7)])
+  const food = pieces.filter((p) => p.block.id === 'f')
+  assert.deepStrictEqual(food.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['0-2 1/2', '2-7 2/3'], 'down to its final lane a block before anything arrives')
+  // And nothing shows through the lane held for it: dgg is above it and
+  // reaches the floor.
+  const dgg = pieces.filter((p) => p.block.id === 'd')
+  assert.deepStrictEqual(dgg.map((p) => p.lane), [0, 0])
 })
 
 t('a lone block fills the bar', () => {
@@ -89,8 +114,11 @@ t('the bar is shared exactly while it is shared', () => {
     'd 4-8 1/2',    // dgg underneath, exactly where it runs
     'g 0-4 0/1',    // game has the bar to itself
     'g 4-8 0/2',    // halves while the two are both running
-    'g 8-12 0/1',   // and the whole bar again
+    'g 8-12 0/1',   // and the whole bar again the moment it stops
   ])
+  // Nothing here is cut early: game is on top throughout, so it is drawn from
+  // the ceiling to the floor whether the bar says one lane or two, and there
+  // is nothing to move out of dgg's way.
 })
 
 t('a block gives up room when a third thing starts, and takes it back after', () => {
@@ -104,7 +132,7 @@ t('a block gives up room when a third thing starts, and takes it back after', ()
   ])
   const music = pieces.filter((p) => p.block.id === 'm')
   assert.deepStrictEqual(music.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
-    ['0-20 1/2', '20-40 1/3', '40-60 1/2'])
+    ['0-19 1/2', '19-40 1/3', '40-60 1/2'])
 })
 
 t('a block rises to fill the top once nothing is above it', () => {
@@ -113,9 +141,9 @@ t('a block rises to fill the top once nothing is above it', () => {
   const pieces = layoutLanes([b('g', 'game', 6, 11), b('d', 'dgg', 10, 13)])
   assert.deepStrictEqual(shape(pieces), [
     'd 10-11 1/2',   // under game
-    'd 11-13 0/2',   // and up to the ceiling after it, in the room it asked for
-    'g 6-9 0/1',
-    'g 9-11 0/2',    // halves from a block before dgg, whose shelf reaches back
+    'd 11-13 0/1',   // and has the bar to itself after it
+    'g 10-11 0/2',
+    'g 6-10 0/1',
   ])
 })
 
@@ -213,9 +241,11 @@ t('three at once split into thirds, and only then', () => {
   const pieces = layoutLanes([
     b('a', 'game', 0, 10), b('b', 'dgg', 2, 10), b('c', 'anime', 4, 10),
   ])
-  // The whole bar, then halves, then thirds, as each one starts.
+  // The whole bar, then halves, then thirds. a is on top the whole way and
+  // never has to move, so it is cut where the others actually start; b does
+  // have to move for c, and so gives way a block early.
   assert.deepStrictEqual(shape(pieces),
-    ['a 0-2 0/1', 'a 2-4 0/2', 'a 4-10 0/3', 'b 2-4 1/2', 'b 4-10 1/3', 'c 4-10 2/3'])
+    ['a 0-2 0/1', 'a 2-3 0/2', 'a 3-10 0/3', 'b 2-3 1/2', 'b 3-10 1/3', 'c 4-10 2/3'])
 })
 
 t('identical ranges share evenly', () => {
@@ -233,17 +263,23 @@ t('a short block inside a long one notches it rather than halving all of it', ()
   // game to be half height for its whole length.
   const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 8, 10)])
   assert.deepStrictEqual(shape(pieces),
-    ['d 8-10 1/2', 'g 0-7 0/1', 'g 11-20 0/1', 'g 7-11 0/2'])
+    ['d 8-10 1/2', 'g 0-8 0/1', 'g 10-20 0/1', 'g 8-10 0/2'])
 })
 
 t('the shelf a short block sits in is a block wider at each end', () => {
   // A notch exactly the width of a ten-minute block reads as a spike. One
   // block of room at each end makes it a shelf the day made room in.
-  const pieces = layoutLanes([b('g', 'game', 0, 20), b('d', 'dgg', 9, 10)])
-  const dgg = pieces.find((p) => p.block.id === 'd')
-  const shelf = pieces.find((p) => p.block.id === 'g' && p.lanes === 2)
+  //
+  // Which only shows on a block that has somewhere to be moved to: music has
+  // to give up a third of the bar for the walk, and does so a block early and
+  // takes it back a block late. Sleep is on top throughout and never moves,
+  // so nothing about it is cut.
+  const blocks = [b('s', 'sleep', 0, 20), b('m', 'music', 0, 20), b('d', 'dgg', 9, 10)]
+  const music = layoutLanes(blocks).filter((p) => p.block.id === 'm')
+  assert.deepStrictEqual(music.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
+    ['0-8 1/2', '8-11 1/3', '11-20 1/2'])
+  const dgg = layoutLanes(blocks).find((p) => p.block.id === 'd')
   assert.deepStrictEqual([dgg.from, dgg.to], [9, 10], 'the block keeps its own times')
-  assert.deepStrictEqual([shelf.from, shelf.to], [8, 11], 'the room around it does not')
 })
 
 t('a block covered in two places is notched twice and whole in between', () => {
@@ -252,7 +288,7 @@ t('a block covered in two places is notched twice and whole in between', () => {
   ])
   const game = pieces.filter((p) => p.block.id === 'g')
   assert.deepStrictEqual(game.map((p) => p.from + '-' + p.to + ' of ' + p.lanes),
-    ['0-3 of 1', '3-7 of 2', '7-11 of 1', '11-15 of 2', '15-20 of 1'])
+    ['0-4 of 1', '4-6 of 2', '6-12 of 1', '12-14 of 2', '14-20 of 1'])
   // Still one block: only the outer ends are rounded and carry the handles.
   assert.deepStrictEqual([game[0].isFirst, game[game.length - 1].isLast], [true, true])
 })

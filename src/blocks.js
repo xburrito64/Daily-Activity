@@ -8,21 +8,23 @@ const byStart = (a, b) =>
 
 const overlaps = (a, b) => a.startSlot < b.endSlot && a.endSlot > b.startSlot
 
-// How much room a block asks for beyond its own length, so that what it sits
-// in reads as a shelf rather than as a notch its own width.
+// The two ends of a shelf are not the same thing.
 //
-// One ten-minute block at each end, and only for a block short enough to need
-// it. Ten minutes of food in the middle of an evening cuts a notch exactly
-// its own width, which reads as a spike; half an hour of it already reads as
-// somewhere the day made room. An hour does too — and asking for the extra
-// block there only moves everything beside it ten minutes before anything has
-// actually happened, which is a lie about the day rather than a kindness to
-// the eye.
-const SHELF_PAD = 1
+// Room is always made ten minutes *before* something starts, whatever it is.
+// The bar giving way just ahead of a block reads as the day making space for
+// it; the same change landing on the very slot the block appears reads as a
+// jolt.
+//
+// Room is only *kept* after something ends if it was short. Ten minutes of
+// food in the middle of an evening would otherwise cut a notch exactly its own
+// width — a spike, rather than somewhere the day made room — so its shelf
+// stays open a block after it. An hour of something needs no such help, and
+// holding its room open once it is over leaves the block beside it standing
+// higher than anything running there could account for.
 const SHELF_MAX = 3
 
-/** How far either side of itself a block asks the bar to make room. */
-const shelfOf = (b) => (b.endSlot - b.startSlot <= SHELF_MAX ? SHELF_PAD : 0)
+/** Whether a block is short enough that its shelf stays open after it. */
+const isShort = (b) => b.endSlot - b.startSlot <= SHELF_MAX
 
 /*
  * Lane order is list order: the first block in the list is drawn in the top
@@ -236,18 +238,17 @@ export function setShow(blocks, id, show) {
  * Which lane is list order, and list order is yours: paint or drop one block
  * over another and it goes above it. Nothing here reorders that.
  *
- * The one softening: a short block asks for ten minutes of room either side of
- * itself. A ten-minute meal in the middle of a long evening would otherwise
- * cut a notch exactly its own width — a spike one block wide, which reads as a
- * glitch rather than as a shelf. Widened by one block at each end it reads as
- * somewhere the day made room. It costs nothing: the extra room is always
- * beneath the blocks that are there, and they still reach the floor, so
- * nothing is left empty.
+ * The one softening: the bar makes room ten minutes before anything starts,
+ * holding the lane the new block will take, so that it gives way ahead of the
+ * block rather than jolting on the slot it appears. Whatever sits above that
+ * lane reaches the floor and fills it in the meantime, so nothing shows
+ * through and nothing moves twice.
  *
- * Only a short block asks. An hour of something makes room enough of its own,
- * and asking for more there would move every block beside it ten minutes
- * before the hour began — a block rising out of the way of something that has
- * not started yet.
+ * Where the block was a short one, the room stays open ten minutes after it
+ * too: a ten-minute meal would otherwise cut a notch exactly its own width —
+ * a spike, rather than somewhere the day made room. An hour of something keeps
+ * no such room after it, which would only leave whatever is beside it standing
+ * higher than anything running there could account for.
  *
  * A block is cut only where that count genuinely changes, and each run comes
  * back as one piece.
@@ -257,32 +258,18 @@ export function setShow(blocks, id, show) {
 export function layoutLanes(blocks) {
   if (blocks.length === 0) return []
 
-  // How many things are running at each ten minutes of the day.
-  const busy = []
+  // What is running at each ten minutes of the day, in list order — which is
+  // stacking order.
+  const running = []
   for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
-    busy[slot] = blocks.filter((b) => b.startSlot <= slot && b.endSlot > slot).length
+    running[slot] = blocks.filter((b) => b.startSlot <= slot && b.endSlot > slot)
   }
 
-  // And how many ways the bar divides there: the same count, except that a
-  // short block carries the depth it makes a block further either side of
-  // itself, so what it sits in is a shelf rather than a notch its own width.
-  //
-  // Carried, not added: a ten-minute walk that ends where an evening begins
-  // is not a third thing happening during that evening, and counting it as
-  // one would push the evening about before it had started.
-  const deep = [...busy]
-  for (const block of blocks) {
-    const pad = shelfOf(block)
-    if (pad === 0) continue
-    let most = 0
-    for (let slot = block.startSlot; slot < block.endSlot; slot++) {
-      most = Math.max(most, busy[slot] ?? 0)
-    }
-    for (let slot = block.startSlot - pad; slot < block.endSlot + pad; slot++) {
-      if (slot >= 0 && slot < SLOTS_PER_DAY && busy[slot] > 0) {
-        deep[slot] = Math.max(deep[slot], most)
-      }
-    }
+  /** Where down the bar a block starts at a moment, or -1 if it isn't there. */
+  const shareAt = (block, slot) => {
+    const here = running[slot] ?? []
+    const at = here.indexOf(block)
+    return at < 0 ? -1 : at / here.length
   }
 
   const pieces = []
@@ -290,12 +277,40 @@ export function layoutLanes(blocks) {
   for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
     const from = slot
     const to = slot + 1
-    // What is actually running here, in list order — which is stacking order.
-    const here = blocks.filter((b) => b.startSlot <= from && b.endSlot >= to)
+    const here = running[slot]
     if (here.length === 0) continue
-    const lanes = Math.max(deep[slot], here.length)
 
-    here.forEach((block, lane) => {
+    // Is anything here going to have to move ten minutes from now, when
+    // whatever starts then arrives? Did anything have to move coming into
+    // this moment, because something stopped? Either way the bar makes the
+    // change a block early and holds it a block late, so that a block steps
+    // aside once, ahead of the new one, rather than being shoved on the very
+    // slot it appears — and so that a short block sits in a shelf rather than
+    // in a notch exactly its own width.
+    //
+    // The lane is what is held, not merely the room: the block that will be
+    // pushed down goes straight to the place it is going to hold, instead of
+    // rising into the gap and dropping out of it again ten minutes later.
+    // Nothing shows through the held lane, because whatever is above it
+    // reaches the floor and fills it until the new block lands there.
+    //
+    // Only where it can be seen. A share of the bar that works out the same
+    // either way is not worth cutting the block for, a block on its way out
+    // has nothing to step aside for, and a lane held above everything drawn
+    // would be empty air with nothing above it to fill it.
+    const moved = (block, then) => shareAt(block, then) >= 0
+      && shareAt(block, then) !== shareAt(block, slot)
+    const ahead = here.some((b) => moved(b, to))
+    const behind = here.some((b) => moved(b, slot - 1))
+
+    const claiming = blocks.filter((b) => here.includes(b)
+      || (ahead && b.startSlot === to)
+      || (behind && isShort(b) && b.endSlot === from))
+    while (claiming.length > 0 && !here.includes(claiming[0])) claiming.shift()
+    const lanes = claiming.length
+
+    here.forEach((block) => {
+      const lane = claiming.indexOf(block)
       const last = open.get(block)
       // One rectangle per run at the same height, so a block is only cut
       // where the number of things beside it really changes.
