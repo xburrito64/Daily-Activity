@@ -9,13 +9,13 @@ a fenced code block so the rest of the note stays usable for normal writing:
 
 ````markdown
 ```daily-log
-[{"tag":"sleep","start":"00:00","end":"08:15"},
+[{"tag":"sleep","start":"00:00","end":"08:20"},
  {"tag":"game","start":"09:20","end":"16:30","note":"HZD, finished the frozen wilds"}]
 ```
 ````
 
 Everything outside that block is left byte-for-byte alone. Times are `HH:MM`
-on 15-minute marks. If the JSON is hand-edited into something unparseable the
+on ten-minute marks. If the JSON is hand-edited into something unparseable the
 app says so and refuses to write over it.
 
 ## Running it
