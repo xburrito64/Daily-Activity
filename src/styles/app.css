@@ -368,8 +368,18 @@ h1 {
    only thing left at full strength. Dimming rather than hiding: the day still
    has to read as the day it was, or you cannot tell where the match sits in
    it. */
-.track.finding .block:not(.hit),
-.track.finding .block-label:not(.hit) { opacity: 0.22; }
+/* Everything the search did not name steps back, so what it did name is the
+   only thing left at full strength.
+
+   Darkened rather than faded. Every block is drawn from its own lane down to
+   the floor, and the one above it covers the rest — so a block turned
+   translucent stops covering, and whatever is beneath it comes up through it.
+   That is the DGG blue that used to well up through the Vibe Coding grey the
+   moment a search dimmed it. A filter keeps every block as solid as it was
+   and only takes the light out of it. */
+.track.finding .block:not(.hit) { filter: brightness(0.34) saturate(0.5); }
+/* A name has nothing behind it but the block it belongs to, so it may fade. */
+.track.finding .block-label:not(.hit) { opacity: 0.25; }
 
 /* A match is outlined around the shape it actually has, the same way a
    selected block is. Drawn per piece instead, the outline would run down
