@@ -148,6 +148,30 @@ export function applyResize(blocks, id, startSlot, endSlot, at) {
   return mergeSameTag(placed, moved)
 }
 
+/**
+ * A copied block, put down at `slot`.
+ *
+ * Everything it was comes with it — what it was, what was played or watched,
+ * which episodes, the cover, and whatever was written about it. Everything
+ * except when it happened, which is the one thing being decided here.
+ *
+ * It keeps its length, up to the end of the day. Ten minutes to midnight is
+ * not a reason to refuse a two-hour block, and it is certainly not a reason to
+ * write tomorrow's hours into today's note — so what fits is what lands, and
+ * an edge can be dragged afterwards if the rest of it matters.
+ *
+ * Nothing at all lands at midnight itself, where there is no room for even
+ * one mark.
+ */
+export function pasteAt(copied, slot) {
+  const endSlot = Math.min(SLOTS_PER_DAY, slot + copied.slots)
+  if (endSlot <= slot) return null
+  // `slots` is how long it was and `from` is which block it came off — both
+  // are about the copy, not about the block, and neither is written down.
+  const { slots, from, ...was } = copied
+  return { id: newId(), ...was, startSlot: slot, endSlot }
+}
+
 export const removeBlock = (blocks, id) => blocks.filter((b) => b.id !== id)
 
 export const setNote = (blocks, id, note) =>

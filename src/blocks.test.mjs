@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { applyPaint, applyResize, layoutLanes, stripsOf, overlapCluster, serialise, deserialise, setGame, setShow } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, stripsOf, overlapCluster, pasteAt, serialise, deserialise, setGame, setShow } from './blocks.js'
 import { paintSpans, SLOTS_PER_DAY } from './time.js'
 
 let pass = 0, fail = 0
@@ -138,6 +138,46 @@ t('and a shelf is one block wide, not two', () => {
   const anything = pieces.filter((p) => p.block.id === 'a')
   assert.deepStrictEqual(anything.map((p) => p.from + '-' + p.to + ' ' + p.lane + '/' + p.lanes),
     ['3-8 1/3', '8-9 1/2'], 'one block past the end of the two it was sharing with')
+})
+
+t('a copy lands whole, at the moment it is put down', () => {
+  const copied = {
+    from: 'somewhere', slots: 12, tag: 'anime', show: 'ONE PIECE',
+    episodes: [1175], cover: 'one-piece-21.jpg', note: 'Enies Lobby', game: '',
+  }
+  const put = pasteAt(copied, 90) // 15:00
+  assert.deepStrictEqual(
+    { ...put, id: undefined },
+    {
+      id: undefined, tag: 'anime', show: 'ONE PIECE', game: '',
+      episodes: [1175], cover: 'one-piece-21.jpg', note: 'Enies Lobby',
+      startSlot: 90, endSlot: 102,
+    },
+    'everything it was, and nothing about the copying',
+  )
+  assert.ok(put.id, 'and an id of its own, so it is a block rather than the block')
+})
+
+t('and keeps what fits when there is not a whole day left', () => {
+  const copied = { slots: 12, tag: 'game', note: '', game: '', show: '', episodes: [], cover: '' }
+  const put = pasteAt(copied, SLOTS_PER_DAY - 2) // ten past eleven at night
+  assert.deepStrictEqual([put.startSlot, put.endSlot], [142, 144],
+    'twenty minutes of it rather than two hours of tomorrow')
+})
+
+t('nothing lands at midnight itself', () => {
+  const copied = { slots: 12, tag: 'game', note: '', game: '', show: '', episodes: [], cover: '' }
+  assert.strictEqual(pasteAt(copied, SLOTS_PER_DAY), null)
+})
+
+t('a pasted block folds into the same thing already running there', () => {
+  // Watching more of what is already on: one evening, not two blocks.
+  const day = [b('a', 'anime', 90, 96)]
+  day[0].show = 'ONE PIECE'
+  const put = pasteAt({ slots: 6, tag: 'anime', show: 'ONE PIECE', game: '', note: '', episodes: [], cover: '' }, 96)
+  const after = applyPaint(day, put)
+  assert.strictEqual(after.length, 1)
+  assert.deepStrictEqual([after[0].startSlot, after[0].endSlot], [90, 102])
 })
 
 t('a lone block fills the bar', () => {

@@ -18,7 +18,7 @@ const ANIME = 'anime'
  * across the top so you can see what else was running at the same time.
  */
 export default function NotePanel({
-  cluster, block, date, tags, onNote, onGame, onShow, onDelete, onClose,
+  cluster, block, date, tags, onNote, onGame, onShow, onDelete, onClose, onCopy, copied,
 }) {
   const area = useRef(null)
   const tagFor = (id) => tags.find((t) => t.id === id)
@@ -107,6 +107,13 @@ export default function NotePanel({
           title={`Remove the ${clickedTag?.name ?? block.tag} block — or press Delete`}
         >
           Delete {cluster.length > 1 ? (clickedTag?.name ?? block.tag) : ''}
+        </button>
+        <button
+          className="notebtn"
+          title="Copy this block — ctrl+c. Ctrl+v puts it on today at the time it is now."
+          onClick={onCopy}
+        >
+          {copied ? 'Copied' : 'Copy'}
         </button>
         <button className="notebtn" onClick={onClose}>Close</button>
       </div>

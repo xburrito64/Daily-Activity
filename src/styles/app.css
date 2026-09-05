@@ -303,6 +303,107 @@ h1 {
 .scroller::-webkit-scrollbar { width: 10px; }
 .scroller::-webkit-scrollbar-thumb { background: var(--c-line); border-radius: 5px; }
 
+/* ============ Find ============ */
+/* Ctrl+F, and everything about it is borrowed: the box, the count, the two
+   arrows, the cross, in that order. Nobody should have to learn this one. */
+.findbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+  padding-bottom: var(--s-5);
+  border-bottom: 1px solid var(--c-line-soft);
+}
+.findbox {
+  flex: 1;
+  min-width: 0;
+  max-width: 420px;
+  height: var(--control-height);
+  padding: 0 var(--s-5);
+  font-family: var(--font-ui);
+  font-size: var(--f-md);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.findbox::placeholder { color: var(--c-text-faint); }
+.findbox:focus {
+  outline: none;
+  border-color: var(--c-line-strong);
+  box-shadow: 0 0 0 1px rgba(216, 178, 96, 0.35);
+}
+/* A search with nothing behind it says so in the box as well as beside it. */
+.findbox.none { border-color: color-mix(in srgb, var(--c-danger) 50%, var(--c-line)); }
+
+.findcount {
+  min-width: 4.5ch;
+  font-size: var(--f-sm);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--c-text-dim);
+}
+.findcount.none { color: var(--c-danger-soft); }
+
+.findstep {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.findstep svg { width: 15px; height: 15px; display: block; }
+.findstep:hover:not(:disabled) { color: var(--c-text); background: var(--c-surface-hover); }
+.findstep:disabled { opacity: 0.35; cursor: default; }
+.findstep.close { margin-left: var(--s-2); }
+
+/* --- what a search does to the bars ---------------------------------- */
+/* Everything the search did not name steps back, so what it did name is the
+   only thing left at full strength. Dimming rather than hiding: the day still
+   has to read as the day it was, or you cannot tell where the match sits in
+   it. */
+.track.finding .block:not(.hit),
+.track.finding .block-label:not(.hit) { opacity: 0.22; }
+
+/* A match wears the same ring a painted stretch does, for the same reason —
+   and drops it at a join, or a block cut into three would come back as three
+   separate finds. */
+.block.hit {
+  --find-edge: rgba(216, 178, 96, 0.75);
+  --find-left: inset 2px 0 0 0 var(--find-edge);
+  --find-right: inset -2px 0 0 0 var(--find-edge);
+  box-shadow:
+    inset 0 2px 0 0 var(--find-edge),
+    inset 0 -2px 0 0 var(--find-edge),
+    var(--find-left),
+    var(--find-right);
+}
+.block.hit.joined-start { --find-left: inset 0 0 0 0 transparent; }
+.block.hit.joined-end { --find-right: inset 0 0 0 0 transparent; }
+
+/* The one you are standing on. Brighter, and lit from outside as well, so it
+   is findable on a bar where several matches sit near each other. */
+.block.hit.current {
+  --find-edge: var(--c-focus-ring);
+  box-shadow:
+    inset 0 2px 0 0 var(--find-edge),
+    inset 0 -2px 0 0 var(--find-edge),
+    var(--find-left),
+    var(--find-right),
+    0 0 16px 3px rgba(216, 178, 96, 0.45);
+}
+/* The Overview turns every ring off, along with the radii and the wipe-in. A
+   match still has to be findable there, so it gets the thinnest one back. */
+.track.dense .block.hit { box-shadow: inset 0 0 0 1px var(--find-edge); }
+
+.block-label.current { text-shadow: 0 0 10px rgba(216, 178, 96, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5); }
+
 /* ============ Day view: heading, bar, its own chips ============ */
 .daysection {
   display: flex;

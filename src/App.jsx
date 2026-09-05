@@ -2,10 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import DayList, { ZOOM } from './DayList.jsx'
 import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
+import FindBar from './FindBar.jsx'
 import { useDays } from './useDays.js'
-import { getTags } from './api.js'
-import { applyPaint, applyResize, removeBlock, setNote, setGame, setShow, newId, overlapCluster } from './blocks.js'
-import { todayISO, formatDotted } from './time.js'
+import { getTags, findBlocks } from './api.js'
+import {
+  applyPaint, applyResize, removeBlock, setNote, setGame, setShow,
+  newId, pasteAt, overlapCluster,
+} from './blocks.js'
+import { todayISO, formatDotted, minutesNow, MINUTES_PER_SLOT } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
 
@@ -58,6 +62,11 @@ export default function App() {
   const [tagError, setTagError] = useState(null)
   const [armed, setArmed] = useState(null) // { date, tag } — a tag armed for one day
   const [selected, setSelected] = useState(null) // { date, id }
+  // What Ctrl+C took: everything a block was, minus where it was. Held for
+  // the session only — a clipboard that outlived the app would be a thing to
+  // wonder about later rather than a convenience now.
+  const [copied, setCopied] = useState(null)
+  const [find, setFind] = useState(null) // { query, hits, at } while the bar is open
   const [jumpTo, setJumpTo] = useState(null)
   const [visible, setVisible] = useState(null) // days currently on screen
   // Read from a keyboard handler that should not be torn down and rebuilt
@@ -80,12 +89,13 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
-      if (armed) setArmed(null)
+      if (find) setFind(null)
+      else if (armed) setArmed(null)
       else setSelected(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [armed])
+  }, [armed, find])
 
   // Delete removes the block whose note is open. Same change the button in the
   // note makes, so ctrl+z takes it back the same way.
@@ -130,6 +140,126 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [undo])
+
+  /** Whether the key went to something with a cursor in it. */
+  const inBox = (el) => el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement
+
+  /**
+   * Whether some of what is in a box is selected.
+   *
+   * Asked of the box rather than assumed, because a date field has no
+   * selection to ask about and throws when you try — which is a no.
+   */
+  function holding(el) {
+    try {
+      return el.selectionStart !== el.selectionEnd
+    } catch {
+      return false
+    }
+  }
+
+  // Ctrl+C takes the whole of a block — what it was, what was played or
+  // watched, which episodes, and whatever was written about it. Everything
+  // except when it happened, which is the one thing a paste decides for
+  // itself.
+  useEffect(() => {
+    if (!selected) return
+    const onKey = (e) => {
+      if (e.key !== 'c' && e.key !== 'C') return
+      if (!e.ctrlKey && !e.metaKey) return
+      // Ctrl+C over selected words is the copy everyone means, and stays
+      // theirs. With nothing selected there is nothing for it to take — and
+      // opening a note puts the cursor in it, so that is where this key is
+      // pressed from nearly every time.
+      const el = e.target
+      if (inBox(el) ? holding(el) : window.getSelection()?.toString()) return
+      const block = (days[selected.date]?.blocks ?? []).find((b) => b.id === selected.id)
+      if (!block) return
+      e.preventDefault()
+      // Let go of the note, so the Ctrl+V that follows is about the block too
+      // rather than about the words the cursor is still sitting in.
+      if (inBox(el)) el.blur()
+      setCopied({
+        from: selected.date + selected.id,
+        tag: block.tag,
+        note: block.note ?? '',
+        game: block.game ?? '',
+        show: block.show ?? '',
+        episodes: block.episodes ?? [],
+        cover: block.cover ?? '',
+        slots: block.endSlot - block.startSlot,
+      })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected, days])
+
+  // Ctrl+V puts it down on today, starting at the ten minutes you are in.
+  // The same thing again, now: which is what copying a block is for.
+  useEffect(() => {
+    if (!copied) return
+    const onKey = (e) => {
+      if (e.key !== 'v' && e.key !== 'V') return
+      if (!e.ctrlKey && !e.metaKey) return
+      // In a box, paste belongs to the box: putting words into a note is a
+      // real thing to want, and there is no telling it apart from this.
+      if (inBox(e.target)) return
+      e.preventDefault()
+
+      const date = todayISO()
+      const landed = pasteAt(copied, Math.floor(minutesNow() / MINUTES_PER_SLOT))
+      if (!landed) return
+      editDay(date, (prev) => applyPaint(prev, landed))
+      setJumpTo(date) // it landed on today, which may be nowhere near the screen
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [copied, editDay])
+
+  // Ctrl+F opens the find bar, or refocuses it if it is already open — the
+  // second press selects what is in it, so a new search replaces the old one.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'f' && e.key !== 'F') return
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      setFind((was) => (was ? { ...was } : { query: '', hits: [], at: 0 }))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // The search itself, a moment after you stop typing. Every keystroke asking
+  // the vault would be a read per letter for an answer nobody has looked at
+  // yet; an overtaken search is dropped so its answer can't land on top of a
+  // newer one.
+  const query = find?.query ?? ''
+  useEffect(() => {
+    if (query.trim() === '') {
+      setFind((was) => (was && was.hits.length ? { ...was, hits: [], at: 0 } : was))
+      return
+    }
+    const stop = new AbortController()
+    const timer = setTimeout(() => {
+      findBlocks(query, stop.signal)
+        .then(({ hits }) => setFind((was) => (
+          was && was.query === query ? { ...was, hits, at: 0 } : was
+        )))
+        .catch(() => {}) // an abandoned search is not a problem to report
+    }, 140)
+    return () => { clearTimeout(timer); stop.abort() }
+  }, [query])
+
+  // Walking the results walks the list: the day a match is on is scrolled to,
+  // loading it first if it is outside the days already read.
+  const hit = find?.hits[find.at]
+  useEffect(() => { if (hit) setJumpTo(hit.date) }, [hit?.date, hit?.start])
+
+  const stepFind = (by) => setFind((was) => {
+    if (!was || was.hits.length === 0) return was
+    const many = was.hits.length
+    return { ...was, at: (was.at + by + many) % many }
+  })
 
   useEffect(() => { setArmed(null) }, [view])
 
@@ -265,6 +395,17 @@ export default function App() {
 
       <div className="goldrule" />
 
+      {find && (
+        <FindBar
+          query={find.query}
+          hits={find.hits}
+          at={find.at}
+          onQuery={(query) => setFind((was) => was && { ...was, query })}
+          onStep={stepFind}
+          onClose={() => setFind(null)}
+        />
+      )}
+
       {tagError && <div className="banner offline">Couldn't load tags.json — {tagError}</div>}
       {problem && <div className={`banner ${problem.kind}`}>{problem.message}</div>}
 
@@ -288,6 +429,7 @@ export default function App() {
           setSelected((sel) => (sel?.date === date ? null : sel))
         }}
         onVisibleRange={setVisible}
+        find={find}
         jumpTo={jumpTo}
         onJumped={() => setJumpTo(null)}
         />
@@ -298,6 +440,17 @@ export default function App() {
         <NotePanel
           block={selectedBlock}
           cluster={selectedCluster}
+          copied={copied?.from === selected.date + selected.id}
+          onCopy={() => setCopied({
+            from: selected.date + selected.id,
+            tag: selectedBlock.tag,
+            note: selectedBlock.note ?? '',
+            game: selectedBlock.game ?? '',
+            show: selectedBlock.show ?? '',
+            episodes: selectedBlock.episodes ?? [],
+            cover: selectedBlock.cover ?? '',
+            slots: selectedBlock.endSlot - selectedBlock.startSlot,
+          })}
           date={selected.date}
           tags={tags}
           onNote={(id, note) => editDay(selected.date, (prev) => setNote(prev, id, note))}

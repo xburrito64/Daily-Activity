@@ -4,6 +4,7 @@ import path from 'node:path'
 import { createStore, DATE_RE } from './store.js'
 import { createGames } from './games.js'
 import { createAnime } from './anime.js'
+import { findIn } from './find.js'
 import { readJson } from './config.js'
 
 const MAX_RANGE_DAYS = 400
@@ -115,6 +116,25 @@ export function createApp({
 
   app.get('/api/days', wrap(async (_req, res) => {
     res.json(await store.listDates())
+  }))
+
+  /**
+   * Every block in the vault that answers to a search.
+   *
+   * The whole vault, every time, rather than a cached index: there are as
+   * many days as there have been days, each one a small file, and an index
+   * would only be a second copy of them to keep honest. Nothing is written,
+   * so a search can never be the thing that breaks a note.
+   */
+  app.get('/api/find', wrap(async (req, res) => {
+    const query = String(req.query.q ?? '')
+    if (query.trim() === '') return res.json({ query, hits: [] })
+
+    const dates = await store.listDates()
+    const days = await Promise.all(
+      dates.map(async (date) => ({ date, ...(await store.readDay(date)) })),
+    )
+    res.json({ query, hits: findIn(days, query, readJson(tagsFile)) })
   }))
 
   // --- games ------------------------------------------------------------

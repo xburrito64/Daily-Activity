@@ -402,6 +402,7 @@ export default function DayList({
   onVisibleRange,
   jumpTo,
   onJumped,
+  find,
 }) {
   const today = todayISO()
   const scrollRef = useRef(null)
@@ -658,6 +659,31 @@ export default function DayList({
   const spanAt = (from, to) => (trackWidth
     ? { left: `${xAt(from)}px`, width: `${xAt(to) - xAt(from)}px` }
     : { left: `${pct(from)}%`, width: `${pct(to - from)}%` })
+
+  /**
+   * Which blocks the find bar has lit, and which of them it is standing on.
+   *
+   * Keyed by what a block *is* — its times, its tag, and what was played or
+   * watched — rather than by its id. The ids are minted when a day is read
+   * into the app and mean nothing to the vault the search actually read, and
+   * two blocks that agree on all of that are the same block by any test the
+   * app has.
+   */
+  const found = new Map()
+  for (const [at, hit] of (find?.hits ?? []).entries()) {
+    const onDay = found.get(hit.date) ?? new Map()
+    onDay.set(`${hit.start}|${hit.end}|${hit.tag}|${hit.game}|${hit.show}`, at)
+    found.set(hit.date, onDay)
+  }
+  const searching = (find?.hits.length ?? 0) > 0
+  const markOf = (date, b) => found.get(date)?.get(
+    `${slotToTime(b.startSlot)}|${slotToTime(b.endSlot)}|${b.tag}|${b.game ?? ''}|${b.show ?? ''}`,
+  )
+  /** '', ' hit', or ' hit current' — what a search has to say about a block. */
+  const litFor = (date, b) => {
+    const at = markOf(date, b)
+    return at === undefined ? '' : at === find.at ? ' hit current' : ' hit'
+  }
 
   // --- the paint / resize / click gesture --------------------------------
   const [drag, setDrag] = useState(null)
@@ -1108,7 +1134,8 @@ export default function DayList({
 
           const track = (
             <div
-              className={`track${dense ? ' dense' : ''}${blank ? ' empty' : ''}`}
+              className={`track${dense ? ' dense' : ''}${blank ? ' empty' : ''}`
+                + `${searching ? ' finding' : ''}`}
               data-track-date={date}
               style={{ height: barHeight }}
             >
@@ -1145,6 +1172,7 @@ export default function DayList({
                     data-block-id={b.id}
                     className={
                       'block' + (b.id === previewId ? ' preview' : '')
+                      + litFor(date, b)
                       // Only on the way in. A piece that appears because
                       // something else moved is not an arrival.
                       + (wiping(date, b) ? '' : ' settled')
@@ -1194,7 +1222,7 @@ ${b.note}` : ''}`}
                 return (
                   <span
                     key={`l${b.id}`}
-                    className="block-label"
+                    className={`block-label${litFor(date, b)}`}
                     // Names its block, the way the block itself does. It is
                     // not always drawn across the whole of it, so there is
                     // otherwise no way to tell from the page which is which.

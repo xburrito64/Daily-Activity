@@ -18,6 +18,14 @@ export const putDay = (date, entries) =>
 export const getRange = (from, to) => request(`/api/range?from=${from}&to=${to}`)
 
 /**
+ * Every block in the vault that answers to a search. `signal` drops an
+ * overtaken search, so the answer to what you typed a moment ago can never
+ * land on top of the answer to what you are typing now.
+ */
+export const findBlocks = (query, signal) =>
+  request(`/api/find?q=${encodeURIComponent(query)}`, { signal })
+
+/**
  * Games matching what has been typed. `signal` abandons a search the moment
  * a newer one starts, so the answer to a word you have finished typing can
  * never land on top of the answer to the word you are typing now.
