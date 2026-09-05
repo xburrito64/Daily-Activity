@@ -371,36 +371,33 @@ h1 {
 .track.finding .block:not(.hit),
 .track.finding .block-label:not(.hit) { opacity: 0.22; }
 
-/* A match wears the same ring a painted stretch does, for the same reason —
-   and drops it at a join, or a block cut into three would come back as three
-   separate finds. */
-.block.hit {
-  --find-edge: rgba(216, 178, 96, 0.75);
-  --find-left: inset 2px 0 0 0 var(--find-edge);
-  --find-right: inset -2px 0 0 0 var(--find-edge);
-  box-shadow:
-    inset 0 2px 0 0 var(--find-edge),
-    inset 0 -2px 0 0 var(--find-edge),
-    var(--find-left),
-    var(--find-right);
+/* A match is outlined around the shape it actually has, the same way a
+   selected block is. Drawn per piece instead, the outline would run down
+   every step a block takes and leave a line through the middle of it — which
+   is what a block with something else laid over it came out looking like. */
+.finds {
+  position: absolute;
+  left: 0;
+  /* Same inset as .selection, for the same reason: 0 and 100 in the polygon
+     land on the top and bottom of a full-height block. */
+  top: var(--block-inset);
+  width: 100%;
+  height: calc(100% - var(--block-inset) * 2);
+  overflow: visible;
+  pointer-events: none;
 }
-.block.hit.joined-start { --find-left: inset 0 0 0 0 transparent; }
-.block.hit.joined-end { --find-right: inset 0 0 0 0 transparent; }
-
-/* The one you are standing on. Brighter, and lit from outside as well, so it
-   is findable on a bar where several matches sit near each other. */
-.block.hit.current {
-  --find-edge: var(--c-focus-ring);
-  box-shadow:
-    inset 0 2px 0 0 var(--find-edge),
-    inset 0 -2px 0 0 var(--find-edge),
-    var(--find-left),
-    var(--find-right),
-    0 0 16px 3px rgba(216, 178, 96, 0.45);
+.finds polygon {
+  fill: none;
+  stroke: rgba(216, 178, 96, 0.75);
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
-/* The Overview turns every ring off, along with the radii and the wipe-in. A
-   match still has to be findable there, so it gets the thinnest one back. */
-.track.dense .block.hit { box-shadow: inset 0 0 0 1px var(--find-edge); }
+/* The one you are standing on: brighter, and lit from outside as well, so it
+   is findable on a day where several matches sit near each other. */
+.finds polygon.current {
+  stroke: var(--c-focus-ring);
+  filter: drop-shadow(0 0 5px rgba(216, 178, 96, 0.8));
+}
 
 .block-label.current { text-shadow: 0 0 10px rgba(216, 178, 96, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5); }
 

@@ -1132,6 +1132,15 @@ export default function DayList({
             ? pieces.filter((p) => p.block.id === selected.id)
             : []
 
+          // Blocks a search has lit, and which of them it is standing on.
+          // Outlined rather than ringed: a block with something laid over it
+          // is several rectangles, and a ring on each of them draws lines
+          // through the middle of one block and leaves the shape it really
+          // has unmarked.
+          const litBlocks = searching
+            ? blocks.map((b) => ({ block: b, lit: litFor(date, b) })).filter((b) => b.lit)
+            : []
+
           const track = (
             <div
               className={`track${dense ? ' dense' : ''}${blank ? ' empty' : ''}`
@@ -1274,6 +1283,19 @@ ${b.note}` : ''}`}
                   </span>
                 )
               })}
+
+              {litBlocks.length > 0 && (
+                <svg className="finds" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  {litBlocks.map(({ block, lit }) => (
+                    <polygon
+                      key={`f${block.id}`}
+                      className={lit.includes('current') ? 'current' : ''}
+                      points={silhouette(pieces.filter((p) => p.block === block), pieces)}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                </svg>
+              )}
 
               {selectedPieces.length > 0 && (
                 <svg className="selection" viewBox="0 0 100 100" preserveAspectRatio="none">
