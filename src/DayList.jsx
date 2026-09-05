@@ -1024,10 +1024,10 @@ export default function DayList({
           ) : (
             <span className="readout-hint">
               {!isDay
-                ? 'Click a day to open it · ctrl+scroll to resize'
+                ? 'Click a day to open it · ctrl+f finds · ctrl+scroll to resize'
                 : armedTag
                   ? `Drag across ${formatDayHeading(armed.date)} to paint ${armedTag.name}`
-                  : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+z undoes · ctrl+scroll to resize'}
+                  : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+c copies a block, ctrl+v puts it at the time now · ctrl+f finds · ctrl+z undoes · ctrl+scroll to resize'}
             </span>
           )}
         </div>

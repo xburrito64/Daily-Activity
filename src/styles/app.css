@@ -266,6 +266,14 @@ h1 {
   font-family: var(--font-meta);
   font-style: italic;
   color: var(--c-text-dim);
+  /* The row is one line tall and the hour ruler is directly under it, so a
+     hint too long for the window has to give up its tail rather than wrap a
+     second line down over the ruler. It ends with what is easiest to live
+     without, which is why the tail is the part that may go. */
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* The hour marks have to line up with the gridlines inside the bar, and those
