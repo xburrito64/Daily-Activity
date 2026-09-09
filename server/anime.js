@@ -17,6 +17,10 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import {
+  createKitsu, kitsuNumber, wireId,
+  COVER_HOST_RE as KITSU_COVER_HOST_RE, COVER_PATH as KITSU_COVER_PATH,
+} from './kitsu.js'
 
 const API = 'https://graphql.anilist.co'
 
@@ -50,6 +54,15 @@ const COVER_TIMEOUT_MS = 15000
 const MAX_COVER_BYTES = 6 * 1024 * 1024
 
 const CACHE_LIMIT = 120
+
+// How long an answer from the backup list may be reused.
+//
+// AniList's own answers are kept for as long as the app is open, because they
+// are the ones that were wanted. The backup's are kept for two minutes: long
+// enough that typing a name out and backspacing over it is free, short enough
+// that the first search after AniList comes back is asked of AniList again.
+// A cache that outlived the outage would keep the outage going.
+const BORROWED_TTL_MS = 2 * 60_000
 
 /** Something went wrong out on the network rather than in here. */
 const upstream = (message) => Object.assign(new Error(message), { status: 502 })
@@ -105,6 +118,22 @@ export function airedCount(media) {
   if (Number.isInteger(next) && next > 0) return next - 1
   const total = media?.episodes
   return Number.isInteger(total) && total > 0 ? total : 0
+}
+
+/**
+ * A show's id, and which of the two lists it came from.
+ *
+ * AniList's are plain numbers, as they have always been, so nothing written
+ * down before this existed has to change. The backup list's carry its name in
+ * front of theirs — see kitsu.js for why they must never be mistaken for each
+ * other.
+ */
+export function showId(raw) {
+  const kitsu = kitsuNumber(raw)
+  if (kitsu) return { from: 'kitsu', number: kitsu, id: wireId(kitsu), stamp: `kitsu-${kitsu}` }
+  const number = Number(raw)
+  if (!Number.isInteger(number) || number <= 0) return null
+  return { from: 'anilist', number, id: number, stamp: String(number) }
 }
 
 /** "Sousou no Frieren" -> "sousou-no-frieren". Filenames only. */
@@ -176,12 +205,17 @@ export function cleanGenres(list) {
  * not something to take on trust: it has to be AniList's own art host, and it
  * has to be under the folder that host keeps media images in.
  */
+const ART = [
+  { host: COVER_HOST_RE, path: COVER_PATH },
+  { host: KITSU_COVER_HOST_RE, path: KITSU_COVER_PATH },
+]
+
 export function coverSource(raw) {
   const url = new URL(raw)
-  if (url.protocol !== 'https:') throw refused('not an AniList cover')
-  if (!COVER_HOST_RE.test(url.hostname)) throw refused('not an AniList cover')
-  if (!url.pathname.startsWith(COVER_PATH)) throw refused('not an AniList cover')
-  if (!/\.(jpe?g|png|webp)$/i.test(url.pathname)) throw refused('not an AniList cover')
+  const no = () => refused('not a cover from either list')
+  if (url.protocol !== 'https:') throw no()
+  if (!ART.some((at) => at.host.test(url.hostname) && url.pathname.startsWith(at.path))) throw no()
+  if (!/\.(jpe?g|png|webp)$/i.test(url.pathname)) throw no()
   return url
 }
 
@@ -232,6 +266,26 @@ const startedAt = (m) =>
 export function createAnime({ coversDir, token = '', clientId = '' }) {
   const searches = boundedCache(CACHE_LIMIT)
   const chains = boundedCache(CACHE_LIMIT)
+  const borrowed = boundedCache(CACHE_LIMIT)
+
+  // Only ever reached through `instead`, below.
+  const backup = createKitsu({
+    results: RESULTS, maxSeasons: MAX_SEASONS, maxHops: MAX_HOPS, shorten,
+  })
+
+  /**
+   * Ask the backup list, but only for the kind of failure it can answer.
+   *
+   * A 502 is AniList unreachable or refusing to talk, which is exactly what
+   * the second list is for. Anything else — a bad id, a show that does not
+   * exist — is a real answer, and asking somebody else the same question
+   * until one of them says something nicer is not a fallback; it is a way of
+   * turning a clear no into a confusing yes.
+   */
+  const instead = async (err, ask) => {
+    if (err?.status !== 502) throw err
+    return ask()
+  }
 
   // Both may be functions, and from the app they are: these are settings you
   // change while the app is open, and having to close it and open it again
@@ -321,19 +375,31 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
       const q = String(query ?? '').trim()
       if (q === '') return []
 
-      const had = searches.get(q.toLowerCase())
+      const key = q.toLowerCase()
+      const had = searches.get(key)
       if (had) return had
 
-      const data = await ask(
-        `query ($q: String, $n: Int) {
-           Page(perPage: $n) {
-             media(search: $q, type: ANIME, sort: [SEARCH_MATCH]) { ${MEDIA_FIELDS} }
-           }
-         }`,
-        { q, n: RESULTS },
-      )
+      let data
+      try {
+        data = await ask(
+          `query ($q: String, $n: Int) {
+             Page(perPage: $n) {
+               media(search: $q, type: ANIME, sort: [SEARCH_MATCH]) { ${MEDIA_FIELDS} }
+             }
+           }`,
+          { q, n: RESULTS },
+        )
+      } catch (err) {
+        return instead(err, async () => {
+          const held = borrowed.get(key)
+          if (held && Date.now() - held.when < BORROWED_TTL_MS) return held.results
+          const results = await backup.search(q)
+          borrowed.set(key, { results, when: Date.now() })
+          return results
+        })
+      }
       const results = (data?.Page?.media ?? []).map(shape)
-      searches.set(q.toLowerCase(), results)
+      searches.set(key, results)
       return results
     },
 
@@ -351,11 +417,22 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
      * if you went looking for a film, the film is what you meant.
      */
     async seasons(rootId) {
-      const id = Number(rootId)
-      if (!Number.isInteger(id) || id <= 0) throw refused('bad show id')
+      const at = showId(rootId)
+      if (!at) throw refused('bad show id')
 
-      const had = chains.get(id)
+      const had = chains.get(at.stamp)
       if (had) return had
+
+      // A show picked off the backup list is walked there too. Its number
+      // means nothing to AniList, and there is no honest way to translate one
+      // into the other but by name — which would sooner or later put the
+      // wrong show's seasons in front of you.
+      if (at.from === 'kitsu') {
+        const seasons = await backup.seasons(at.number)
+        chains.set(at.stamp, seasons)
+        return seasons
+      }
+      const id = at.number
 
       const found = new Map()
       let frontier = [id]
@@ -396,7 +473,7 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
         .map(shape)
         .sort((a, b) => (when.get(a.id) ?? 0) - (when.get(b.id) ?? 0))
 
-      chains.set(id, seasons)
+      chains.set(at.stamp, seasons)
       return seasons
     },
 
@@ -411,12 +488,16 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
      * is one picture, named after the show rather than after the day.
      */
     async keep({ id, name, image }) {
-      if (!Number.isInteger(id) || id <= 0) throw refused('bad show id')
+      const at = showId(id)
+      if (!at) throw refused('bad show id')
       if (!image) return { cover: '' }
 
       const url = coverSource(image)
       const ext = /\.(png|webp)$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? 'jpg'
-      const file = `${slugify(name)}-${id}.${ext}`
+      // The stamp rather than the bare number, so the same show off the two
+      // lists is two files rather than one of them quietly wearing the
+      // other's picture.
+      const file = `${slugify(name)}-${at.stamp}.${ext}`
       const target = path.join(coversDir, file)
       try {
         await fs.access(target)
@@ -454,8 +535,15 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
     async remember(show) {
       const all = await this.known()
       const had = all[show.name]
+      const at = showId(show.id)
       all[show.name] = {
-        anilistId: show.id,
+        // Each list's id is kept where it belongs, and neither knocks the
+        // other out. Picking a show off the backup during an outage must not
+        // throw away the AniList id that makes it sendable afterwards.
+        ...(at?.from === 'anilist' ? { anilistId: at.number }
+          : had?.anilistId ? { anilistId: had.anilistId } : {}),
+        ...(at?.from === 'kitsu' ? { kitsuId: at.number }
+          : had?.kitsuId ? { kitsuId: had.kitsuId } : {}),
         format: show.format ?? '',
         year: show.year ?? null,
         episodes: show.episodes ?? null,

@@ -40,7 +40,7 @@ t('anything else is refused before it is downloaded', () => {
     'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/x.svg',
     'http://s4.anilist.co/file/anilistcdn/media/anime/cover/large/x.jpg',
   ]
-  for (const url of no) assert.throws(() => coverSource(url), /not an AniList cover/, url)
+  for (const url of no) assert.throws(() => coverSource(url), /not a cover from either list/, url)
 })
 
 t('the English title is the one a note gets, when there is one', () => {

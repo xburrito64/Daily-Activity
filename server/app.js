@@ -219,10 +219,13 @@ export function createApp({
   /** Take a show: its cover into the vault, and what it is written beside it. */
   app.post('/api/anime/attach', wrap(async (req, res) => {
     const show = req.body ?? {}
-    const kept = await anime.keep({ id: Number(show.id), name: show.name, image: show.cover })
+    // The id is passed on as it arrived. A show off the backup list carries
+    // that list's name in front of its number, and `Number()` would turn it
+    // into NaN — or, worse, into a number AniList would answer differently.
+    const kept = await anime.keep({ id: show.id, name: show.name, image: show.cover })
     // The facts are a nicety; the name and the cover are the record.
     try {
-      await anime.remember({ ...show, id: Number(show.id), cover: kept.cover })
+      await anime.remember({ ...show, cover: kept.cover })
       forget()
     } catch (err) {
       console.error('could not write down what this show is:', err.message)
@@ -328,7 +331,12 @@ export function createApp({
     const mediaId = known[name]?.anilistId
     if (!mediaId) {
       return res.status(400).json({
-        error: 'this show has no AniList entry saved — change it and pick it again',
+        error: known[name]?.kitsuId
+          // Found while AniList was down, so there is nothing saved here that
+          // AniList would recognise. Saying which is the difference between a
+          // fault and a thing to do about it.
+          ? 'this show was found on the backup list — pick it again now AniList is back, and it can be sent'
+          : 'this show has no AniList entry saved — change it and pick it again',
       })
     }
 

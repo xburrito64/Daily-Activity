@@ -70,7 +70,11 @@ export default function NotePanel({
   async function toEpisodes() {
     try {
       const all = await getWatched()
-      const id = all[block.show]?.anilistId
+      // AniList's id first: a show that has one is a show whose seasons come
+      // off the list that can also be written back to. The backup's is the
+      // fallback, and carries its list's name so the two never mix.
+      const known = all[block.show]
+      const id = known?.anilistId ?? (known?.kitsuId ? `kitsu-${known.kitsuId}` : null)
       setStartWith(id ? { id, name: block.show } : null)
     } catch {
       setStartWith(null)
