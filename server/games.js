@@ -52,7 +52,12 @@ const GENRE_CHARS = 40
 
 const STEAM_APP_RE = /store\.steampowered\.com\/app\/(\d+)/
 
-const RESULTS = 8          // a screenful; more is a list to read, not a pick
+// A screenful and a bit. Eight was a pick rather than a list to read, and it
+// still is for anything with a name of its own — but RAWG carries every game
+// itch.io has ever hosted, and "Click the Button" is the name of eleven of
+// them. Under a dozen the list still reads at a glance; below it, a game you
+// actually played sits on a page you cannot get to.
+const RESULTS = 12
 const DESCRIPTION_CHARS = 260
 const SEARCH_TIMEOUT_MS = 6000
 const COVER_TIMEOUT_MS = 15_000
@@ -367,7 +372,16 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
       // long after the minute had passed.
       if (had && Date.now() - had.when < SEARCH_TTL_MS) return had.results
 
-      const body = await ask('/games', { search: q, page_size: String(RESULTS) }, SEARCH_TIMEOUT_MS)
+      // `search_precise` asks RAWG to weigh the words typed over anything
+      // that merely looks like them. It is the difference between "Click the
+      // Button" bringing back Click-Clack and Click-Tock Clock, and it
+      // bringing back the games actually called that; on a name with nothing
+      // to confuse it for — Hades, Minecraft — it changes nothing at all.
+      const body = await ask(
+        '/games',
+        { search: q, page_size: String(RESULTS), search_precise: 'true' },
+        SEARCH_TIMEOUT_MS,
+      )
       const found = (body.results ?? []).slice(0, RESULTS)
 
       // Every result is worked out beside every other one. Eight games one
