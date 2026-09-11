@@ -2,7 +2,10 @@ import assert from 'node:assert'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import nodePath from 'node:path'
-import { slugify, steamCover, coverSource, cleanGenres, pickGrid, createGames } from './games.js'
+import {
+  slugify, steamCover, coverSource, cleanGenres, pickGrid, createGames,
+  steamId, gameStamp, plainName, gameGap, twinOf, shapeSteam,
+} from './games.js'
 
 let pass = 0, fail = 0
 const t = async (name, fn) => {
@@ -163,7 +166,99 @@ await t('but a new cover does replace an old one', async () => {
   assert.equal((await games.known())[game.name].cover, 'a-game-about-chopping-trees-1019471.png')
 })
 
+await t("a game off Steam's shelf is filed under the shop's name", async () => {
+  // So the same game, if RAWG ever catches up, can never be handed this
+  // picture by accident — and a RAWG id never gets Steam's number.
+  await fs.writeFile(nodePath.join(tmp, 'dub-together-steam-5020310.jpg'), 'not really a jpeg')
+  const kept = await games.keep({ id: 'steam-5020310', name: 'Dub Together', image: '' })
+  assert.equal(kept.cover, 'dub-together-steam-5020310.jpg')
+})
+
+await t('an id from neither shelf is refused', async () => {
+  await assert.rejects(games.keep({ id: 'steam-', name: 'x', image: '' }), /bad game id/)
+  await assert.rejects(games.keep({ id: 'anything', name: 'x', image: '' }), /bad game id/)
+  await assert.rejects(games.keep({ id: -4, name: 'x', image: '' }), /bad game id/)
+})
+
 await fs.rm(tmp, { recursive: true, force: true })
+
+// --- two shelves, one list ---------------------------------------------------
+
+await t("the two shelves never wear each other's numbers", () => {
+  assert.equal(steamId('steam-5020310'), 5020310)
+  assert.equal(steamId(5020310), null)
+  assert.equal(steamId('5020310'), null)
+  assert.equal(gameStamp(1019721), '1019721', 'RAWG stays the bare number it always was')
+  assert.equal(gameStamp('steam-5020310'), 'steam-5020310')
+  assert.equal(gameStamp('steam-0'), null)
+  assert.equal(gameStamp('nope'), null)
+})
+
+await t('a name is what two databases would agree on', () => {
+  assert.equal(plainName('Click the Button (LoopCap)'), 'click the button')
+  assert.equal(plainName('Click the Button'), 'click the button')
+  assert.equal(plainName('Minecraft: Dungeons'), plainName('Minecraft Dungeons'))
+  assert.equal(plainName("Hades' Star™"), 'hades star')
+  assert.equal(plainName('Click the Button!'), 'click the button')
+  // The bracket only comes off the end.
+  assert.equal(plainName('Hades (2016)'), 'hades')
+  assert.equal(plainName('Hades 2 (2001)'), 'hades 2')
+})
+
+await t('same name and near enough the same year is the same game', () => {
+  const steam = { name: 'Click the Button', released: '2026' }
+  assert.equal(gameGap({ name: 'Click the Button (LoopCap)', released: '2026' }, steam), 0)
+  assert.equal(gameGap({ name: 'Click the button', released: '2018' }, steam), null, 'eight years is a different game')
+  // A port lands on Steam after it came out.
+  assert.equal(gameGap({ name: "Hades' Star", released: '2017' }, { name: "Hades' Star", released: '2019' }), 2)
+  assert.equal(gameGap({ name: 'Minecraft: Dungeons', released: '2020' }, { name: 'Minecraft Dungeons', released: '2021' }), 1)
+  assert.equal(gameGap({ name: 'Hades', released: '2020' }, { name: 'Hades II', released: '2025' }), null, 'a different name')
+  assert.equal(gameGap({ name: 'Something', released: '' }, { name: 'Something', released: '2024' }), 2, 'silence is not a disagreement')
+})
+
+await t('and the eleven namesakes each find their own twin', () => {
+  const rawg = [
+    { id: 1, name: 'Click the button', released: '2018' },
+    { id: 2, name: 'Click the Button!', released: '2022' },
+    { id: 3, name: 'Click the Button (samumalta)', released: '2023' },
+    { id: 4, name: 'Click the Button (LoopCap)', released: '2026' },
+  ]
+  assert.equal(twinOf({ name: 'Click the Button', released: '2026' }, rawg)?.id, 4)
+  assert.equal(twinOf({ name: 'Click the Button', released: '2023' }, rawg)?.id, 3)
+  assert.equal(twinOf({ name: 'Click the Button', released: '2010' }, rawg), null)
+  // The closest year wins, not the first in the list.
+  assert.equal(twinOf({ name: 'Click the Button', released: '2024' }, rawg)?.id, 3)
+})
+
+await t('a game as Steam describes it comes back in the words RAWG uses', () => {
+  const shown = shapeSteam(5020310, {
+    type: 'game',
+    name: 'Dub Together ',
+    release_date: { date: 'Sep 1, 2026' },
+    genres: [{ description: 'Casual' }, { description: 'Indie' }],
+    platforms: { windows: true, mac: false, linux: true },
+    short_description: 'Up to six players redub video clips.',
+  })
+  assert.deepEqual(shown, {
+    id: 'steam-5020310',
+    appId: '5020310',
+    type: 'game',
+    name: 'Dub Together',
+    released: '2026',
+    cover: '',
+    genres: ['Casual', 'Indie'],
+    platforms: ['PC', 'Linux'],
+    description: 'Up to six players redub video clips.',
+  })
+})
+
+await t('and says nothing it was not told', () => {
+  const shown = shapeSteam(1, {})
+  assert.deepEqual(
+    { name: shown.name, released: shown.released, genres: shown.genres, platforms: shown.platforms, description: shown.description },
+    { name: '', released: '', genres: [], platforms: [], description: '' },
+  )
+})
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

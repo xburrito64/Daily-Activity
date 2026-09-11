@@ -16,6 +16,15 @@
 // is only ever asked once Steam has come back empty. It wants a free key, and
 // without one this simply ends where it used to — a name and no picture.
 //
+// And Steam is asked for names as well as for pictures, because RAWG runs
+// behind it. A game out this week is on Steam's own shelf the day it goes up
+// and in RAWG some time after — a fortnight for one, longer for another, and
+// the one you played last night is exactly the one that has not made it over
+// yet. Steam's store search wants no key and answers with the app id, which
+// is the one thing the cover needs anyway. It is asked beside RAWG rather
+// than instead: RAWG still knows nine hundred thousand games Steam never
+// sold, and what it says about a game is richer.
+//
 // Copying the cover into the vault is the part that matters. The folder still
 // reads offline, still reads in five years, and still reads if this app is
 // gone. Nothing here ever writes into a note; covers live in their own folder.
@@ -31,6 +40,18 @@ const API = 'https://api.rawg.io/api'
 const STEAM_HOST = 'shared.cloudflare.steamstatic.com'
 const STEAM_ART = `https://${STEAM_HOST}/store_item_assets/steam/apps`
 const COVER_FILE = 'library_600x900.jpg'
+
+// Steam's shop, asked by name. The same shop the cover comes from, so a game
+// found here already has the one thing a cover needs: its app id.
+const STEAM_STORE = 'https://store.steampowered.com/api'
+// A game found on Steam's shelf rather than in RAWG wears the shop's name in
+// front of its number. The two count from one independently and mean nothing
+// to each other; a bare number that could be either is a number that could
+// name the wrong game. See kitsu.js, which does the same for the same reason.
+const STEAM_PREFIX = 'steam-'
+// How many games Steam may add to a list RAWG did not know about. More than
+// this and a search for one new game brings back its soundtrack's neighbours.
+const STEAM_EXTRA = 4
 
 // Where a cover comes from when Steam has none, which happens two ways: a
 // game Steam never sold — Minecraft is on five shops and not that one — and a
@@ -110,6 +131,111 @@ export function slugify(name) {
     .replace(/^-+|-+$/g, '')
     .toLowerCase()
     .slice(0, 60) || 'game'
+}
+
+/** The app id inside a Steam game id, or null if that is not what this is. */
+export function steamId(raw) {
+  const text = String(raw ?? '').trim()
+  if (!text.startsWith(STEAM_PREFIX)) return null
+  const number = Number(text.slice(STEAM_PREFIX.length))
+  return Number.isInteger(number) && number > 0 ? number : null
+}
+
+/**
+ * What a game id is for on disk: the tail of its cover's filename. RAWG's is
+ * the bare number, as it has always been, so nothing already in a vault
+ * moves; Steam's keeps the shop's name so the two can never share a file.
+ */
+export function gameStamp(raw) {
+  const steam = steamId(raw)
+  if (steam) return `${STEAM_PREFIX}${steam}`
+  const number = Number(raw)
+  return Number.isInteger(number) && number > 0 ? String(number) : null
+}
+
+/**
+ * A name reduced to what two databases would agree on.
+ *
+ * RAWG tells eleven games called "Click the Button" apart by writing the
+ * developer after the name in brackets; Steam does not. Trademark marks,
+ * punctuation and capitals all vary by who typed the name in. None of it is
+ * the name.
+ */
+export function plainName(name) {
+  return String(name ?? '')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .replace(/[™®©]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
+    .trim()
+}
+
+// How far apart two release years may be and still be one game. A port
+// reaches Steam a year or two after the game came out — Hades' Star was on
+// phones in 2017 and on Steam in 2019 — while the eleven games called "Click
+// the Button" are spread across eight years.
+const SAME_GAME_YEARS = 2
+
+/**
+ * How far apart two listings of a game are, or null if they are not one
+ * game at all.
+ *
+ * The name alone is not enough — eleven games share one — so the year has to
+ * roughly agree as well, where both are known. Roughly, because a port
+ * arrives on Steam after the game did. A year missing on one side is not a
+ * disagreement, only silence, and counts as furthest-but-still-matching so
+ * that a listing with a year is preferred over one without.
+ */
+export function gameGap(a, b) {
+  if (plainName(a.name) !== plainName(b.name)) return null
+  const ya = Number(String(a.released ?? '').slice(0, 4))
+  const yb = Number(String(b.released ?? '').slice(0, 4))
+  if (!ya || !yb) return SAME_GAME_YEARS
+  const gap = Math.abs(ya - yb)
+  return gap <= SAME_GAME_YEARS ? gap : null
+}
+
+/** Which of several listings is the same game as this one, if any. */
+export function twinOf(game, among) {
+  let best = null
+  let closest = Infinity
+  for (const other of among) {
+    const gap = gameGap(other, game)
+    if (gap !== null && gap < closest) {
+      best = other
+      closest = gap
+    }
+  }
+  return best
+}
+
+// Steam's words for where a game runs, in RAWG's words, so a card reads one
+// vocabulary whichever shelf the game came off.
+const STEAM_PLATFORMS = { windows: 'PC', mac: 'Apple Macintosh', linux: 'Linux' }
+
+/**
+ * A game as this app talks about it, from a game as Steam's shop describes
+ * it. `type` and `appId` ride along for the search to use and are dropped
+ * before anything is sent on.
+ */
+export function shapeSteam(appId, details) {
+  const d = details ?? {}
+  const year = /\b(\d{4})\b/.exec(String(d.release_date?.date ?? ''))?.[1] ?? ''
+  return {
+    id: `${STEAM_PREFIX}${appId}`,
+    appId: String(appId),
+    type: String(d.type ?? ''),
+    name: String(d.name ?? '').trim(),
+    released: year,
+    cover: '',
+    genres: cleanGenres((d.genres ?? []).slice(0, 3).map((g) => g.description)),
+    platforms: Object.entries(d.platforms ?? {})
+      .filter(([, on]) => on)
+      .map(([key]) => STEAM_PLATFORMS[key])
+      .filter(Boolean)
+      .sort((a, b) => (a === 'PC' ? -1 : b === 'PC' ? 1 : 0)),
+    description: shorten(d.short_description),
+  }
 }
 
 /**
@@ -217,6 +343,51 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     return res.json()
   }
 
+  /** One question to Steam's shop, which needs no key and gets no key. */
+  async function askSteam(pathname, params) {
+    const url = new URL(STEAM_STORE + pathname)
+    url.search = new URLSearchParams({ ...params, cc: 'us', l: 'en' }).toString()
+    const res = await fetch(url, { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
+    if (!res.ok) throw upstream(`Steam answered ${res.status}`)
+    return res.json()
+  }
+
+  /**
+   * What Steam's shop knows about one app, shaped — or null for anything it
+   * will not say, which is what a region lock looks like from here. Kept for
+   * as long as the app runs: a shop page does not change under a search.
+   */
+  async function steamDetails(appId) {
+    const at = `steam:${appId}`
+    const had = details.get(at)
+    if (had !== undefined) return had
+    let game = null
+    try {
+      const body = await askSteam('/appdetails', { appids: String(appId) })
+      const entry = body?.[String(appId)]
+      if (entry?.success && entry.data) game = shapeSteam(appId, entry.data)
+    } catch { /* then Steam has nothing to add about it */ }
+    details.set(at, game)
+    return game
+  }
+
+  /**
+   * Games on Steam's shelf matching what was typed, each with everything the
+   * shop will say about it. Every failure here is a shrug: this is the second
+   * list, and the first one not being enough is what it is for, not what it
+   * needs.
+   */
+  async function steamSearch(q) {
+    try {
+      const body = await askSteam('/storesearch/', { term: q })
+      const apps = (body?.items ?? []).filter((it) => it?.type === 'app' && it.id)
+      const games = await Promise.all(apps.map((it) => steamDetails(it.id)))
+      return games.filter(Boolean)
+    } catch {
+      return []
+    }
+  }
+
   /**
    * A game's description, which the search results don't carry — RAWG only
    * hands those out one game at a time. They are fetched alongside each other
@@ -312,12 +483,30 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     }
   }
 
-  async function coverOf(id, name) {
+  /** Whether Steam has the upright cover for an app, and where. */
+  async function steamArt(appId) {
+    try {
+      const url = steamCover(appId)
+      const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
+      return res.ok ? url : ''
+    } catch {
+      return ''
+    }
+  }
+
+  /**
+   * `hint` is a Steam app id the search already knows for this game — from
+   * finding the same name and year on Steam's shelf. RAWG's own link to the
+   * shop is still believed first, since it names the game exactly; the hint
+   * only fills in where RAWG has no link at all, which is the ordinary state
+   * of a game out this month.
+   */
+  async function coverOf(id, name, hint = '') {
     // The key is part of what was asked, not just how. A cover looked for
     // before there was a SteamGridDB key must not be remembered as "there
     // isn't one" after the key is put in — that would make adding it look
     // like it did nothing until the app was restarted.
-    const at = `${id}:${gridNow() ? 'grid' : 'steam'}`
+    const at = `${id}:${hint}:${gridNow() ? 'grid' : 'steam'}`
     const had = covers.get(at)
     // A cover once found stays found. A cover not found is only believed for
     // a few minutes: it may be the truth about the game, or it may be one
@@ -325,20 +514,20 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     // the moment it happens.
     if (had && (had.cover || Date.now() - had.when < MISS_TTL_MS)) return had.cover
 
-    let found = ''
     let appId = ''
-    try {
-      const body = await ask(`/games/${id}/stores`, {}, SEARCH_TIMEOUT_MS)
-      const app = (body.results ?? [])
-        .map((s) => STEAM_APP_RE.exec(s.url ?? ''))
-        .find(Boolean)
-      if (app) {
-        appId = app[1]
-        const url = steamCover(appId)
-        const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
-        if (res.ok) found = url
-      }
-    } catch { /* no cover, which a game is allowed not to have */ }
+    // Only a RAWG game has a RAWG page to ask about shops. One off Steam's own
+    // shelf already is its app id.
+    if (!steamId(id)) {
+      try {
+        const body = await ask(`/games/${id}/stores`, {}, SEARCH_TIMEOUT_MS)
+        const app = (body.results ?? [])
+          .map((s) => STEAM_APP_RE.exec(s.url ?? ''))
+          .find(Boolean)
+        if (app) appId = app[1]
+      } catch { /* no cover, which a game is allowed not to have */ }
+    }
+    if (!appId) appId = String(hint ?? '')
+    let found = appId ? await steamArt(appId) : ''
 
     // Steam had nothing. Either it never sold the game, or it sells it and
     // the library art was never put up — the second is common for something
@@ -377,19 +566,39 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
       // Button" bringing back Click-Clack and Click-Tock Clock, and it
       // bringing back the games actually called that; on a name with nothing
       // to confuse it for — Hades, Minecraft — it changes nothing at all.
-      const body = await ask(
-        '/games',
-        { search: q, page_size: String(RESULTS), search_precise: 'true' },
-        SEARCH_TIMEOUT_MS,
-      )
-      const found = (body.results ?? []).slice(0, RESULTS)
+      //
+      // Both shelves at once. RAWG failing is still a failure — unless Steam
+      // came back with something, in which case a shorter list beats a red
+      // panel.
+      const [asked, shelf] = await Promise.all([
+        ask(
+          '/games',
+          { search: q, page_size: String(RESULTS), search_precise: 'true' },
+          SEARCH_TIMEOUT_MS,
+        ).then((body) => ({ body }), (error) => ({ error })),
+        steamSearch(q),
+      ])
+      if (asked.error && shelf.length === 0) throw asked.error
+      const found = (asked.body?.results ?? []).slice(0, RESULTS)
+
+      // Where Steam's shelf and RAWG's list name the same game, RAWG's entry
+      // stays — it says more — and takes the app id with it, so a game RAWG
+      // has not yet linked to the shop still gets the shop's cover. What is
+      // on the shelf and nowhere in the list is new, and is added.
+      const hints = new Map()
+      const spare = []
+      for (const game of shelf) {
+        const twin = twinOf(game, found.filter((g) => !hints.has(g.id)))
+        if (twin) hints.set(twin.id, game.appId)
+        else if (game.type === 'game') spare.push(game)
+      }
 
       // Every result is worked out beside every other one. Eight games one
       // after another would be a wait; eight at once is one.
       const results = await Promise.all(found.map(async (game) => {
         const [description, cover] = await Promise.all([
           describe(game.id),
-          coverOf(game.id, game.name),
+          coverOf(game.id, game.name, hints.get(game.id) ?? ''),
         ])
         return {
           id: game.id,
@@ -406,8 +615,21 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
         }
       }))
 
-      searches.set(at, { results, when: Date.now() })
-      return results
+      const added = await Promise.all(spare.slice(0, STEAM_EXTRA).map(async (game) => {
+        const { appId, type, ...shown } = game
+        return { ...shown, cover: await coverOf(game.id, game.name, appId) }
+      }))
+
+      // A game whose name is exactly what was typed is the game that was
+      // meant, and goes to the top whichever shelf it came off. The rest of
+      // what Steam added goes to the bottom: it is only there in case.
+      const wanted = plainName(q)
+      const meant = added.filter((g) => plainName(g.name) === wanted)
+      const rest = added.filter((g) => plainName(g.name) !== wanted)
+      const all = [...meant, ...results, ...rest]
+
+      searches.set(at, { results: all, when: Date.now() })
+      return all
     },
 
     /**
@@ -422,7 +644,8 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
      * day, so the fifty-first costs nothing.
      */
     async keep({ id, name, image }) {
-      if (!Number.isInteger(id) || id <= 0) throw refused('bad game id')
+      const stamp = gameStamp(id)
+      if (!stamp) throw refused('bad game id')
 
       // Nothing came back this time. That is not the same as the game having
       // no cover: it may already be sitting in the vault from the day the
@@ -430,7 +653,7 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
       // fetch. The name is worked out from the game rather than the day, so
       // finding it is a matter of looking.
       if (!image) {
-        const base = `${slugify(name)}-${id}`
+        const base = `${slugify(name)}-${stamp}`
         for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
           try {
             await fs.access(path.join(coversDir, `${base}.${ext}`))
@@ -446,7 +669,7 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
       // SteamGridDB serves png and webp as well as jpg, so the name follows
       // the picture rather than assuming what Steam alone used to send.
       const ext = /\.(png|webp)$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? 'jpg'
-      const file = `${slugify(name)}-${id}.${ext}`
+      const file = `${slugify(name)}-${stamp}.${ext}`
       const target = path.join(coversDir, file)
       try {
         await fs.access(target)

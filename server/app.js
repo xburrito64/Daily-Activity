@@ -163,7 +163,9 @@ export function createApp({
    */
   app.post('/api/games/attach', wrap(async (req, res) => {
     const game = req.body ?? {}
-    const kept = await games.keep({ id: Number(game.id), name: game.name, image: game.cover })
+    // As it arrived: a game off Steam's shelf carries the shop's name in
+    // front of its number, and `Number()` would make it NaN.
+    const kept = await games.keep({ id: game.id, name: game.name, image: game.cover })
     // The facts are a nicety; the name and the cover are the record. A game
     // that cannot be written down is still perfectly attachable.
     try {
