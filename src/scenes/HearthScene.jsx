@@ -284,6 +284,7 @@ export default function HearthScene({ days, onToday }) {
     const sparks = []
     let dirty = false
     let nextFromEdge = 0
+    let nextFromChip = 0
 
     const size = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
@@ -354,6 +355,21 @@ export default function HearthScene({ days, onToday }) {
         const r = edge?.getBoundingClientRect()
         if (r && r.top > 0 && r.bottom < window.innerHeight) {
           spark(r.left + 1, r.top + 3, (Math.random() - 0.5) * 40, -(40 + Math.random() * 60), 1.1 + Math.random() * 1.2)
+        }
+      }
+
+      // A picked-up tag is alight, and gives off sparks while it is.
+      if (now > nextFromChip) {
+        nextFromChip = now + 160 + Math.random() * 340
+        const r = document.querySelector('.daychips .chip.armed')?.getBoundingClientRect()
+        if (r && r.top > 0 && r.bottom < window.innerHeight) {
+          spark(
+            r.left + 8 + Math.random() * (r.width - 16),
+            r.top - 4,
+            (Math.random() - 0.5) * 50,
+            -(50 + Math.random() * 90),
+            0.7 + Math.random() * 1.1,
+          )
         }
       }
 

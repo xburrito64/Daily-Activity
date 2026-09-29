@@ -1134,30 +1134,124 @@
   100% { transform: translateX(-50%) scale(0.94, 1.08) skewX(-2deg); }
 }
 
-/* Tag boxes, Classic look: fired tiles that heat up under the hand, and
-   glow like a coal from underneath once the tag is picked up. */
-[data-theme="hearthfire"] .chip[data-look="classic"] {
-  background: linear-gradient(180deg,
-    color-mix(in oklab, var(--chip) 66%, #2a1a10),
-    color-mix(in oklab, var(--chip) 50%, #140c08));
+/* Tag boxes, Classic look: fired tiles. Under the hand one heats up from
+   its bottom edge, the way iron does held in the coals. */
+[data-theme="hearthfire"] .chip { position: relative; }
+[data-theme="hearthfire"] .chip[data-look="classic"],
+[data-theme="hearthfire"] .chip[data-look="classic"]:hover:not(:disabled) {
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 135%, rgba(0, 0, 0, 0.3), transparent 70%),
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--chip) 66%, #2a1a10),
+      color-mix(in oklab, var(--chip) 50%, #140c08));
   border: 1px solid color-mix(in oklab, var(--chip) 40%, #4a3020);
-  box-shadow: inset 0 1px 0 rgba(255, 220, 180, 0.16), 0 2px 6px rgba(0, 0, 0, 0.5);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  transition: box-shadow 0.35s ease, transform 0.25s ease, background 0.35s ease;
+  border-bottom-color: color-mix(in oklab, var(--chip) 30%, #0d0806);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.16),
+    inset 0 0 0 0 rgba(255, 120, 35, 0),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  transition: box-shadow 0.5s ease, border-color 0.5s ease, color 0.5s ease, transform 0.25s ease;
 }
 [data-theme="hearthfire"] .chip[data-look="classic"]:hover:not(:disabled) {
-  background: linear-gradient(180deg,
-    color-mix(in oklab, var(--chip) 74%, #3a2012),
-    color-mix(in oklab, var(--chip) 60%, #ff7a2a 12%));
+  color: #fff3e2;
+  border-bottom-color: #ff8a3a;
   box-shadow:
-    inset 0 1px 0 rgba(255, 225, 190, 0.22),
-    0 0 0 1px rgba(255, 140, 50, 0.35),
-    0 7px 16px -6px rgba(255, 110, 30, 0.75);
+    inset 0 1px 0 rgba(255, 225, 190, 0.2),
+    inset 0 -18px 14px -10px rgba(255, 115, 30, 0.8),
+    0 4px 10px -3px rgba(255, 90, 20, 0.4);
   transform: translateY(-1px);
 }
-[data-theme="hearthfire"] .chip[data-look="classic"].armed {
-  background: linear-gradient(0deg, color-mix(in oklab, var(--chip) 62%, #ffa040), var(--chip) 70%);
+
+/* Picked up, a tag is alight. It smoulders like a coal — cracked, and
+   glowing through the cracks — with a glow that flickers rather than
+   pulses, flames along its top, an ember creeping round its edge like a
+   lit fuse, and sparks coming off it (those are HearthScene's). */
+[data-theme="hearthfire"] .chip.armed {
+  border-color: rgba(255, 170, 90, 0.9);
+  animation: hearth-coal 2.6s linear infinite;
 }
+@keyframes hearth-coal {
+  0%, 100% { box-shadow: inset 0 -10px 14px -6px rgba(255, 150, 50, 0.5), 0 0 12px 2px rgba(255, 110, 30, 0.38), 0 10px 22px -8px rgba(255, 80, 10, 0.65); }
+  12% { box-shadow: inset 0 -12px 16px -6px rgba(255, 170, 60, 0.7), 0 0 20px 5px rgba(255, 130, 40, 0.55), 0 12px 26px -8px rgba(255, 90, 10, 0.8); }
+  19% { box-shadow: inset 0 -8px 12px -6px rgba(255, 140, 50, 0.4), 0 0 10px 1px rgba(255, 100, 30, 0.3), 0 8px 20px -8px rgba(255, 80, 10, 0.5); }
+  44% { box-shadow: inset 0 -13px 16px -6px rgba(255, 175, 65, 0.75), 0 0 24px 6px rgba(255, 130, 40, 0.6), 0 12px 28px -8px rgba(255, 90, 10, 0.85); }
+  57% { box-shadow: inset 0 -10px 14px -6px rgba(255, 150, 50, 0.5), 0 0 14px 3px rgba(255, 110, 30, 0.42), 0 10px 22px -8px rgba(255, 80, 10, 0.6); }
+  78% { box-shadow: inset 0 -12px 15px -6px rgba(255, 165, 60, 0.65), 0 0 19px 4px rgba(255, 125, 40, 0.5), 0 11px 24px -8px rgba(255, 85, 10, 0.75); }
+}
+[data-theme="hearthfire"] .chip[data-look="classic"].armed {
+  color: #fff6ea;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='60'><filter id='k' x='0' y='0' width='120' height='60' filterUnits='userSpaceOnUse'><feTurbulence type='fractalNoise' baseFrequency='0.055' numOctaves='2' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.62  0 0 0 0 0.24  1 0 0 0 0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0 0 0 0.5 0 0 0 0'/></feComponentTransfer></filter><rect width='120' height='60' filter='url(%23k)'/></svg>") 0 0 / 120px 60px,
+    radial-gradient(ellipse 110% 100% at 50% 125%, rgba(255, 140, 40, 0.55), transparent 65%),
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--chip) 52%, #1a0d06),
+      color-mix(in oklab, var(--chip) 68%, #3a1606));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 8px rgba(255, 140, 50, 0.45);
+}
+
+/* The fire on a picked-up tag, laid over it. */
+.chip-fire {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* The ember creeping round the edge. */
+@property --fuse {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.chip-fire::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--fuse),
+    rgba(255, 110, 30, 0.3) 0 66%,
+    rgba(255, 120, 30, 0.85) 82%,
+    #ffd27a 92%,
+    #fffbe8 95.5%,
+    rgba(255, 110, 30, 0.3) 97%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: hearth-fuse 2.8s linear infinite;
+}
+@keyframes hearth-fuse { to { --fuse: 360deg; } }
+/* Flames along the top: two rows of tongues drifting across each other,
+   so where they meet they rise and fall like the real thing. */
+.chip-fire::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% - 3px);
+  height: 20px;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, #fff4cf 0%, #ffc04d 25%, #ff7a1f 58%, rgba(255, 70, 10, 0) 100%);
+  -webkit-mask:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 20'><path d='M0 20C2 15 3.6 10 5 1 6.4 10 8.4 15 10 20ZM8.5 20C10 17 11 14.5 12 11 13 14.5 14.4 17 16 20ZM14.5 20C16.5 15.5 18 11.5 19.4 6 20.8 11.5 22.6 15.5 24.5 20ZM23.5 20C25.4 17.5 26.6 15.5 28 13 29.4 15.5 31.2 17.5 34 20Z'/></svg>") 0 100% / 34px 20px repeat-x,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 23 13'><path d='M0 13C2.4 9.5 4 6 5 1 6 6 7.8 9.5 10 13ZM9.5 13C12 11 13.4 9.5 14.5 7 15.6 9.5 18 11 23 13Z'/></svg>") 0 100% / 23px 13px repeat-x;
+  mask:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 20'><path d='M0 20C2 15 3.6 10 5 1 6.4 10 8.4 15 10 20ZM8.5 20C10 17 11 14.5 12 11 13 14.5 14.4 17 16 20ZM14.5 20C16.5 15.5 18 11.5 19.4 6 20.8 11.5 22.6 15.5 24.5 20ZM23.5 20C25.4 17.5 26.6 15.5 28 13 29.4 15.5 31.2 17.5 34 20Z'/></svg>") 0 100% / 34px 20px repeat-x,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 23 13'><path d='M0 13C2.4 9.5 4 6 5 1 6 6 7.8 9.5 10 13ZM9.5 13C12 11 13.4 9.5 14.5 7 15.6 9.5 18 11 23 13Z'/></svg>") 0 100% / 23px 13px repeat-x;
+  filter: drop-shadow(0 0 4px rgba(255, 120, 30, 0.7));
+  animation: hearth-lick 1.6s linear infinite, hearth-flare 0.55s ease-in-out infinite alternate;
+}
+@keyframes hearth-lick {
+  from { -webkit-mask-position: 0 100%, 0 100%; mask-position: 0 100%, 0 100%; }
+  to { -webkit-mask-position: 34px 100%, -46px 100%; mask-position: 34px 100%, -46px 100%; }
+}
+@keyframes hearth-flare {
+  from { transform: scaleY(0.8); opacity: 0.85; }
+  to { transform: scaleY(1.15); opacity: 1; }
+}
+/* A tag with no box has no edge to creep round. */
+.chip[data-look="ink"] .chip-fire::before { display: none; }
 
 /* The note is dark wood by firelight. */
 [data-theme="hearthfire"] .notepanel {
@@ -1169,5 +1263,8 @@
   [data-theme="hearthfire"] h1::after,
   [data-theme="hearthfire"] .dayhead::before,
   [data-theme="hearthfire"] .burnt::after,
-  [data-theme="hearthfire"] .nowline::before { animation: none; }
+  [data-theme="hearthfire"] .nowline::before,
+  [data-theme="hearthfire"] .chip.armed,
+  .chip-fire::before,
+  .chip-fire::after { animation: none; }
 }

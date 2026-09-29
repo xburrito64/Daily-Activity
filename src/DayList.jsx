@@ -1409,6 +1409,11 @@ ${b.note}` : ''}`}
                   >
                     <TagIcon tag={t} />
                     {t.name}
+                    {/* Hearthfire sets a picked-up tag alight: flames along
+                        its top and an ember creeping round its edge. */}
+                    {theme === 'hearthfire' && armed?.date === date && armed?.tag === t.id && (
+                      <i className="chip-fire" aria-hidden="true" />
+                    )}
                   </button>
                 ))}
                 </div>
