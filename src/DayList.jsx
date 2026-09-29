@@ -9,6 +9,8 @@ import { Initial, Chronicle } from './scenes/ScriptParts.jsx'
 import { illumination } from './scenes/manuscript.js'
 import { MagicCircle, Moonweed, RankGem, rankTitle } from './scenes/StarParts.jsx'
 import { monthByTag, isComplete } from './scenes/starlit.js'
+import { festivalOf } from './scenes/festivals.js'
+import { Gift } from './scenes/Festive.jsx'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -1120,6 +1122,8 @@ function DayList({
         {dates.map((date, rowIndex) => {
           const day = days[date]
           const isToday = date === today
+          // Christmas Eve, and whatever festivals follow it. Starlit only, so far.
+          const festival = starlit ? festivalOf(date) : null
           let blocks = resizing?.date === date
             ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
             : day?.blocks ?? []
@@ -1388,6 +1392,7 @@ ${b.note}` : ''}`}
                 ref={rowIndex === 0 ? firstRowRef : undefined}
                 className={`compactrow${isToday ? ' today' : ''}${dayOfWeek(date) === 0 ? ' weekedge' : ''}`
                   + `${rowIndex === 0 ? ' measured' : ''}`}
+                data-festival={festival?.id}
               >
                 <div className="gutter">
                   <span className="gday">{weekdayOf(date)}</span>
@@ -1404,6 +1409,7 @@ ${b.note}` : ''}`}
               ref={rowIndex === 0 ? firstRowRef : undefined}
               className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`
                 + `${rowIndex === 0 ? ' measured' : ''}`}
+              data-festival={festival?.id}
             >
               <h2 className="dayhead">
                 {/* Scriptorium opens every day with an illuminated initial,
@@ -1420,7 +1426,13 @@ ${b.note}` : ''}`}
                   )
                 })()}
                 <span className="dayweekday" data-dow={dayOfWeek(date)}>{weekdayOf(date)}</span>
-                {formatDayHeading(date)}
+                {festival ? (
+                  <>
+                    <span className="festdate">{formatDayHeading(date)}</span>
+                    <Gift glint={isToday} />
+                    <span className="festname">{festival.name}</span>
+                  </>
+                ) : formatDayHeading(date)}
                 {starlit && !day?.malformed && isComplete(day?.blocks) && (
                   <Moonweed title="Every hour of this day accounted for" />
                 )}

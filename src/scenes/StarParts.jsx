@@ -44,7 +44,10 @@ const NODES = Array.from({ length: 6 }, (_, i) => {
  * rotating a finished image. Turning the drawing itself has the page redraw
  * it every frame the circle is showing.
  */
-export function MagicCircle({ size = 100, className = '', style }) {
+// The six arms of a snowflake, for the frost sigil cast on Christmas Eve.
+const FLAKE_ARM = 'M0 -5V-36M-7 -26 0 -20 7 -26M-5 -33 0 -29 5 -33M-8 -13 0 -9 8 -13'
+
+export function MagicCircle({ size = 100, className = '', style, frost = false }) {
   const ring = `r${useId().replace(/:/g, '')}`
   const layer = (name, children) => (
     <span className={name}>
@@ -72,6 +75,14 @@ export function MagicCircle({ size = 100, className = '', style }) {
           <polygon points={triangle(34, Math.PI / 2)} />
           <circle r="24" />
           {NODES.map(([x, y], i) => <circle key={i} className="mc-node" cx={x} cy={y} r="2.4" />)}
+        </>
+      ))}
+      {/* Shown in place of the hexagram when the spell is cast on a day
+          of frost (themes.css, .star-cast.frost). */}
+      {frost && layer('mc-flake', (
+        <>
+          {[0, 60, 120, 180, 240, 300].map((a) => <path key={a} d={FLAKE_ARM} transform={`rotate(${a})`} />)}
+          <polygon points={star(6, 7, 4)} />
         </>
       ))}
       {layer('mc-inner', (
