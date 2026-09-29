@@ -6,6 +6,7 @@ import { createGames } from './games.js'
 import { createAnime } from './anime.js'
 import { findIn } from './find.js'
 import { readJson } from './config.js'
+import { withIcons, describeSets } from './icons.js'
 
 const MAX_RANGE_DAYS = 400
 // How long a total may be reused before the vault is read again. Only an edit
@@ -17,37 +18,6 @@ const PLAYED_TTL_MS = 20_000
 // about once in REFILL_EVERY_MS however often this runs.
 const REFILL_FIRST_MS = 30_000
 const REFILL_ROUND_MS = 60 * 60_000
-
-// Best first: a vector scales to any zoom level without going fuzzy.
-const ICON_EXTENSIONS = ['.svg', '.png', '.webp', '.gif', '.jpg', '.jpeg']
-
-/**
- * A tag uses a custom image when a file named after its id sits in the icon
- * folder, and falls back to its emoji otherwise. Nothing to configure — the
- * file being there is the whole switch.
- */
-function withIcons(tags, tagIconsDir) {
-  let names = []
-  try {
-    names = fs.readdirSync(tagIconsDir)
-  } catch {
-    return tags // no folder yet, everyone keeps their emoji
-  }
-
-  // Windows doesn't care about capitals anywhere else, so neither does this:
-  // Anime.gif and anime.gif both count. Two files that differ only in case
-  // can't sit in one folder there, so there is nothing to disambiguate.
-  const byName = new Map(names.map((name) => [name.toLowerCase(), name]))
-
-  return tags.map((tag) => {
-    const wanted = ICON_EXTENSIONS
-      .map((ext) => tag.id.toLowerCase() + ext)
-      .find((name) => byName.has(name))
-    if (!wanted) return tag
-    const file = byName.get(wanted)
-    return { ...tag, image: `/tag-icons/${encodeURIComponent(file)}` }
-  })
-}
 
 /**
  * The API, and optionally the built frontend alongside it.
@@ -122,10 +92,16 @@ export function createApp({
     res.status(err.status ?? 500).json({ error: err.message })
   })
 
-  app.get('/api/tags', wrap(async (_req, res) => {
+  app.get('/api/tags', wrap(async (req, res) => {
     // Re-read each time, so editing tags.json or dropping in an icon file
-    // only needs a refresh rather than a restart.
-    res.json(withIcons(readJson(tagsFile), tagIconsDir))
+    // only needs a refresh rather than a restart. `icons` is the set picked
+    // in the settings; see icons.js for what happens to one that isn't there.
+    res.json(withIcons(readJson(tagsFile), tagIconsDir, String(req.query.icons ?? '')))
+  }))
+
+  /** The icon sets to choose between, each with a few of its pictures. */
+  app.get('/api/icon-sets', wrap(async (_req, res) => {
+    res.json({ sets: describeSets(readJson(tagsFile), tagIconsDir) })
   }))
 
   app.use('/tag-icons', express.static(tagIconsDir))

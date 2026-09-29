@@ -44,18 +44,28 @@ fs.mkdirSync(iconsTarget, { recursive: true })
 
 // Windows filenames don't care about case and neither does the icon lookup,
 // so match that here: Anime.png must replace anime.png rather than joining it.
-const existing = new Map(
-  fs.readdirSync(iconsTarget).map((name) => [name.toLowerCase(), name]),
-)
-
-for (const name of fs.readdirSync(iconsSource)) {
-  if (name.endsWith('.md')) continue // the instructions, already there
-  const from = path.join(iconsSource, name)
-  const to = path.join(iconsTarget, existing.get(name.toLowerCase()) ?? name)
-  if (fs.existsSync(to) && fs.readFileSync(to).equals(fs.readFileSync(from))) continue
-  fs.copyFileSync(from, to)
-  changed.push(`icon: ${name}`)
+/** Copy the pictures in one folder across, and any set folders inside it. */
+function copyIcons(fromDir, toDir, label) {
+  fs.mkdirSync(toDir, { recursive: true })
+  const there = new Map(fs.readdirSync(toDir).map((name) => [name.toLowerCase(), name]))
+  for (const entry of fs.readdirSync(fromDir, { withFileTypes: true })) {
+    const name = entry.name
+    if (name.endsWith('.md')) continue // the instructions, already there
+    const from = path.join(fromDir, name)
+    const to = path.join(toDir, there.get(name.toLowerCase()) ?? name)
+    // A folder is a set of icons. One level only: a set is a folder of
+    // pictures, not a folder of sets.
+    if (entry.isDirectory()) {
+      if (!label) copyIcons(from, to, name)
+      continue
+    }
+    if (fs.existsSync(to) && fs.readFileSync(to).equals(fs.readFileSync(from))) continue
+    fs.copyFileSync(from, to)
+    changed.push(`icon: ${label ? `${label}/` : ''}${name}`)
+  }
 }
+
+copyIcons(iconsSource, iconsTarget, '')
 
 if (changed.length === 0) {
   console.log('\n  The installed app already has this tag list and these icons.\n')

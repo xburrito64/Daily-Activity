@@ -5,7 +5,10 @@ async function request(url, options) {
   return body
 }
 
-export const getTags = () => request('/api/tags')
+/** The tags, wearing the icon set picked in the settings — '' for the usual. */
+export const getTags = (icons = '') =>
+  request(icons ? `/api/tags?icons=${encodeURIComponent(icons)}` : '/api/tags')
+export const getIconSets = () => request('/api/icon-sets')
 export const getDay = (date) => request(`/api/day/${date}`)
 
 export const putDay = (date, entries) =>

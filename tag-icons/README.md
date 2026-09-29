@@ -87,6 +87,20 @@ against the darker tags like Sleep.
 
 Simple, solid shapes beat fine detail. At 16 pixels, thin lines vanish.
 
+## Sets
+
+A folder in here is a **set**: a second look for the same tags, named after
+the folder. The settings panel (the gear at the top right) lists every set,
+with a few of its pictures, and switches between them with one click.
+
+Inside a set the naming is exactly the same as above — one file per tag,
+named after its id. A set doesn't have to be complete: a tag the set has no
+picture for keeps the one it has out here, so a half-drawn set is still worth
+trying. Anything in the folder that isn't named after a tag, like a sheet
+showing the whole set at once, is simply ignored.
+
+The loose files in this folder are the set called *Current icons*.
+
 ## After adding one
 
 Refresh the app — no restart needed.
