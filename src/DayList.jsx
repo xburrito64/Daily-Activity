@@ -5,6 +5,8 @@ import {
   paintSpans,
 } from './time.js'
 import { useMinute } from './useMinute.js'
+import { Initial, Chronicle } from './scenes/ScriptParts.jsx'
+import { illumination } from './scenes/manuscript.js'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -1013,6 +1015,7 @@ export default function DayList({
     : null
   const covers = useContext(Covers)
   const { chipLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
+  const scriptorium = theme === 'scriptorium'
   const words = wordsFor(theme)
   // With covers off, a named block is drawn as though none had ever been
   // found: its own cover set aside, and nothing borrowed.
@@ -1368,10 +1371,31 @@ ${b.note}` : ''}`}
               className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`}
             >
               <h2 className="dayhead">
+                {/* Scriptorium opens every day with an illuminated initial,
+                    coloured by what filled it. */}
+                {scriptorium && (() => {
+                  const lit = illumination(day?.malformed ? [] : day?.blocks)
+                  return (
+                    <Initial
+                      letter={weekdayOf(date).charAt(0).toUpperCase()}
+                      level={lit.level}
+                      colours={lit.grounds.map((id) => tagById(id)?.colour ?? '#8a7a66')}
+                      gleam={isToday && lit.level === 'gilded'}
+                    />
+                  )
+                })()}
                 <span className="dayweekday" data-dow={dayOfWeek(date)}>{weekdayOf(date)}</span>
                 {formatDayHeading(date)}
                 {isToday && <span className="todaymark">today</span>}
                 {blank && <span className="daysummary">{words.blank}</span>}
+                {scriptorium && !day?.malformed && (
+                  <Chronicle
+                    blocks={day?.blocks}
+                    isToday={isToday}
+                    nameOf={(id) => tagById(id)?.name ?? id}
+                    colourOf={(id) => tagById(id)?.colour ?? '#9e3122'}
+                  />
+                )}
               </h2>
 
               {track}
@@ -1380,6 +1404,7 @@ ${b.note}` : ''}`}
                 {Array.from({ length: 25 }, (_, h) => (
                   <span
                     key={h}
+                    data-hour={h}
                     className={`rtick${h % 2 === 0 ? ' major' : ''}`}
                     style={{ left: edgeAt(h * 6) }}
                   >

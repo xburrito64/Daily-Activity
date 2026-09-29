@@ -81,9 +81,7 @@
     var(--c-bg);
 }
 [data-theme="scriptorium"] .sky i { display: none; }
-/* A rubric: the first letter of the title in red, a size up. */
 [data-theme="scriptorium"] h1 { line-height: 1.05; font-weight: 400; }
-[data-theme="scriptorium"] h1::first-letter { color: var(--c-accent); font-size: 1.3em; }
 [data-theme="scriptorium"] .dayhead { line-height: 1; }
 [data-theme="scriptorium"] .dayweekday { color: var(--c-accent); font-family: var(--font-ui); }
 /* A double rule under the header, the way a scribe ruled a page. */
@@ -1609,4 +1607,288 @@
   [data-theme="nightshift"] .chip.armed::after,
   .app > .term-roll { animation: none; }
   .app > .term-roll { display: none; }
+}
+
+/* ----------------------------------------------------------------------
+   Scriptorium, in full. The initials and the chronicle are
+   scenes/ScriptParts.jsx, the light and the ink scenes/ScriptScene.jsx;
+   everything here is the book.
+   ---------------------------------------------------------------------- */
+[data-theme="scriptorium"] { --dayruler-height: 36px; }
+
+/* The title opens on the book's own initial. */
+[data-theme="scriptorium"] h1 { display: flex; align-items: center; }
+.titleinitial {
+  flex: none;
+  margin: -8px 3px -8px -2px;
+  filter: drop-shadow(0 2px 3px rgba(90, 55, 20, 0.35));
+}
+.script-hour { font-style: italic; }
+.script-hour em { font-style: normal; color: var(--c-accent); letter-spacing: 0.04em; }
+
+/* --- the initials ------------------------------------------------------- */
+[data-theme="scriptorium"] .dayhead { align-items: center; }
+.dayhead .initial {
+  flex: none;
+  margin: -5px 0;
+  filter: drop-shadow(0 1px 1.5px rgba(90, 55, 20, 0.3));
+  transition: transform 0.3s ease;
+}
+.dayhead .initial.sketch { filter: none; }
+.dayhead .initial:hover { transform: rotate(-3deg) scale(1.1); }
+.initial-letter {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 34px;
+  font-weight: 700;
+}
+.initial-guide {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 9px;
+  font-style: italic;
+}
+
+/* --- the chronicle beside each day -------------------------------------- */
+.chronicle {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-left: var(--s-5);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-meta);
+  font-size: var(--f-md);
+  font-style: italic;
+  letter-spacing: 0;
+  color: var(--c-text-dim);
+}
+.chronicle em {
+  font-style: normal;
+  font-weight: 600;
+  color: color-mix(in oklab, var(--rubric) 70%, #2d2114);
+}
+
+/* --- the canonical hours under every day -------------------------------- */
+[data-theme="scriptorium"] .rtick::after {
+  position: absolute;
+  top: 22px;
+  transform: translateX(-50%);
+  font-family: var(--font-meta);
+  font-size: 12px;
+  font-style: italic;
+  white-space: nowrap;
+  color: var(--c-accent);
+  opacity: 0.85;
+}
+[data-theme="scriptorium"] .rtick[data-hour="0"]::after { content: "Matins"; transform: none; }
+[data-theme="scriptorium"] .rtick[data-hour="3"]::after { content: "Lauds"; }
+[data-theme="scriptorium"] .rtick[data-hour="6"]::after { content: "Prime"; }
+[data-theme="scriptorium"] .rtick[data-hour="9"]::after { content: "Terce"; }
+[data-theme="scriptorium"] .rtick[data-hour="12"]::after { content: "Sext"; }
+[data-theme="scriptorium"] .rtick[data-hour="15"]::after { content: "None"; }
+[data-theme="scriptorium"] .rtick[data-hour="18"]::after { content: "Vespers"; }
+[data-theme="scriptorium"] .rtick[data-hour="21"]::after { content: "Compline"; }
+[data-theme="scriptorium"] .rtick[data-hour="3"] .rmark,
+[data-theme="scriptorium"] .rtick[data-hour="9"] .rmark,
+[data-theme="scriptorium"] .rtick[data-hour="15"] .rmark,
+[data-theme="scriptorium"] .rtick[data-hour="21"] .rmark { height: 7px; background: var(--c-accent); }
+
+/* --- the page ------------------------------------------------------------- */
+/* Pigment laid on vellum takes the grain of the skin under it. */
+[data-theme="scriptorium"] .block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='v'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.2  0 0 0 0 0.1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23v)'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+/* A leaf not yet written on: ruled, and waiting. */
+[data-theme="scriptorium"] .track.empty {
+  border-style: solid;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 13px, rgba(163, 58, 42, 0.13) 13px 14px),
+    #f3e9d2;
+}
+[data-theme="scriptorium"] .emptyday { font-style: italic; }
+
+/* The time now is a snail, the one every margin had, crawling along the foot
+   of today and leaving a silver trail over everything the day has done. */
+[data-theme="scriptorium"] .nowline {
+  width: 1.5px;
+  background: rgba(45, 33, 20, 0.5);
+  box-shadow: none;
+}
+[data-theme="scriptorium"] .nowline::before {
+  top: auto;
+  bottom: 1px;
+  left: auto;
+  right: -3px;
+  width: 32px;
+  height: 21px;
+  transform: none;
+  transform-origin: 100% 100%;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 21'><path d='M2 19.5c4-2 13-2.4 20-2.6 3.6-.1 5.4-1.6 5.8-4.2l.3-3.4c.1-1.2 1.6-1.4 2 0l.2 3c.2 3.4-1.4 6.4-5.3 7.4-6.5 1.4-15.7.9-23 .8Z' fill='%23c9b089' stroke='%232d2114' stroke-width='0.9'/><path d='M28.4 9.4 27.6 4M29.6 9.4l1-5.2' stroke='%232d2114' stroke-width='0.8' stroke-linecap='round'/><circle cx='27.5' cy='3.8' r='0.9' fill='%232d2114'/><circle cx='30.7' cy='4' r='0.9' fill='%232d2114'/><circle cx='13' cy='10.5' r='7.6' fill='%23b0662e' stroke='%232d2114' stroke-width='0.9'/><path d='M13 10.5c.9-.2 1.3.9.6 1.5-1.1.9-2.8 0-2.7-1.5.1-2 2.6-3 4.3-1.9 2.2 1.4 1.9 4.8-.4 6-2.9 1.5-6.4-.5-6.5-3.8-.1-3.8 3.7-6 7-4.9' fill='none' stroke='%232d2114' stroke-width='0.9' stroke-linecap='round'/><path d='M8.4 6.4c1.8-1.6 4.4-1.9 6.4-1.2' stroke='%23f2d9a0' stroke-width='0.9' fill='none' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  animation: script-crawl 3.2s ease-in-out infinite;
+}
+[data-theme="scriptorium"] .nowline::after {
+  content: "";
+  position: absolute;
+  right: 28px;
+  bottom: 2px;
+  width: 4000px;
+  height: 1.5px;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.35) 260px, rgba(255, 255, 255, 0.12));
+}
+@keyframes script-crawl {
+  0%, 100% { transform: scaleX(1); }
+  45% { transform: scaleX(1.07) scaleY(0.97); }
+}
+
+/* While a tag is picked up, the pointer over a day is a quill. */
+[data-theme="scriptorium"] .scroller.armed .track {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M8.6 23.4C9.8 14.6 17.6 5.8 30 2c-2.8 7.4-9.4 15.6-18.2 23.4Z' fill='%23fffaf0' stroke='%232d2114' stroke-width='1'/><path d='M10.6 23.6C15.2 16.8 21 10 29.2 3.2M14 17l2.4 1.4M16.6 13.8l2.6 1.2M19.4 10.8l2.4 1M22.4 8l2.2.8' stroke='%232d2114' stroke-width='0.7' fill='none'/><path d='M2 30l6.4-6.6 2.6 2.4Z' fill='%232d2114'/></svg>") 2 30, crosshair;
+}
+
+/* --- ink ------------------------------------------------------------------ */
+.app > .script-ink {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+}
+.script-blot {
+  position: absolute;
+  overflow: visible;
+  animation: script-blot 2.6s ease-out forwards;
+}
+@keyframes script-blot {
+  0% { transform: scale(0.2); opacity: 1; }
+  7% { transform: scale(1.1); }
+  12% { transform: scale(1); }
+  65% { opacity: 0.85; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+/* --- the light through the window ----------------------------------------- */
+.app > .script-light {
+  --beam-angle: 90deg;
+  --beam-at: 50%;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  /* Two panes of light with the mullion's shadow between them. Multiplied
+     over the page, so the room around the beam is what falls into shade
+     and the light is the page itself, untouched. */
+  background: linear-gradient(var(--beam-angle),
+    #dcc7a6 calc(var(--beam-at) - 26%),
+    #fffaf0 calc(var(--beam-at) - 13%),
+    #ffffff calc(var(--beam-at) - 3.5%),
+    #e6d4b6 calc(var(--beam-at) - 1.8%),
+    #e6d4b6 calc(var(--beam-at) + 0.8%),
+    #ffffff calc(var(--beam-at) + 2.5%),
+    #fffaf0 calc(var(--beam-at) + 12%),
+    #dcc7a6 calc(var(--beam-at) + 25%));
+  mix-blend-mode: multiply;
+  transition: opacity 3s ease;
+}
+/* After dark, a candle down at the corner of the desk, and the room beyond
+   the page going brown and dim. */
+.app > .script-night {
+  position: fixed;
+  inset: -4%;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 55% 65% at 90% 100%, rgba(255, 196, 120, 0.5), transparent 70%),
+    radial-gradient(ellipse 80% 78% at 52% 50%, rgba(255, 255, 255, 0) 45%, rgba(80, 44, 16, 0.55) 100%);
+  mix-blend-mode: multiply;
+  transition: opacity 3s ease;
+  animation: script-candle 4.6s ease-in-out infinite;
+}
+@keyframes script-candle {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.012) translate(0.2%, 0); }
+  55% { transform: scale(0.996); }
+  78% { transform: scale(1.008) translate(-0.2%, 0.1%); }
+}
+.app > .script-motes {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* --- tag boxes, Classic look: pigments ------------------------------------ */
+/* Each tag is a label on a pot of pigment, with a dab of the colour laid on
+   beside its name. Picked up, it is edged in burnished gold that catches the
+   light as it moves — the colour loaded on the brush. */
+[data-theme="scriptorium"] .chip[data-look="classic"] {
+  position: relative;
+  padding-left: calc(var(--s-5) + 12px);
+  color: var(--c-text);
+  background: linear-gradient(180deg, #fbf5e6, #f0e3c6);
+  border: 1px solid #c9b187;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(90, 55, 20, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+[data-theme="scriptorium"] .chip[data-look="classic"]::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 11px;
+  height: 64%;
+  background: var(--chip);
+  border-radius: 45% 60% 50% 40% / 55% 45% 60% 40%;
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  transform: translateY(-50%) rotate(-5deg);
+  transition: transform 0.25s ease, width 0.25s ease;
+}
+[data-theme="scriptorium"] .chip[data-look="classic"]:hover:not(:disabled) {
+  background: linear-gradient(180deg, #fffaf0, #f4e8cd);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 3px 8px -2px rgba(90, 55, 20, 0.3);
+  transform: translateY(-1px);
+}
+[data-theme="scriptorium"] .chip[data-look="classic"]:hover:not(:disabled)::before {
+  transform: translateY(-50%) rotate(-5deg) scale(1.2);
+}
+[data-theme="scriptorium"] .chip[data-look="classic"].armed {
+  color: var(--c-text-bright);
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, #fffaf0, #f6ead0) padding-box,
+    linear-gradient(135deg, #8a5a12, #f3d98a 28%, #c28f2e 48%, #fff0b3 66%, #9c6a1c) border-box;
+  box-shadow: 0 2px 10px -2px rgba(160, 110, 20, 0.55), 0 0 0 1px rgba(90, 60, 10, 0.25);
+  animation: none;
+}
+[data-theme="scriptorium"] .chip[data-look="classic"].armed::before {
+  width: 13px;
+  transform: translateY(-50%) rotate(-5deg) scale(1.25);
+}
+[data-theme="scriptorium"] .chip[data-look="classic"].armed::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.85) 50%, transparent 60%) 0 0 / 260% 100% no-repeat;
+  mix-blend-mode: soft-light;
+  animation: script-gleam 3s ease-in-out infinite;
+}
+@keyframes script-gleam {
+  0% { background-position: 130% 0; }
+  55%, 100% { background-position: -30% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="scriptorium"] .nowline::before,
+  [data-theme="scriptorium"] .chip.armed::after,
+  .app > .script-night { animation: none; }
 }

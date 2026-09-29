@@ -9,6 +9,8 @@ import PetalScene from './scenes/PetalScene.jsx'
 import HearthScene from './scenes/HearthScene.jsx'
 import TermScene, { TermMonitor } from './scenes/TermScene.jsx'
 import { modeOf } from './scenes/terminal.js'
+import ScriptScene from './scenes/ScriptScene.jsx'
+import { Initial, HourOf } from './scenes/ScriptParts.jsx'
 import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
@@ -444,6 +446,7 @@ export default function App() {
       </div>
       {/* A theme with more to it than colours brings its own scene. */}
       {appearance.theme === 'tidewater' && <TideScene days={daysDown(visible, todayISO())} />}
+      {appearance.theme === 'scriptorium' && <ScriptScene />}
       {appearance.theme === 'petalfall' && (
         <PetalScene branch={branch} onPick={(date) => { setView('day'); setJumpTo(date) }} />
       )}
@@ -451,9 +454,18 @@ export default function App() {
       <header>
         <div className="titlerow">
           <div className="titleblock">
-            <h1>Daily Documentation</h1>
+            {appearance.theme === 'scriptorium' ? (
+              // The book's own initial: gilded, on lapis, catching the light.
+              <h1 aria-label="Daily Documentation">
+                <Initial letter="D" level="gilded" colours={['#27458f']} size={60} gleam className="titleinitial" />
+                aily Documentation
+              </h1>
+            ) : (
+              <h1>Daily Documentation</h1>
+            )}
             <span className="subtitle">
               {wordsFor(appearance.theme).recorded(recorded)}
+              {appearance.theme === 'scriptorium' && <HourOf />}
             </span>
           </div>
 

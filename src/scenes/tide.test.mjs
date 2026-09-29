@@ -59,7 +59,8 @@ t('a theme with its own words says them, and borrows the rest', () => {
   assert.equal(wordsFor('tidewater').recorded(1), 'one day charted')
   assert.equal(wordsFor('tidewater').wipe, 'Wash away')
   assert.equal(wordsFor('nightshift').recorded(38), '38 days on disk')
-  assert.equal(wordsFor('scriptorium').recorded(38), '38 days recorded')
+  assert.equal(wordsFor('scriptorium').recorded(38), '38 leaves inscribed')
+  assert.equal(wordsFor('starlit').recorded(38), '38 days recorded')
   assert.equal(wordsFor('nonsense').emptyDay, 'nothing has happened here yet')
 })
 

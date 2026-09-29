@@ -13,6 +13,14 @@ const WORDS = {
     wipe: 'Unwrite',
     wipeConfirm: 'Unwrite?',
   },
+  scriptorium: {
+    recorded: (n) => (n === 1 ? 'one leaf inscribed' : `${n} leaves inscribed`),
+    emptyDay: 'a blank leaf — nothing yet inscribed',
+    blank: 'blank leaf',
+    // Scribes took a mistake off the vellum by scraping it with a knife.
+    wipe: 'Scrape',
+    wipeConfirm: 'Scrape it clean?',
+  },
   petalfall: {
     recorded: (n) => (n === 1 ? 'one day in bloom' : `${n} days in bloom`),
     emptyDay: 'still in bud — nothing here yet',
