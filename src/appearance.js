@@ -26,7 +26,7 @@ export const THEMES = [
   { id: 'hearthfire', name: 'Hearthfire', note: 'A fire you keep going by logging. Leave it and it burns down; the hours you missed turn to ash.' },
   { id: 'tidewater', name: 'Tidewater', note: 'Deep water by moonlight, with light rippling slowly across the dark.' },
   { id: 'petalfall', name: 'Petalfall', note: 'Plum twilight and rose haze, sakura petals drifting down.' },
-  { id: 'nightshift', name: 'Nightshift', note: 'A green phosphor terminal: square corners, a blinking cursor, scanlines.' },
+  { id: 'nightshift', name: 'Nightshift', note: 'A green-screen terminal on the night shift: a system monitor of your week, a status line, and a CRT that boots.' },
 ]
 
 /**

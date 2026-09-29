@@ -84,3 +84,13 @@
   font-display: swap;
   src: url('/fonts/CormorantGaramond-ItalicVariable.woff2') format('woff2');
 }
+
+/* VT323, for Nightshift: the lettering of an old video terminal, drawn on
+   its pixel grid. One weight is all a terminal ever had. */
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/VT323-Regular.woff2') format('woff2');
+}

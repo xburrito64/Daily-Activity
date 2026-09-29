@@ -7,6 +7,8 @@ import Settings from './Settings.jsx'
 import TideScene, { daysDown } from './scenes/TideScene.jsx'
 import PetalScene from './scenes/PetalScene.jsx'
 import HearthScene from './scenes/HearthScene.jsx'
+import TermScene, { TermMonitor } from './scenes/TermScene.jsx'
+import { modeOf } from './scenes/terminal.js'
 import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
@@ -460,6 +462,8 @@ export default function App() {
             <button className={view === 'compact' ? 'on' : ''} onClick={() => setView('compact')}>Overview</button>
           </div>
 
+          {appearance.theme === 'nightshift' && <TermMonitor days={days} tags={tags} />}
+
           <button className="control nav today" onClick={() => setJumpTo(todayISO())}>Today</button>
           {/* The date reads as a date rather than as an empty form field, and
               says which day you are looking at rather than nothing at all. The
@@ -571,6 +575,21 @@ export default function App() {
           so it comes last, under everything else. */}
       {appearance.theme === 'hearthfire' && (
         <HearthScene days={days} onToday={() => { setView('day'); setJumpTo(todayISO()) }} />
+      )}
+      {appearance.theme === 'nightshift' && (
+        <TermScene
+          days={days}
+          tags={tags}
+          recorded={recorded}
+          mode={modeOf({
+            settings: settingsOpen,
+            find: Boolean(find),
+            armedTag: armed && view === 'day' ? tags.find((t) => t.id === armed.tag)?.name ?? armed.tag : '',
+            note: selectedBlock
+              ? selectedBlock.game || selectedBlock.show || tags.find((t) => t.id === selectedBlock.tag)?.name || selectedBlock.tag
+              : '',
+          })}
+        />
       )}
       {settingsOpen && (
         <Settings

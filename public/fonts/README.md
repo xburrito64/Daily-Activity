@@ -41,3 +41,10 @@ To try Bold instead:
 1. Put CrimsonPro-Bold.woff2 in this folder.
 2. Uncomment the 700 block in `src/styles/fonts.css`.
 3. In `src/styles/tokens.css` set `--w-medium: 700;` and `--w-bold: 700;`
+
+Nightshift's terminal lettering, also from Google Fonts (SIL Open Font
+License), latin subset:
+
+    VT323-Regular.woff2
+
+    https://fonts.google.com/specimen/VT323

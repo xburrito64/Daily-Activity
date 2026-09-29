@@ -27,6 +27,13 @@ const WORDS = {
     wipe: 'Douse',
     wipeConfirm: 'Douse it?',
   },
+  nightshift: {
+    recorded: (n) => (n === 1 ? '1 day on disk' : `${n} days on disk`),
+    emptyDay: 'no entries — awaiting input',
+    blank: '0 bytes',
+    wipe: 'rm day',
+    wipeConfirm: 'rm day? [y/N]',
+  },
   tidewater: {
     recorded: (n) => (n === 1 ? 'one day charted' : `${n} days charted`),
     emptyDay: 'calm water — nothing charted here yet',
