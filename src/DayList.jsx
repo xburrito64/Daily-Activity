@@ -7,6 +7,7 @@ import {
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
+import { wordsFor } from './themeWords.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
@@ -1012,7 +1013,8 @@ export default function DayList({
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
   const covers = useContext(Covers)
-  const { chipLook, labels, covers: showCovers, hints } = useContext(Appearance)
+  const { chipLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
+  const words = wordsFor(theme)
   // With covers off, a named block is drawn as though none had ever been
   // found: its own cover set aside, and nothing borrowed.
   const faceOf = (b) => blockFace(tagById(b.tag), showCovers ? b : { ...b, cover: '' }, showCovers ? covers : null)
@@ -1188,7 +1190,7 @@ export default function DayList({
                   view, where there is room for it. In the Overview a row is
                   a few pixels tall and the hatching alone reads fine. */}
               {blank && isDay && (
-                <span className="emptyday">nothing has happened here yet</span>
+                <span className="emptyday">{words.emptyDay}</span>
               )}
 
               {/* The blocks keep their depths to themselves, so a block three
@@ -1368,7 +1370,7 @@ ${b.note}` : ''}`}
                 <span className="dayweekday">{weekdayOf(date)}</span>
                 {formatDayHeading(date)}
                 {isToday && <span className="todaymark">today</span>}
-                {blank && <span className="daysummary">unwritten</span>}
+                {blank && <span className="daysummary">{words.blank}</span>}
               </h2>
 
               {track}
@@ -1418,7 +1420,7 @@ ${b.note}` : ''}`}
                   onClick={() => askWipe(date)}
                 >
                   <TrashIcon />
-                  {confirmWipe === date ? 'Unwrite?' : 'Unwrite'}
+                  {confirmWipe === date ? words.wipeConfirm : words.wipe}
                 </button>
               </div>
             </section>

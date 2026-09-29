@@ -4,6 +4,8 @@ import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
 import FindBar from './FindBar.jsx'
 import Settings from './Settings.jsx'
+import TideScene, { daysDown } from './scenes/TideScene.jsx'
+import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
 import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
 import { Covers } from './face.js'
@@ -431,13 +433,15 @@ export default function App() {
       <div className="sky" aria-hidden="true">
         <i /><i /><i /><i /><i /><i /><i />
       </div>
+      {/* A theme with more to it than colours brings its own scene. */}
+      {appearance.theme === 'tidewater' && <TideScene days={daysDown(visible, todayISO())} />}
 
       <header>
         <div className="titlerow">
           <div className="titleblock">
             <h1>Daily Documentation</h1>
             <span className="subtitle">
-              {recorded === 1 ? 'one day recorded' : `${recorded} days recorded`}
+              {wordsFor(appearance.theme).recorded(recorded)}
             </span>
           </div>
 
