@@ -39,6 +39,11 @@ export const DEFAULTS = {
   iconSet: '',
   chipLook: 'classic',
   labels: 'auto',
+  // Game and anime covers on the bar. Off, a named block wears its tag's
+  // icon there instead; the cards in a note keep their covers either way.
+  covers: true,
+  // The line of shortcuts above the days.
+  hints: true,
 }
 
 /**
@@ -56,6 +61,8 @@ export function normalise(raw) {
     iconSet: typeof got.iconSet === 'string' ? got.iconSet : DEFAULTS.iconSet,
     chipLook: CHIP_LOOKS.some((look) => look.id === got.chipLook) ? got.chipLook : DEFAULTS.chipLook,
     labels: LABEL_STYLES.some((style) => style.id === got.labels) ? got.labels : DEFAULTS.labels,
+    covers: typeof got.covers === 'boolean' ? got.covers : DEFAULTS.covers,
+    hints: typeof got.hints === 'boolean' ? got.hints : DEFAULTS.hints,
   }
 }
 

@@ -35,6 +35,13 @@ async function knownCovers() {
   return covers
 }
 
+/**
+ * Whether a key was pressed inside the settings panel. Keys there belong to
+ * the panel: Delete at the end of a tag's name must not take the open block
+ * with it, and Ctrl+C there is about the words in the box.
+ */
+const inSettings = (el) => el instanceof Element && Boolean(el.closest('.settings'))
+
 const sameCovers = (a, b) => a.size === b.size && [...a].every(([key, file]) => b.get(key) === file)
 
 // "not saved" stays plain — it is the one of these you need to act on, and
@@ -108,20 +115,18 @@ export default function App() {
   // Covers found since their blocks were written. Kept the same object while
   // nothing changes, so a quiet check that finds nothing new redraws nothing.
   const [covers, setCovers] = useState(() => new Map())
+  const refreshCovers = useCallback(() => knownCovers()
+    .then((next) => setCovers((was) => (sameCovers(was, next) ? was : next)))
+    .catch(() => {}), [])
   useEffect(() => {
-    let alive = true
-    const look = () => knownCovers()
-      .then((next) => { if (alive) setCovers((was) => (sameCovers(was, next) ? was : next)) })
-      .catch(() => {})
-    look()
-    const timer = setInterval(look, COVERS_EVERY_MS)
-    window.addEventListener('focus', look)
+    refreshCovers()
+    const timer = setInterval(refreshCovers, COVERS_EVERY_MS)
+    window.addEventListener('focus', refreshCovers)
     return () => {
-      alive = false
       clearInterval(timer)
-      window.removeEventListener('focus', look)
+      window.removeEventListener('focus', refreshCovers)
     }
-  }, [])
+  }, [refreshCovers])
 
   // How the app looks — picked in the settings, kept on this machine.
   const [appearance, setAppearance] = useState(loadAppearance)
@@ -158,6 +163,7 @@ export default function App() {
     if (!selected) return
     const onKey = (e) => {
       if (e.key !== 'Delete') return
+      if (inSettings(e.target)) return
       // Delete belongs to the text you are writing — but only while there is
       // text for it to take. Sitting in a box with nothing in front of the
       // cursor it does nothing at all, and having to click out of a box that
@@ -221,6 +227,7 @@ export default function App() {
     if (!selected) return
     const onKey = (e) => {
       if (e.key !== 'c' && e.key !== 'C') return
+      if (inSettings(e.target)) return
       if (!e.ctrlKey && !e.metaKey) return
       // Ctrl+C over selected words is the copy everyone means, and stays
       // theirs. With nothing selected there is nothing for it to take — and
@@ -256,6 +263,7 @@ export default function App() {
     const onKey = (e) => {
       if (e.key !== 'v' && e.key !== 'V') return
       if (!e.ctrlKey && !e.metaKey) return
+      if (inSettings(e.target)) return
       // In a box, paste belongs to the box: putting words into a note is a
       // real thing to want, and there is no telling it apart from this.
       if (inBox(e.target)) return
@@ -544,6 +552,15 @@ export default function App() {
           onChange={changeAppearance}
           tags={tags}
           onClose={() => setSettingsOpen(false)}
+          onTagsSaved={setTags}
+          onPictureChanged={() => getTags(appearance.iconSet).then(setTags).catch(() => {})}
+          onResetRows={() => {
+            for (const mode of Object.keys(ZOOM)) {
+              try { localStorage.removeItem(zoomKey(mode)) } catch { /* nothing kept */ }
+            }
+            setZoom(Object.fromEntries(Object.entries(ZOOM).map(([mode, z]) => [mode, z.start])))
+          }}
+          onCoversFound={refreshCovers}
         />
       )}
     </div>

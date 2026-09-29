@@ -25,16 +25,23 @@ if (!fs.existsSync(path.join(settingsDir, 'tags.json'))) {
 const changed = []
 
 // --- the tag list -------------------------------------------------------
+// The installed list is edited from inside the app now, so it is the one
+// that counts: a tag renamed or recoloured there must not be put back by an
+// update. Only a tag the installed list has never had is carried across.
 const tagsSource = path.join(root, 'tags.json')
 const tagsTarget = path.join(settingsDir, 'tags.json')
-const wanted = fs.readFileSync(tagsSource, 'utf8')
-const current = fs.readFileSync(tagsTarget, 'utf8')
-
-if (wanted !== current) {
-  const count = (text) => { try { return JSON.parse(text).length } catch { return '?' } }
-  fs.copyFileSync(tagsTarget, path.join(settingsDir, 'tags.previous.json'))
-  fs.writeFileSync(tagsTarget, wanted)
-  changed.push(`tag list: ${count(current)} tags -> ${count(wanted)} (old one kept as tags.previous.json)`)
+const parse = (file) => JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
+let installed = null
+try { installed = parse(tagsTarget) } catch { /* not ours to repair */ }
+if (installed) {
+  const have = new Set(installed.map((tag) => tag.id))
+  const missing = parse(tagsSource).filter((tag) => !have.has(tag.id))
+  if (missing.length > 0) {
+    fs.copyFileSync(tagsTarget, path.join(settingsDir, 'tags.previous.json'))
+    const lines = [...installed, ...missing].map((tag) => `  ${JSON.stringify(tag)}`)
+    fs.writeFileSync(tagsTarget, `[\n${lines.join(',\n')}\n]\n`)
+    changed.push(`new tags: ${missing.map((tag) => tag.name).join(', ')}`)
+  }
 }
 
 // --- the icons ----------------------------------------------------------
@@ -54,8 +61,10 @@ function copyIcons(fromDir, toDir, label) {
     const from = path.join(fromDir, name)
     const to = path.join(toDir, there.get(name.toLowerCase()) ?? name)
     // A folder is a set of icons. One level only: a set is a folder of
-    // pictures, not a folder of sets.
+    // pictures, not a folder of sets. Hidden folders — pictures put aside
+    // when a new one was chosen — stay where they are.
     if (entry.isDirectory()) {
+      if (name.startsWith('.')) continue
       if (!label) copyIcons(from, to, name)
       continue
     }

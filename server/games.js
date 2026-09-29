@@ -796,15 +796,16 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
      * button" from 2018 is not a stand-in for LoopCap's, and a picture of the
      * wrong game is worse than none.
      *
-     * Answers with the names that got a cover this time.
+     * Answers with the names that got a cover this time. `force` is the
+     * button in the settings: asked now, however recently it last was.
      */
-    async refill() {
+    async refill({ force = false } = {}) {
       if (!keyNow()) return []
       const filled = []
       for (const [name, facts] of Object.entries(await this.known())) {
         if (facts?.cover) continue
         const last = tried.get(name)
-        if (last && Date.now() - last < REFILL_EVERY_MS) continue
+        if (!force && last && Date.now() - last < REFILL_EVERY_MS) continue
         tried.set(name, Date.now())
 
         try {

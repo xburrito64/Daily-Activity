@@ -60,7 +60,17 @@ function pictureFor(tag, files) {
   return wanted ? files.get(wanted) : null
 }
 
-const address = (...parts) => `/tag-icons/${parts.map(encodeURIComponent).join('/')}`
+/**
+ * Where a picture is served from, stamped with when the file last changed.
+ * A picture replaced from the settings keeps its name, and the page would go
+ * on showing the one it already had under that name; the stamp is what tells
+ * it the file is a different one now.
+ */
+function address(dir, ...parts) {
+  let stamp = 0
+  try { stamp = Math.round(fs.statSync(path.join(dir, ...parts)).mtimeMs) } catch { /* then no stamp */ }
+  return `/tag-icons/${parts.map(encodeURIComponent).join('/')}${stamp ? `?v=${stamp}` : ''}`
+}
 
 /**
  * The tags, each wearing its picture from `set` where the set has one and its
@@ -77,9 +87,9 @@ export function withIcons(tags, dir, set = '') {
 
   return tags.map((tag) => {
     const fromSet = chosen && pictureFor(tag, inSet)
-    if (fromSet) return { ...tag, image: address(chosen, fromSet) }
+    if (fromSet) return { ...tag, image: address(dir, chosen, fromSet) }
     const own = pictureFor(tag, loose)
-    return own ? { ...tag, image: address(own) } : tag
+    return own ? { ...tag, image: address(dir, own) } : tag
   })
 }
 

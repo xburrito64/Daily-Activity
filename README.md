@@ -80,6 +80,15 @@ always a line to put it on.
 Tags live in `tags.json` — name, colour and icon. Edit and refresh; no restart
 needed.
 
+Most of this can be done from inside the app instead: the gear at the top
+right opens the settings. **Tags** adds, renames, recolours, reorders and hides
+tags and gives them pictures; **Look** has the bar width, icon sets, tag-box
+styles, labels, covers and hints; **Setup** picks the vault folder and takes
+the RAWG and SteamGridDB keys, checking each with its site before keeping it.
+A tag's id never changes once it is made, which is why renaming one is safe
+for every note that uses it — and a tag still used by any day can be hidden
+but not deleted.
+
 Fonts go in `public/fonts/`, the app icon in `build/`, and images to replace
 the tag emoji in `tag-icons/`. Each of those folders has a README explaining
 the format and naming.

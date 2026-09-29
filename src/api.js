@@ -9,6 +9,26 @@ async function request(url, options) {
 export const getTags = (icons = '') =>
   request(icons ? `/api/tags?icons=${encodeURIComponent(icons)}` : '/api/tags')
 export const getIconSets = () => request('/api/icon-sets')
+
+const json = (method, body) => ({
+  method,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+})
+
+/** Save the tag list; answers with it saved, wearing the icon set in use. */
+export const saveTags = (tags, icons = '') =>
+  request(`/api/tags${icons ? `?icons=${encodeURIComponent(icons)}` : ''}`, json('PUT', { tags }))
+/** Give a tag its own picture, in the icon set in use. `picture` is a data: address. */
+export const setTagPicture = (id, picture, set = '') =>
+  request(`/api/tags/${encodeURIComponent(id)}/picture`, json('POST', { picture, set }))
+
+/** Where the vault is and which keys are saved — never the keys themselves. */
+export const getSetup = () => request('/api/setup')
+export const saveKey = (which, key) => request('/api/setup/key', json('POST', { which, key }))
+export const saveVault = (dir) => request('/api/setup/vault', json('POST', { dir }))
+/** Look for every missing game cover now; answers with the games that got one. */
+export const refillCovers = () => request('/api/games/refill', json('POST', {}))
 export const getDay = (date) => request(`/api/day/${date}`)
 
 export const putDay = (date, entries) =>

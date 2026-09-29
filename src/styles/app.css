@@ -1841,3 +1841,276 @@ h1 {
   background: var(--chip);
   border-color: rgba(216, 178, 96, 0.9);
 }
+
+/* --- the three tabs across the top of the panel ------------------------ */
+/* The same gold-leaf switch as Day / Overview, so it reads as the same kind
+   of control. */
+.settingstabs { display: flex; margin-bottom: var(--s-7); }
+.settingstabs button {
+  flex: 1;
+  padding: var(--s-3) var(--s-4);
+  font: inherit;
+  font-size: var(--f-md);
+  letter-spacing: 0.06em;
+  color: var(--c-text-dim);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  cursor: pointer;
+}
+.settingstabs button + button { border-left: none; }
+.settingstabs button:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
+.settingstabs button:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.settingstabs button:hover { color: var(--c-text); }
+.settingstabs button.on {
+  color: #1b1408;
+  background: linear-gradient(#e0c184, #c8a24a);
+  border-color: #d8b260;
+}
+.settingstabs button:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; }
+
+/* --- shared bits ---------------------------------------------------------- */
+.settingsnote.small { font-size: var(--f-md); }
+.settingsproblem {
+  margin: 0 0 var(--s-5);
+  padding: var(--s-4) var(--s-5);
+  font-size: var(--f-md);
+  line-height: 1.35;
+  color: var(--c-danger-soft);
+  background: color-mix(in srgb, var(--c-danger) 14%, var(--c-bg));
+  border: 1px solid color-mix(in srgb, var(--c-danger) 45%, var(--c-line));
+  border-radius: var(--r-md);
+}
+.settingsbutton {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-5);
+  font: inherit;
+  font-size: var(--f-md);
+  color: var(--c-text);
+  background: var(--c-surface-hi);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.settingsbutton:hover:not(:disabled) { border-color: var(--c-text-dim); }
+.settingsbutton:disabled { opacity: 0.45; cursor: default; }
+.settingsbutton:focus-visible,
+.settingsbutton:focus-within { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; }
+.settings input[type="text"],
+.settings input[type="password"] {
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--s-4);
+  font: inherit;
+  font-size: var(--f-md);
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.settings input[type="text"]:focus,
+.settings input[type="password"]:focus {
+  outline: none;
+  border-color: var(--c-line-strong);
+  box-shadow: 0 0 0 1px rgba(216, 178, 96, 0.35);
+}
+.keymessage { margin: 0; font-size: var(--f-md); color: var(--c-ok); }
+.keymessage.bad { color: var(--c-danger-soft); }
+
+/* --- on / off switches ---------------------------------------------------- */
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-5);
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--c-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.toggle:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 4px; border-radius: var(--r-md); }
+.toggletext { display: grid; gap: var(--s-2); }
+.toggletrack {
+  flex: none;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin-top: 1px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.toggleknob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: var(--c-text-dim);
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+}
+.toggle.on .toggletrack { background: color-mix(in oklab, var(--c-accent) 30%, var(--c-bg)); border-color: var(--c-accent); }
+.toggle.on .toggleknob { transform: translateX(16px); background: #e0c184; }
+
+/* --- the tag editor ------------------------------------------------------- */
+.tageditor { display: grid; gap: var(--s-5); }
+.taglist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.tagrow {
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.tagrow.dragging { opacity: 0.4; }
+.tagrow.hidden .tagswatch,
+.tagrow.hidden .tagrowname { opacity: 0.45; }
+.tagrowhead { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); }
+.grip {
+  flex: none;
+  width: 16px;
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+  color: var(--c-text-faint);
+  cursor: grab;
+}
+.tagrow:hover .grip { color: var(--c-text-dim); }
+/* The tag's own colour behind its icon, so the row shows both at a glance. */
+.tagswatch {
+  --tagicon-size: 20px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--chip);
+  border-radius: var(--r-sm);
+}
+.tagswatch .tagicon { max-width: 24px; max-height: 24px; }
+.tagrowname {
+  flex: 1;
+  min-width: 0;
+  padding: var(--s-2) 0;
+  font: inherit;
+  font-size: var(--f-base);
+  text-align: left;
+  color: var(--c-text-bright);
+  background: none;
+  border: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tagrowname:focus-visible,
+.tagtoggle:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; border-radius: var(--r-sm); }
+.tagtoggle {
+  flex: none;
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-faint);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.tagtoggle svg { width: 18px; height: 18px; }
+.tagtoggle.on { color: var(--c-text-dim); }
+.tagtoggle:hover { color: var(--c-text); border-color: var(--c-line); }
+
+.tagrowbody {
+  display: grid;
+  gap: var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-5) calc(var(--s-2) + 16px + var(--s-4));
+  border-top: 1px solid var(--c-line-soft);
+}
+.tagfield { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: var(--s-4); }
+.tagfield > span:first-child { font-size: var(--f-sm); color: var(--c-text-dim); }
+.colourpick { display: flex; align-items: center; gap: var(--s-4); min-width: 0; }
+.colourpick input[type="color"] {
+  flex: none;
+  width: 44px;
+  height: 30px;
+  padding: 2px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.colourvalue {
+  min-width: 0;
+  font-size: var(--f-sm);
+  color: var(--c-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.emojiinput { width: 80px; justify-self: start; font-size: var(--f-lg) !important; }
+.picturepick { display: grid; gap: var(--s-3); }
+.tagdelete {
+  justify-self: start;
+  padding: var(--s-2) 0;
+  font: inherit;
+  font-size: var(--f-sm);
+  color: var(--c-danger-soft);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.tagdelete.confirming {
+  padding: var(--s-2) var(--s-4);
+  color: #fff;
+  background: var(--c-danger);
+  border-radius: var(--r-md);
+  text-decoration: none;
+}
+.tagadd { display: flex; gap: var(--s-4); }
+.tagadd input { flex: 1; }
+
+/* --- setup ---------------------------------------------------------------- */
+.vaultpath {
+  display: block;
+  padding: var(--s-4) var(--s-5);
+  font-family: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  font-size: var(--f-sm);
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  overflow-wrap: anywhere;
+}
+.vaultnext {
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-md);
+}
+.vaultnext strong { font-style: normal; color: var(--c-text); overflow-wrap: anywhere; }
+.keyfield {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+}
+.keyhead { display: flex; align-items: baseline; justify-content: space-between; }
+.keyname { font-size: var(--f-base); font-weight: var(--w-medium); color: var(--c-text-bright); }
+.keystate { font-size: var(--f-sm); color: var(--c-text-faint); }
+.keystate.set { color: var(--c-ok); }
+.keyfield a { color: var(--c-accent); text-underline-offset: 2px; }
+.keyrow { display: flex; gap: var(--s-4); }
+.keyrow input { flex: 1; }

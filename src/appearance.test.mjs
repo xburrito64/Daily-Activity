@@ -28,7 +28,9 @@ t('nothing saved is the app as it has always looked', () => {
 })
 
 t('a good choice is kept exactly', () => {
-  const picked = { barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', labels: 'icon' }
+  const picked = {
+    barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', labels: 'icon', covers: false, hints: false,
+  }
   assert.deepEqual(normalise(picked), picked)
 })
 
@@ -43,6 +45,13 @@ t('a look or a label style that no longer exists falls back', () => {
   assert.equal(normalise({ chipLook: 'retired-look' }).chipLook, 'classic')
   assert.equal(normalise({ labels: 'sideways' }).labels, 'auto')
   assert.equal(normalise({ iconSet: 42 }).iconSet, '')
+})
+
+t('covers and hints are on unless switched off', () => {
+  assert.equal(normalise({}).covers, true)
+  assert.equal(normalise({}).hints, true)
+  assert.equal(normalise({ covers: 'no' }).covers, true, 'only a real false turns one off')
+  assert.equal(normalise({ hints: false }).hints, false)
 })
 
 t('the far end of the slider takes the limit off', () => {

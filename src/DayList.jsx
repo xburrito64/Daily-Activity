@@ -995,11 +995,14 @@ export default function DayList({
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
   const covers = useContext(Covers)
-  const { chipLook, labels } = useContext(Appearance)
+  const { chipLook, labels, covers: showCovers, hints } = useContext(Appearance)
+  // With covers off, a named block is drawn as though none had ever been
+  // found: its own cover set aside, and nothing borrowed.
+  const faceOf = (b) => blockFace(tagById(b.tag), showCovers ? b : { ...b, cover: '' }, showCovers ? covers : null)
   // Dragging a named game around should read as that game, not as "Game".
   const readoutTag = painting
     ? armedTag
-    : resizingBlock && blockFace(tagById(resizingBlock.tag), resizingBlock, covers)
+    : resizingBlock && faceOf(resizingBlock)
 
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
 
@@ -1028,11 +1031,16 @@ export default function DayList({
             </>
           ) : (
             <span className="readout-hint">
-              {!isDay
-                ? 'Click a day to open it · ctrl+f finds · ctrl+scroll to resize'
-                : armedTag
-                  ? `Drag across ${formatDayHeading(armed.date)} to paint ${armedTag.name}`
-                  : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+c copies a block, ctrl+v puts it at the time now · ctrl+f finds · ctrl+z undoes · ctrl+scroll to resize'}
+              {armedTag && isDay
+                ? `Drag across ${formatDayHeading(armed.date)} to paint ${armedTag.name}`
+                // The shortcuts can be switched off in the settings; what to
+                // do with an armed tag is said regardless, since it is the
+                // answer to "why isn't clicking doing anything".
+                : !hints
+                  ? ''
+                  : !isDay
+                    ? 'Click a day to open it · ctrl+f finds · ctrl+scroll to resize'
+                    : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+c copies a block, ctrl+v puts it at the time now · ctrl+f finds · ctrl+z undoes · ctrl+scroll to resize'}
             </span>
           )}
         </div>
@@ -1229,7 +1237,7 @@ ${b.note}` : ''}`}
                 // A named game wears its own name and its own cover here.
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
-                const tag = blockFace(tagById(b.tag), b, covers)
+                const tag = faceOf(b)
                 // "Name only" is laid out as a block with no picture at all,
                 // which the fitting already knows how to do: the name, where
                 // it fits, and nothing where it doesn't.
@@ -1367,7 +1375,9 @@ ${b.note}` : ''}`}
 
               <div className="daychips">
                 <div className="chipgroup">
-                {tags.map((t) => (
+                {/* Hidden tags leave the row but not the bar: every day that
+                    already has one still draws it by the full list. */}
+                {tags.filter((t) => !t.hidden).map((t) => (
                   <button
                     key={t.id}
                     type="button"

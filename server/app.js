@@ -6,7 +6,9 @@ import { createGames } from './games.js'
 import { createAnime } from './anime.js'
 import { findIn } from './find.js'
 import { readJson } from './config.js'
-import { withIcons, describeSets } from './icons.js'
+import { withIcons, describeSets, iconSets, ICON_EXTENSIONS } from './icons.js'
+import { cleanTags, removedIds, tagsText, readPicture } from './tags.js'
+import { writeSettings, cleanKey, checkVault, tryKey, KEY_NAMES } from './setup.js'
 
 const MAX_RANGE_DAYS = 400
 // How long a total may be reused before the vault is read again. Only an edit
@@ -85,7 +87,10 @@ export function createApp({
     setInterval(refill, REFILL_ROUND_MS).unref?.()
   }
   const app = express()
-  app.use(express.json({ limit: '1mb' }))
+  // Big enough for a tag's picture sent from the settings. Nothing outside
+  // this machine can reach the server, so the limit is only there to stop a
+  // mistake, not an attack.
+  app.use(express.json({ limit: '5mb' }))
 
   const wrap = (fn) => (req, res) => fn(req, res).catch((err) => {
     console.error(err)
@@ -102,6 +107,141 @@ export function createApp({
   /** The icon sets to choose between, each with a few of its pictures. */
   app.get('/api/icon-sets', wrap(async (_req, res) => {
     res.json({ sets: describeSets(readJson(tagsFile), tagIconsDir) })
+  }))
+
+  /**
+   * Which tags any day in the vault uses — and which days could not be read,
+   * since a tag used only on one of those cannot be ruled out.
+   */
+  async function tagsInUse() {
+    const used = new Map()
+    const unreadable = []
+    for (const date of await store.listDates()) {
+      const day = await store.readDay(date)
+      if (day.malformed) { unreadable.push(date); continue }
+      for (const entry of day.entries) used.set(entry.tag, (used.get(entry.tag) ?? 0) + 1)
+    }
+    return { used, unreadable }
+  }
+
+  /**
+   * Save the tag list as changed in the settings: names, colours, emoji,
+   * order, which are hidden, new tags. See tags.js for why none of that can
+   * touch a note, and for the one change that could, which is refused here
+   * for any tag still in use.
+   */
+  app.put('/api/tags', wrap(async (req, res) => {
+    const previous = readJson(tagsFile)
+    const next = cleanTags(req.body?.tags, previous)
+
+    const gone = removedIds(previous, next)
+    if (gone.length > 0) {
+      const { used, unreadable } = await tagsInUse()
+      const busy = gone.filter((id) => used.has(id))
+      if (busy.length > 0) {
+        const tag = previous.find((t) => t.id === busy[0])
+        const times = used.get(busy[0])
+        return res.status(400).json({
+          error: `${tag?.name ?? busy[0]} is used ${times === 1 ? 'once' : `${times} times`} in your days — hide it instead, and those days keep it`,
+        })
+      }
+      if (unreadable.length > 0) {
+        return res.status(400).json({
+          error: `the day ${unreadable[0]} could not be read, so there is no telling whether it uses this tag — hide it instead`,
+        })
+      }
+    }
+
+    // The list as it was, kept beside it: one step back is always there.
+    fs.copyFileSync(tagsFile, path.join(path.dirname(tagsFile), 'tags.previous.json'))
+    const tmp = `${tagsFile}.tmp-${process.pid}`
+    fs.writeFileSync(tmp, tagsText(next), 'utf8')
+    fs.renameSync(tmp, tagsFile)
+    res.json(withIcons(next, tagIconsDir, String(req.query.icons ?? '')))
+  }))
+
+  /**
+   * Give a tag a picture of its own, in the icon set it is being looked at
+   * in — so the picture that changes is the one on the screen.
+   *
+   * Whatever picture that tag had there is moved into a hidden folder beside
+   * it rather than thrown away, since a better format of the old one (an svg
+   * beside a new png) would otherwise go on winning over the new one.
+   */
+  app.post('/api/tags/:id/picture', wrap(async (req, res) => {
+    const id = String(req.params.id)
+    if (!readJson(tagsFile).some((tag) => tag.id === id)) {
+      return res.status(400).json({ error: 'there is no such tag' })
+    }
+    const set = String(req.body?.set ?? '')
+    if (set && !iconSets(tagIconsDir).includes(set)) {
+      return res.status(400).json({ error: 'there is no such icon set' })
+    }
+    const { bytes, ext } = readPicture(req.body?.picture)
+
+    const dir = set ? path.join(tagIconsDir, set) : tagIconsDir
+    fs.mkdirSync(dir, { recursive: true })
+    const mine = new Set(ICON_EXTENSIONS.map((e) => id + e))
+    const old = fs.readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && mine.has(entry.name.toLowerCase()))
+    if (old.length > 0) {
+      const aside = path.join(dir, '.replaced')
+      fs.mkdirSync(aside, { recursive: true })
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      for (const entry of old) {
+        fs.renameSync(path.join(dir, entry.name), path.join(aside, `${stamp}-${entry.name}`))
+      }
+    }
+    const target = path.join(dir, `${id}.${ext}`)
+    const tmp = `${target}.tmp-${process.pid}`
+    fs.writeFileSync(tmp, bytes)
+    fs.renameSync(tmp, target)
+    res.json({ ok: true })
+  }))
+
+  // --- setup: the vault and the keys ------------------------------------
+  // Keys are never sent back; the app is only told whether each is there.
+
+  app.get('/api/setup', wrap(async (_req, res) => {
+    const saved = settings()
+    const kept = String(saved.vaultDailyDir ?? '').replace(/\\/g, '/')
+    res.json({
+      vault: vaultDailyDir.replace(/\\/g, '/'),
+      // A folder picked in the settings only takes over at the next start.
+      nextVault: kept && kept !== vaultDailyDir.replace(/\\/g, '/') ? kept : '',
+      keys: Object.fromEntries(KEY_NAMES.map((name) => [name, Boolean(String(saved[name] ?? '').trim())])),
+      canWrite: Boolean(settingsFile),
+    })
+  }))
+
+  app.post('/api/setup/key', wrap(async (req, res) => {
+    const which = String(req.body?.which ?? '')
+    if (!KEY_NAMES.includes(which)) return res.status(400).json({ error: 'which key?' })
+    const key = cleanKey(req.body?.key)
+    // Checked before it is kept, the way the AniList code is: a key that
+    // doesn't work has no business sitting in the file looking fine.
+    if (key) {
+      const problem = await tryKey(which, key)
+      if (problem) return res.status(400).json({ error: problem })
+    }
+    writeSettings(settingsFile, { [which]: key || undefined })
+    res.json({ ok: true, set: Boolean(key) })
+  }))
+
+  app.post('/api/setup/vault', wrap(async (req, res) => {
+    const { dir, notes } = checkVault(req.body?.dir)
+    writeSettings(settingsFile, { vaultDailyDir: dir })
+    res.json({ ok: true, dir, notes })
+  }))
+
+  /** The settings' "look now" button: every coverless game, asked today. */
+  app.post('/api/games/refill', wrap(async (_req, res) => {
+    // Without a RAWG key there is nothing to look with, and "nothing new"
+    // would be a lie about having looked.
+    if (!games.configured) return res.json({ filled: [], ready: false })
+    const filled = await games.refill({ force: true })
+    if (filled.length > 0) played.forget()
+    res.json({ filled, ready: true })
   }))
 
   app.use('/tag-icons', express.static(tagIconsDir))
@@ -312,12 +452,13 @@ export function createApp({
     }
 
     // Everything already in the file survives; only these two lines are ours.
-    let current = {}
-    try { current = readJson(settingsFile) } catch { /* start from what we have */ }
-    const next = { ...current }
-    if (clientId) next.anilistClientId = clientId
-    if (token) next.anilistToken = token
-    fs.writeFileSync(settingsFile, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
+    // A file that cannot be read is refused rather than started again —
+    // starting again would be writing these two lines over the vault's
+    // address and every key.
+    writeSettings(settingsFile, {
+      ...(clientId ? { anilistClientId: clientId } : {}),
+      ...(token ? { anilistToken: token } : {}),
+    })
 
     res.json({ connected: Boolean(user), clientId, settingsFile, user })
   }))

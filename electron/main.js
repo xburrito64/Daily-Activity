@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, dialog, screen } from 'electron'
+import { app, BrowserWindow, Menu, shell, dialog, screen, ipcMain } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -151,10 +151,30 @@ async function main() {
     backgroundColor: '#17130f', // matches the page, so no white flash on open
     show: false,
     autoHideMenuBar: true,
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(here, 'preload.cjs'),
+    },
   })
 
   buildMenu(() => window.reload())
+
+  // What preload.cjs lets the page ask for. The folder window opens on top of
+  // this one, where the current vault is; restarting is the only way a newly
+  // chosen vault takes over, since the server is started with it.
+  ipcMain.handle('daily:pick-folder', async (_event, start) => {
+    const picked = await dialog.showOpenDialog(window, {
+      title: 'Choose the folder your day notes are in',
+      properties: ['openDirectory'],
+      ...(start && fs.existsSync(start) ? { defaultPath: start } : {}),
+    })
+    return picked.canceled ? '' : picked.filePaths[0] ?? ''
+  })
+  ipcMain.handle('daily:restart', () => {
+    app.relaunch()
+    app.exit(0)
+  })
   window.once('ready-to-show', () => window.show())
   window.loadURL(`http://127.0.0.1:${port}`)
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { getIconSets } from './api.js'
+import { getIconSets, refillCovers } from './api.js'
 import TagIcon from './TagIcon.jsx'
+import TagEditor from './TagEditor.jsx'
+import SetupPanel from './SetupPanel.jsx'
 import {
   BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, LABEL_STYLES, DEFAULTS,
 } from './appearance.js'
@@ -8,6 +10,15 @@ import {
 // How many tags a tag-box look is shown with. Enough to see the colours
 // against each other, few enough that five looks fit down one panel.
 const SAMPLE_TAGS = 3
+
+const TABS = [
+  { id: 'tags', name: 'Tags' },
+  { id: 'look', name: 'Look' },
+  { id: 'setup', name: 'Setup' },
+]
+// The tab last looked at, for as long as the app is open: closing the panel
+// to try something and opening it again should land back where you were.
+let lastTab = 'tags'
 
 /**
  * The settings panel: a column down the right of the window, so the days
@@ -17,22 +28,11 @@ const SAMPLE_TAGS = 3
  * Nothing here is saved by a button. Each choice takes effect the moment it
  * is made and is kept from then on; closing the panel is only closing it.
  */
-export default function Settings({ appearance, onChange, tags, onClose }) {
-  const [sets, setSets] = useState(null)
-
-  // Asked each time the panel opens, so a set dropped into the icon folder
-  // while the app is running shows up the next time you look.
-  useEffect(() => {
-    let alive = true
-    getIconSets()
-      .then((body) => { if (alive) setSets(body.sets ?? []) })
-      .catch(() => { if (alive) setSets([]) })
-    return () => { alive = false }
-  }, [])
-
-  const set = (key) => (value) => onChange({ ...appearance, [key]: value })
-  const sample = tags.slice(0, SAMPLE_TAGS)
-  const width = appearance.barWidth
+export default function Settings({
+  appearance, onChange, tags, onClose, onTagsSaved, onPictureChanged, onResetRows, onCoversFound,
+}) {
+  const [tab, setTab] = useState(lastTab)
+  const pick = (id) => { lastTab = id; setTab(id) }
 
   return (
     <aside className="settings" aria-label="Settings">
@@ -45,6 +45,83 @@ export default function Settings({ appearance, onChange, tags, onClose }) {
         </button>
       </div>
 
+      <div className="settingstabs" role="tablist">
+        {TABS.map((one) => (
+          <button
+            key={one.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === one.id}
+            className={tab === one.id ? 'on' : ''}
+            onClick={() => pick(one.id)}
+          >
+            {one.name}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'tags' && (
+        <TagEditor
+          tags={tags}
+          iconSet={appearance.iconSet}
+          onSaved={onTagsSaved}
+          onPictureChanged={onPictureChanged}
+        />
+      )}
+      {tab === 'look' && (
+        <Look
+          appearance={appearance}
+          onChange={onChange}
+          tags={tags}
+          onResetRows={onResetRows}
+          onCoversFound={onCoversFound}
+        />
+      )}
+      {tab === 'setup' && <SetupPanel />}
+    </aside>
+  )
+}
+
+function Look({ appearance, onChange, tags, onResetRows, onCoversFound }) {
+  const [sets, setSets] = useState(null)
+  const [coverNote, setCoverNote] = useState('')
+  const [looking, setLooking] = useState(false)
+  const [rowsNote, setRowsNote] = useState('')
+
+  // Asked each time the tab opens, so a set dropped into the icon folder
+  // while the app is running shows up the next time you look.
+  useEffect(() => {
+    let alive = true
+    getIconSets()
+      .then((body) => { if (alive) setSets(body.sets ?? []) })
+      .catch(() => { if (alive) setSets([]) })
+    return () => { alive = false }
+  }, [])
+
+  const set = (key) => (value) => onChange({ ...appearance, [key]: value })
+  const sample = tags.filter((tag) => !tag.hidden).slice(0, SAMPLE_TAGS)
+  const width = appearance.barWidth
+
+  async function lookForCovers() {
+    setLooking(true)
+    setCoverNote('')
+    try {
+      const { filled, ready } = await refillCovers()
+      setCoverNote(!ready
+        ? 'Looking games up needs a RAWG key first — it goes in under Setup.'
+        : filled.length === 0
+        ? 'Nothing new yet — every game without a cover still has none to find.'
+        : `Found ${filled.length}: ${filled.join(', ')}.`)
+      if (filled.length > 0) onCoversFound()
+    } catch (err) {
+      setCoverNote(err.message)
+    } finally {
+      setLooking(false)
+    }
+  }
+
+  return (
+    <>
       <section className="settingsgroup">
         <h3>Bar width</h3>
         <p className="settingsnote">How wide the days may get. The bar never grows past the window.</p>
@@ -65,6 +142,19 @@ export default function Settings({ appearance, onChange, tags, onClose }) {
             Back to {DEFAULTS.barWidth} px
           </button>
         )}
+      </section>
+
+      <section className="settingsgroup">
+        <h3>Row height</h3>
+        <p className="settingsnote">Ctrl+scroll over the days makes rows taller or shorter. This puts both views back.</p>
+        <button
+          type="button"
+          className="settingsbutton"
+          onClick={() => { onResetRows(); setRowsNote('Back to the usual height.') }}
+        >
+          Reset row heights
+        </button>
+        {rowsNote && <p className="keymessage">{rowsNote}</p>}
       </section>
 
       <section className="settingsgroup">
@@ -145,6 +235,45 @@ export default function Settings({ appearance, onChange, tags, onClose }) {
           ))}
         </div>
       </section>
-    </aside>
+
+      <section className="settingsgroup">
+        <h3>Covers</h3>
+        <Toggle
+          on={appearance.covers}
+          onFlip={() => set('covers')(!appearance.covers)}
+          label="Game and anime covers on the bar"
+          note="Off, a named block wears its tag's icon on the bar. The card in its note keeps the cover."
+        />
+        <p className="settingsnote">
+          Games without a cover are looked for again by themselves every few hours. To look right now:
+        </p>
+        <button type="button" className="settingsbutton" onClick={lookForCovers} disabled={looking}>
+          {looking ? 'Looking…' : 'Look for missing covers now'}
+        </button>
+        {coverNote && <p className="keymessage">{coverNote}</p>}
+      </section>
+
+      <section className="settingsgroup">
+        <h3>Shortcut hints</h3>
+        <Toggle
+          on={appearance.hints}
+          onFlip={() => set('hints')(!appearance.hints)}
+          label="The line of shortcuts above the days"
+          note="What to do while a tag is armed is still said there either way."
+        />
+      </section>
+    </>
+  )
+}
+
+function Toggle({ on, onFlip, label, note }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} className={`toggle${on ? ' on' : ''}`} onClick={onFlip}>
+      <span className="toggletrack" aria-hidden="true"><span className="toggleknob" /></span>
+      <span className="toggletext">
+        <span className="choicename">{label}</span>
+        {note && <span className="choicenote">{note}</span>}
+      </span>
+    </button>
   )
 }

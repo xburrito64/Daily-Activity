@@ -39,7 +39,9 @@ const tags = [
   { id: 'walk-coco', name: 'Walking w/ Coco', icon: '🐕' },
   { id: 'food', name: 'Food', icon: '🍜' },
 ]
-const images = (list) => Object.fromEntries(list.map((tag) => [tag.id, tag.image ?? tag.icon]))
+// Where each tag's picture is, without the stamp that says when it was made.
+const unstamped = (url) => String(url).replace(/\?v=\d+$/, '')
+const images = (list) => Object.fromEntries(list.map((tag) => [tag.id, tag.image ? unstamped(tag.image) : tag.icon]))
 
 console.log('\nicons')
 
@@ -59,6 +61,11 @@ t('a set dresses every tag it has a picture for', () => {
     'walk-coco': '/tag-icons/Fantasy%20-%20Simple/Walk-Coco.png',
     food: '🍜',
   }, 'and one it has none for keeps what it had')
+})
+
+t('a picture is stamped with when it last changed', () => {
+  const [sleep] = withIcons(tags, dir)
+  assert.match(sleep.image, /^\/tag-icons\/Sleep\.png\?v=\d+$/)
 })
 
 t('a set that is not there is the same as none', () => {
@@ -83,7 +90,7 @@ t('each set says how many tags it covers, and shows a few', () => {
   assert.deepEqual([empty.name, empty.covers], ['Empty Set', 0])
   assert.deepEqual(empty.preview, [])
   assert.deepEqual([fantasy.name, fantasy.covers], ['Fantasy - Simple', 2])
-  assert.deepEqual(fantasy.preview.map((tag) => tag.image), [
+  assert.deepEqual(fantasy.preview.map((tag) => unstamped(tag.image)), [
     '/tag-icons/Fantasy%20-%20Simple/Sleep.png',
     '/tag-icons/Fantasy%20-%20Simple/Walk-Coco.png',
   ], 'its own pictures only, never the ones it borrows')
