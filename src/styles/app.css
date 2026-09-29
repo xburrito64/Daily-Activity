@@ -763,8 +763,13 @@ h1 {
 
      No per-piece delay, deliberately. A block cut around an overlap is
      several .block elements, and staggering them would wipe one half of the
-     same block in after the other. */
-  animation: inkIn 0.42s ease-out both;
+     same block in after the other.
+
+     Filled backwards only, not both ways: once the wipe is over, the block
+     looks as it always does, so there is nothing to hold — and a finished
+     animation still held onto keeps every block on the page under a live
+     blur of nothing, which cost a third of the frames while scrolling. */
+  animation: inkIn 0.42s ease-out backwards;
 }
 @keyframes inkIn {
   from { clip-path: inset(0 100% 0 0); filter: blur(3px); }
