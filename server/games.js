@@ -99,6 +99,17 @@ const MISS_TTL_MS = 5 * 60_000
 // than holding yesterday's blank pictures over a fresh lookup.
 const SEARCH_TTL_MS = 5 * 60_000
 
+// How often a game still without a cover is asked about again.
+//
+// A cover missing on the day a game was picked is very often a cover that did
+// not exist yet: art goes up on SteamGridDB a week or three after a game
+// comes out, and a key put in later can only find what is asked for after it
+// was put in. Without this, a blank written down once stayed blank for good,
+// however long ago the picture turned up. Six hours is often enough that a
+// cover arrives the same day it becomes findable, and rare enough that a
+// dozen coverless games cost the databases nothing worth noticing.
+export const REFILL_EVERY_MS = 6 * 60 * 60_000
+
 /**
  * Something went wrong out on the network rather than in here. Said with a
  * status of its own so a cover that will not download reads as what it is,
@@ -319,6 +330,21 @@ export function pickGrid(body) {
 
 export function createGames({ apiKey, gridKey = '', coversDir }) {
   const searches = boundedCache(CACHE_LIMIT)
+  // When each coverless game was last asked about. Held in memory rather than
+  // written down: the file beside the covers is something a person reads, and
+  // "last looked for a picture at 14:02" is not something anyone wants to.
+  // Forgetting on restart only means one more look.
+  const tried = new Map()
+  // One change to the facts file at a time. Every change is read, altered,
+  // written; two of those overlapping means the second writes over the
+  // first, and with a background refill running that stops being
+  // hypothetical — it would be your own genres, lost to a picture.
+  let writing = Promise.resolve()
+  const exclusive = (task) => {
+    const run = writing.then(task, task)
+    writing = run.catch(() => {})
+    return run
+  }
   const details = boundedCache(CACHE_LIMIT * 4)
   const covers = boundedCache(CACHE_LIMIT * 4)
 
@@ -707,9 +733,17 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
      * where the cover came from.
      */
     async remember(game) {
+      return exclusive(() => this.rememberNow(game))
+    },
+
+    async rememberNow(game) {
       const all = await this.known()
       const had = all[game.name]
       all[game.name] = {
+        // Which game this is, exactly, so a cover can be looked for again
+        // later without guessing from the name. Games picked before this was
+        // kept have none, and are looked for by name instead.
+        ...(game.id ? { id: game.id } : had?.id ? { id: had.id } : {}),
         platforms: game.platforms ?? [],
         // Genres are the one thing here you can change by hand, so a game
         // already on the list keeps the ones it has. Picking the same game
@@ -738,10 +772,74 @@ export function createGames({ apiKey, gridKey = '', coversDir }) {
     async setGenres(name, genres) {
       const game = String(name ?? '').trim()
       if (!game) throw refused('which game?')
-      const all = await this.known()
-      all[game] = { ...(all[game] ?? {}), genres: cleanGenres(genres) }
-      await this.write(all)
-      return all[game]
+      return exclusive(async () => {
+        const all = await this.known()
+        all[game] = { ...(all[game] ?? {}), genres: cleanGenres(genres) }
+        await this.write(all)
+        return all[game]
+      })
+    },
+
+    /**
+     * Look again for the covers that were not there when their games were
+     * picked, and keep any that are now.
+     *
+     * Only ever fills a blank. A game that has a picture keeps it, and
+     * nothing here goes near a daily note: the cover is written beside the
+     * others and into the list of what each game is, and the app draws a
+     * block from there when its note has none. Your days stay exactly as
+     * they were written.
+     *
+     * Found the same way a pick finds it. A game remembered with its id is
+     * asked about by that id; one from before ids were kept is searched for
+     * by name and only taken if the name comes back exactly — "Click the
+     * button" from 2018 is not a stand-in for LoopCap's, and a picture of the
+     * wrong game is worse than none.
+     *
+     * Answers with the names that got a cover this time.
+     */
+    async refill() {
+      if (!keyNow()) return []
+      const filled = []
+      for (const [name, facts] of Object.entries(await this.known())) {
+        if (facts?.cover) continue
+        const last = tried.get(name)
+        if (last && Date.now() - last < REFILL_EVERY_MS) continue
+        tried.set(name, Date.now())
+
+        try {
+          let id = facts?.id ?? ''
+          let image = ''
+          if (id) {
+            image = await coverOf(id, name, steamId(id) ? String(steamId(id)) : '')
+          } else {
+            const asked = name.replace(/\s*\([^)]*\)\s*$/, '')
+            const hit = (await this.search(asked)).find((game) => game.name === name)
+            if (hit) {
+              id = hit.id
+              image = hit.cover
+            }
+          }
+          if (!id || !image) continue
+
+          const kept = await this.keep({ id, name, image })
+          if (!kept.cover) continue
+
+          const done = await exclusive(async () => {
+            // Read again: something may have been picked or re-filed while
+            // this was out asking, and that change is not ours to undo.
+            const all = await this.known()
+            if (!all[name] || all[name].cover) return false
+            all[name] = { ...all[name], cover: kept.cover, ...(all[name].id ? {} : { id }) }
+            await this.write(all)
+            return true
+          })
+          if (done) filled.push(name)
+        } catch (err) {
+          console.error(`looking again for a cover for "${name}": ${err.message}`)
+        }
+      }
+      return filled
     },
 
     async write(all) {

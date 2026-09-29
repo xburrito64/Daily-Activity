@@ -1,6 +1,7 @@
+import { useContext } from 'react'
 import { formatDuration, formatShortDate, daysBetween, shiftDate } from './time.js'
 import { coverUrl } from './api.js'
-import { COVER_ASPECT } from './face.js'
+import { COVER_ASPECT, Covers, coverFor } from './face.js'
 import TagIcon from './TagIcon.jsx'
 
 /**
@@ -9,6 +10,7 @@ import TagIcon from './TagIcon.jsx'
  * means the total can come to more than the days themselves.
  */
 export default function Totals({ days, tags, range }) {
+  const covers = useContext(Covers)
   if (!range) return null
 
   const span = daysBetween(range.from, range.to) + 1
@@ -38,7 +40,7 @@ export default function Totals({ days, tags, range }) {
       const had = into.get(name) ?? { slots: 0, cover: '', episodes: 0 }
       into.set(name, {
         slots: had.slots + (b.endSlot - b.startSlot),
-        cover: had.cover || b.cover,
+        cover: had.cover || coverFor(b, covers),
         // Counted rather than listed: over a week the interesting number is
         // how many, and which ones is a question for the day itself.
         episodes: had.episodes + (b.episodes?.length ?? 0),

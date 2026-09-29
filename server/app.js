@@ -11,6 +11,12 @@ const MAX_RANGE_DAYS = 400
 // How long a total may be reused before the vault is read again. Only an edit
 // made outside the app can go stale — our own writes clear it.
 const PLAYED_TTL_MS = 20_000
+// How long after starting before the first look for missing covers — long
+// enough that it is not competing with the first screenful of days — and how
+// often after that the looking comes round again. Each game is only asked
+// about once in REFILL_EVERY_MS however often this runs.
+const REFILL_FIRST_MS = 30_000
+const REFILL_ROUND_MS = 60 * 60_000
 
 // Best first: a vector scales to any zoom level without going fuzzy.
 const ICON_EXTENSIONS = ['.svg', '.png', '.webp', '.gif', '.jpg', '.jpeg']
@@ -52,6 +58,9 @@ function withIcons(tags, tagIconsDir) {
  */
 export function createApp({
   vaultDailyDir, tagsFile, tagIconsDir, rawgKey = '', settingsFile = '', staticDir = null,
+  // Off only for something that wants the routes without the background
+  // work — a test, a one-off script. The app and the dev server leave it on.
+  refillCovers = true,
 }) {
   const store = createStore(vaultDailyDir)
   // Covers sit beside the notes they belong to, in a folder of their own.
@@ -84,6 +93,27 @@ export function createApp({
   const played = createTotals(store, games, 'game')
   const watched = createTotals(store, anime, 'show')
   const forget = () => { played.forget(); watched.forget() }
+
+  // Covers that were not there when their games were picked, looked for again
+  // in the background. Nobody has to press anything or open anything; the
+  // picture just turns up on the bar the next time the screen asks.
+  if (refillCovers) {
+    const refill = async () => {
+      try {
+        const filled = await games.refill()
+        if (filled.length > 0) {
+          console.log(`found covers for: ${filled.join(', ')}`)
+          played.forget()
+        }
+      } catch (err) {
+        console.error('looking again for covers:', err.message)
+      }
+    }
+    // Neither keeps the process alive on its own: when the app closes, it
+    // closes, rather than waiting an hour to look for a picture.
+    setTimeout(refill, REFILL_FIRST_MS).unref?.()
+    setInterval(refill, REFILL_ROUND_MS).unref?.()
+  }
   const app = express()
   app.use(express.json({ limit: '1mb' }))
 

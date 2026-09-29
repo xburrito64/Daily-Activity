@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { slotToTime, formatDuration } from './time.js'
-import { blockFace } from './face.js'
+import { blockFace, Covers } from './face.js'
 import GameSearch from './GameSearch.jsx'
 import GameCard from './GameCard.jsx'
 import AnimeSearch from './AnimeSearch.jsx'
@@ -20,6 +20,7 @@ const ANIME = 'anime'
 export default function NotePanel({
   cluster, block, date, tags, onNote, onGame, onShow, onDelete, onClose, onCopy, copied,
 }) {
+  const covers = useContext(Covers)
   const area = useRef(null)
   const tagFor = (id) => tags.find((t) => t.id === id)
 
@@ -86,7 +87,7 @@ export default function NotePanel({
     <div className="notepanel">
       <div className="notehead">
         {cluster.map((b) => {
-          const tag = blockFace(tagFor(b.tag), b)
+          const tag = blockFace(tagFor(b.tag), b, covers)
           return (
             <span
               key={b.id}

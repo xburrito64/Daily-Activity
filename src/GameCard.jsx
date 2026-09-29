@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { coverUrl, getPlayed, setGenres } from './api.js'
-import { COVER_ASPECT } from './face.js'
+import { COVER_ASPECT, Covers, coverFor } from './face.js'
 import { formatMinutes } from './time.js'
 import { ScreenIcon, PenIcon, TagsIcon, ClockIcon } from './icons.jsx'
 
@@ -54,14 +54,17 @@ export default function GameCard({ block, onChange, onRemove }) {
   const platform = played?.platforms?.[0]
   const shown = genres ?? []
 
+  // Its own, or one found since it was picked — see face.js.
+  const cover = coverFor(block, useContext(Covers))
+
   return (
     <div className="gamecard">
-      {block.cover
+      {cover
         ? (
           <img
             className="gamecover"
             style={{ '--cover-aspect': COVER_ASPECT }}
-            src={coverUrl(block.cover)}
+            src={coverUrl(cover)}
             alt=""
           />
         )

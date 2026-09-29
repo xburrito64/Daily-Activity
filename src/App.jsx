@@ -4,7 +4,8 @@ import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
 import FindBar from './FindBar.jsx'
 import { useDays } from './useDays.js'
-import { getTags, findBlocks } from './api.js'
+import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
+import { Covers } from './face.js'
 import {
   applyPaint, applyResize, removeBlock, setNote, setGame, setShow,
   newId, pasteAt, overlapCluster,
@@ -12,6 +13,25 @@ import {
 import { todayISO, formatDotted, minutesNow, MINUTES_PER_SLOT } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
+
+// How often the screen asks what covers exist. Cheap — the answer is a list
+// the server already keeps — and the app asks again whenever its window comes
+// back to the front, so this is only the floor for a window left open all day.
+const COVERS_EVERY_MS = 10 * 60_000
+
+/** Every cover the vault knows of, keyed the way face.js looks them up. */
+async function knownCovers() {
+  const [games, shows] = await Promise.all([
+    getPlayed().catch(() => ({})),
+    getWatched().catch(() => ({})),
+  ])
+  const covers = new Map()
+  for (const [name, facts] of Object.entries(games ?? {})) if (facts?.cover) covers.set(`game:${name}`, facts.cover)
+  for (const [name, facts] of Object.entries(shows ?? {})) if (facts?.cover) covers.set(`show:${name}`, facts.cover)
+  return covers
+}
+
+const sameCovers = (a, b) => a.size === b.size && [...a].every(([key, file]) => b.get(key) === file)
 
 // "not saved" stays plain — it is the one of these you need to act on, and
 // the chronicle voice is the wrong register for a problem.
@@ -80,6 +100,24 @@ export default function App() {
   }))
 
   const { days, ensure, editDay, editDays, undo, status, problem } = useDays()
+
+  // Covers found since their blocks were written. Kept the same object while
+  // nothing changes, so a quiet check that finds nothing new redraws nothing.
+  const [covers, setCovers] = useState(() => new Map())
+  useEffect(() => {
+    let alive = true
+    const look = () => knownCovers()
+      .then((next) => { if (alive) setCovers((was) => (sameCovers(was, next) ? was : next)) })
+      .catch(() => {})
+    look()
+    const timer = setInterval(look, COVERS_EVERY_MS)
+    window.addEventListener('focus', look)
+    return () => {
+      alive = false
+      clearInterval(timer)
+      window.removeEventListener('focus', look)
+    }
+  }, [])
 
   useEffect(() => {
     getTags().then(setTags).catch((err) => setTagError(err.message))
@@ -352,6 +390,7 @@ export default function App() {
   const selectedCluster = selectedBlock ? overlapCluster(dayBlocks, selected.id) : []
 
   return (
+    <Covers.Provider value={covers}>
     <div className="app">
       {/* The sky. Each layer is a size of star with its own rate and its own
           brightness — see app.css. Decoration only, so it is hidden from
@@ -464,5 +503,6 @@ export default function App() {
         />
       )}
     </div>
+    </Covers.Provider>
   )
 }

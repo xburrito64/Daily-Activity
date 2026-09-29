@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   SLOTS_PER_DAY, MINUTES_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO,
   daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
   minutesNow, msToNextMinute, paintSpans,
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
-import { blockFace } from './face.js'
+import { blockFace, Covers } from './face.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
@@ -991,10 +991,11 @@ export default function DayList({
   const resizingBlock = resizing
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
+  const covers = useContext(Covers)
   // Dragging a named game around should read as that game, not as "Game".
   const readoutTag = painting
     ? armedTag
-    : resizingBlock && blockFace(tagById(resizingBlock.tag), resizingBlock)
+    : resizingBlock && blockFace(tagById(resizingBlock.tag), resizingBlock, covers)
 
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
 
@@ -1224,7 +1225,7 @@ ${b.note}` : ''}`}
                 // A named game wears its own name and its own cover here.
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
-                const tag = blockFace(tagById(b.tag), b)
+                const tag = blockFace(tagById(b.tag), b, covers)
                 const band = bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn)
                 if (!band) return null
                 const { label, top, bottom, from, to } = band

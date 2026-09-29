@@ -260,5 +260,94 @@ await t('and says nothing it was not told', () => {
   )
 })
 
+// --- looking again for covers that were not there ---------------------------
+//
+// With a stand-in for the internet, so these say exactly what happens and
+// never go online. Steam has a cover for app 5 and nothing else; RAWG and
+// Steam's search know no games at all.
+
+const realFetch = globalThis.fetch
+const asked = []
+globalThis.fetch = async (input, init = {}) => {
+  const url = String(input)
+  asked.push(url)
+  if (url.includes('/apps/5/library_600x900.jpg')) {
+    return new Response(init.method === 'HEAD' ? null : 'a picture', { status: 200 })
+  }
+  if (url.includes('api.rawg.io/api/games?')) return Response.json({ results: [] })
+  if (url.includes('/api/storesearch/')) return Response.json({ items: [] })
+  return new Response('', { status: 404 })
+}
+
+const shelf = await fs.mkdtemp(nodePath.join(os.tmpdir(), 'refill-'))
+const facts = nodePath.join(shelf, 'games.json')
+const start = {
+  'Has One': { platforms: ['PC'], genres: ['Mine'], released: '2020', cover: 'has-one-1.jpg' },
+  'Found Later': { id: 'steam-5', platforms: ['PC'], genres: ['Yours'], released: '2026', cover: '' },
+  'Nowhere': { platforms: [], genres: [], released: '', cover: '' },
+}
+await fs.writeFile(facts, JSON.stringify(start))
+const refilling = createGames({ apiKey: 'a key', coversDir: shelf })
+
+await t('a cover that turned up since is found and kept', async () => {
+  assert.deepEqual(await refilling.refill(), ['Found Later'])
+  const now = JSON.parse(await fs.readFile(facts, 'utf8'))
+  assert.equal(now['Found Later'].cover, 'found-later-steam-5.jpg')
+  assert.equal(await fs.readFile(nodePath.join(shelf, 'found-later-steam-5.jpg'), 'utf8'), 'a picture')
+})
+
+await t('and nothing else in the list is touched', async () => {
+  const now = JSON.parse(await fs.readFile(facts, 'utf8'))
+  assert.deepEqual(now['Has One'], start['Has One'], 'a cover already there stays')
+  assert.deepEqual(now['Found Later'].genres, ['Yours'], 'your own filing stays')
+  assert.deepEqual(now.Nowhere, start.Nowhere, 'no cover anywhere is still no cover')
+})
+
+await t('a game with a cover is never asked about', async () => {
+  assert.ok(!asked.some((url) => /has[-%20]one/i.test(url)))
+})
+
+await t('a game with no id is only taken by its exact name', async () => {
+  // "Nowhere" was searched for, and nothing came back called exactly that.
+  assert.ok(asked.some((url) => url.includes('search=Nowhere')))
+  const now = JSON.parse(await fs.readFile(facts, 'utf8'))
+  assert.equal(now.Nowhere.cover, '')
+})
+
+await t('and nobody is asked twice in one sitting', async () => {
+  const before = asked.length
+  assert.deepEqual(await refilling.refill(), [])
+  assert.equal(asked.length, before, 'no request went out at all')
+})
+
+await t('with no RAWG key there is nothing to ask with, and nothing is asked', async () => {
+  const before = asked.length
+  assert.deepEqual(await createGames({ apiKey: '', coversDir: shelf }).refill(), [])
+  assert.equal(asked.length, before)
+})
+
+await t('a pick and a refill at the same moment both land', async () => {
+  // The way this would go wrong: both read the list, both write it, and the
+  // second write loses the first. One of them is someone's own genres.
+  await fs.writeFile(facts, JSON.stringify({
+    'Found Later': { id: 'steam-5', genres: [], cover: '' },
+  }))
+  await fs.rm(nodePath.join(shelf, 'found-later-steam-5.jpg'))
+  const fresh = createGames({ apiKey: 'a key', coversDir: shelf })
+  await Promise.all([
+    fresh.refill(),
+    fresh.remember({ id: 7, name: 'Picked Just Now', genres: ['Puzzle'], cover: 'x.jpg' }),
+    fresh.setGenres('Found Later', ['Mine']),
+  ])
+  const now = JSON.parse(await fs.readFile(facts, 'utf8'))
+  assert.equal(now['Found Later'].cover, 'found-later-steam-5.jpg')
+  assert.deepEqual(now['Found Later'].genres, ['Mine'])
+  assert.equal(now['Picked Just Now'].cover, 'x.jpg')
+  assert.equal(now['Picked Just Now'].id, 7, 'and a new pick remembers exactly which game it was')
+})
+
+globalThis.fetch = realFetch
+await fs.rm(shelf, { recursive: true, force: true })
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
