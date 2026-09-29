@@ -10,7 +10,7 @@ import { illumination } from './scenes/manuscript.js'
 import { MagicCircle, Moonweed, RankGem, rankTitle } from './scenes/StarParts.jsx'
 import { monthByTag, isComplete } from './scenes/starlit.js'
 import { festivalOf } from './scenes/festivals.js'
-import { Gift } from './scenes/Festive.jsx'
+import { FestiveMark, Spider } from './scenes/Festive.jsx'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -1122,7 +1122,8 @@ function DayList({
         {dates.map((date, rowIndex) => {
           const day = days[date]
           const isToday = date === today
-          // Christmas Eve, and whatever festivals follow it. Starlit only, so far.
+          // Christmas Eve, Halloween, and whatever festivals follow them.
+          // Starlit only, so far.
           const festival = starlit ? festivalOf(date) : null
           let blocks = resizing?.date === date
             ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
@@ -1220,6 +1221,8 @@ function DayList({
               style={{ height: barHeight }}
             >
               {isToday && theme === 'hearthfire' && !day?.malformed && <Burnt date={date} />}
+              {/* Halloween's spider, let down from its web over the bar. */}
+              {festival?.id === 'halloween' && isDay && <Spider className="bar-spider" />}
 
               {/* One per hour, on the same whole pixels the blocks use, so a
                   gridline sits exactly under the edge that covers it. */}
@@ -1429,7 +1432,7 @@ ${b.note}` : ''}`}
                 {festival ? (
                   <>
                     <span className="festdate">{formatDayHeading(date)}</span>
-                    <Gift glint={isToday} />
+                    <FestiveMark id={festival.id} lit={isToday} />
                     <span className="festname">{festival.name}</span>
                   </>
                 ) : formatDayHeading(date)}

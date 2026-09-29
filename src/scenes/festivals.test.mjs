@@ -1,7 +1,7 @@
 // Festivals: which days are more than a date, and the frost on Christmas Eve.
 
 import assert from 'node:assert/strict'
-import { festivalOf, frostFerns } from './festivals.js'
+import { festivalOf, frostFerns, cobweb } from './festivals.js'
 
 let passed = 0
 let failed = 0
@@ -21,6 +21,15 @@ t('Christmas Eve is the 24th of December, every year', () => {
     assert.equal(festivalOf(`${year}-12-24`)?.id, 'christmas-eve')
     assert.equal(festivalOf(`${year}-12-24`)?.name, 'Christmas Eve')
   }
+})
+
+t('Halloween is the 31st of October, every year', () => {
+  for (const year of [2025, 2026, 2030]) {
+    assert.equal(festivalOf(`${year}-10-31`)?.id, 'halloween')
+    assert.equal(festivalOf(`${year}-10-31`)?.name, 'Halloween')
+  }
+  assert.equal(festivalOf('2026-10-30'), null)
+  assert.equal(festivalOf('2026-11-01'), null)
 })
 
 t('the days either side of it are ordinary', () => {
@@ -55,6 +64,21 @@ t('the frost grows from its corner, and stays mostly near it', () => {
   for (const l of lines) {
     assert.ok(l.alpha > 0 && l.alpha <= 0.5)
     assert.ok(l.width > 0)
+  }
+})
+
+t('a cobweb is the same web every time, spun inside its corner', () => {
+  const a = cobweb(240, 120, 5)
+  assert.deepEqual(a, cobweb(240, 120, 5))
+  assert.ok(a.lines.length >= 5 && a.silk.length > 20)
+  for (const l of a.lines) {
+    assert.equal(l.x0, 0)
+    assert.equal(l.y0, 0)
+    assert.ok(l.x1 <= 240.001 && l.y1 <= 120.001 && l.x1 >= 0 && l.y1 >= 0, 'every spoke ends on the pane')
+  }
+  for (const s of a.silk) {
+    // Each strand sags toward the corner, never away from it.
+    assert.ok(Math.hypot(s.cx, s.cy) < Math.hypot((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2))
   }
 })
 

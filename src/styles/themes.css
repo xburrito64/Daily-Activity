@@ -2578,8 +2578,8 @@
 
 /* A spell cast on it is a frost sigil: a snowflake in place of the hexagram. */
 .mc-flake { display: none; animation: mc-spin 22s linear infinite reverse; }
-.star-cast.frost .mc-mid { display: none; }
-.star-cast.frost .mc-flake { display: block; }
+.star-cast[data-festival="christmas-eve"] .mc-mid { display: none; }
+.star-cast[data-festival="christmas-eve"] .mc-flake { display: block; }
 
 /* --- the night itself --- */
 [data-theme="starlit"][data-festival="christmas-eve"] .app > .sky {
@@ -2649,13 +2649,248 @@
   height: 100%;
   pointer-events: none;
 }
-.star-notice.festival { border-color: rgba(205, 232, 255, 0.55); }
-.star-notice.festival .notice-eyebrow { color: #cfe6fb; }
-.star-notice.festival .gift { width: 30px; height: 30px; margin: 0; }
+.star-notice[data-festival="christmas-eve"] { border-color: rgba(205, 232, 255, 0.55); }
+.star-notice[data-festival="christmas-eve"] .notice-eyebrow { color: #cfe6fb; }
+.star-notice.festival :is(.gift, .lantern) { width: 30px; height: 30px; margin: 0; }
+
+/* --- Halloween ---------------------------------------------------------------
+   All Hallows' Eve: the day strung with cobwebs and lit by a carved lantern;
+   on the night itself an orange moon over a violet mist, great webs in the
+   window's corners, bats across the moon, and will-o'-wisps that shy away
+   from the pointer (scenes/Festive.jsx). */
+
+/* Its diamond is a little carved pumpkin. */
+[data-theme="starlit"] .daysection[data-festival="halloween"] .dayhead::before {
+  width: 15px;
+  height: 15px;
+  margin-left: 3px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(180deg, #ffb45c, #e0672a);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill-rule='evenodd' d='M12 7.5C5.5 7.5 2 10.8 2 15s3.5 7.5 10 7.5 10-3.3 10-7.5-3.5-7.5-10-7.5ZM7.2 12.2l2 3.2H5.2ZM16.8 12.2l2 3.2h-4ZM6.4 17.2c2.8 2.8 8.4 2.8 11.2 0l-1.4.2-.9 1.1-1.1-1-1.1 1.2-1.1-1.2-1.1 1.2-1.1-1.2-1.1 1-.9-1.1ZM11.2 7.4c.1-2.2.9-4 2.8-5.2l1 1c-1.6 1-2.2 2.3-2.3 4.2Z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill-rule='evenodd' d='M12 7.5C5.5 7.5 2 10.8 2 15s3.5 7.5 10 7.5 10-3.3 10-7.5-3.5-7.5-10-7.5ZM7.2 12.2l2 3.2H5.2ZM16.8 12.2l2 3.2h-4ZM6.4 17.2c2.8 2.8 8.4 2.8 11.2 0l-1.4.2-.9 1.1-1.1-1-1.1 1.2-1.1-1.2-1.1 1.2-1.1-1.2-1.1 1-.9-1.1ZM11.2 7.4c.1-2.2.9-4 2.8-5.2l1 1c-1.6 1-2.2 2.3-2.3 4.2Z'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="halloween"] .dayhead::before {
+  background: linear-gradient(180deg, #ffd98a, #ff8a3a);
+}
+
+/* The date lit amber, like candlelight through a carved face. */
+[data-festival="halloween"] .festdate {
+  background: linear-gradient(180deg, #ffe7b0 0%, #ffbd66 42%, #ef7a32 78%, #c8521f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 140, 50, 0.38));
+}
+[data-festival="halloween"] .festname {
+  color: #ffc27a;
+  text-shadow: 0 0 10px rgba(255, 140, 60, 0.5);
+}
+.compactrow[data-festival="halloween"] .gdate {
+  color: #ffc27a;
+  text-shadow: 0 0 8px rgba(255, 140, 60, 0.6);
+}
+
+/* The jack-o'-lantern beside it. On the night itself its candle flickers. */
+.lantern {
+  position: relative;
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  margin: -7px 0 -4px;
+  filter: drop-shadow(0 0 6px rgba(255, 150, 60, 0.5));
+}
+.lantern svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
+.lantern-stem { fill: #56612f; stroke: #2c2a14; stroke-width: 0.4; }
+.lantern-rind { fill: #b9551b; stroke: #5e2308; stroke-width: 0.6; }
+.lantern-rib { fill: #cf6a24; stroke: #7a310e; stroke-width: 0.45; }
+.lantern-rib.middle { fill: #dd7a2e; }
+.lantern-face { fill: #ffd46e; }
+.lantern.lit::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  background: radial-gradient(circle at 50% 62%, rgba(255, 200, 100, 0.6), rgba(255, 140, 50, 0.18) 45%, transparent 70%);
+  will-change: opacity;
+  animation: candle 2.3s steps(35) infinite;
+}
+@keyframes candle {
+  0%, 100% { opacity: 0.55; }
+  18% { opacity: 1; }
+  30% { opacity: 0.7; }
+  46% { opacity: 0.95; }
+  63% { opacity: 0.5; }
+  80% { opacity: 0.9; }
+}
+
+/* Cobwebs in the top corners of its bar, a violet mist along the foot of
+   it, and the edge of it in candlelight. */
+[data-theme="starlit"] [data-festival="halloween"] .track {
+  border-color: rgba(255, 160, 80, 0.38);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 0 0 3px rgba(255, 160, 80, 0.07),
+    inset 0 -26px 28px -18px rgba(150, 90, 210, 0.45),
+    0 0 20px -6px rgba(255, 140, 60, 0.28);
+}
+[data-theme="starlit"] [data-festival="halloween"] .track::before,
+[data-theme="starlit"] [data-festival="halloween"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 2 / 1;
+  background: var(--web-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="halloween"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="halloween"] .track::after { right: 0; transform: scaleX(-1); }
+
+/* The spider, on a thread from the top of the bar; on the night itself it
+   bobs on it. */
+.spider { display: block; pointer-events: none; }
+.spider svg { display: block; width: 100%; height: auto; overflow: visible; }
+.spider-legs {
+  fill: none;
+  stroke: rgba(214, 190, 250, 0.9);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.spider-body { fill: #1e1428; stroke: rgba(212, 184, 255, 0.65); stroke-width: 0.5; }
+.spider-eye { fill: #ffb34d; }
+.bar-spider {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 21px;
+  height: calc(34% + 21px);
+}
+.bar-spider::before,
+.web-spider .spider::before {
+  content: "";
+  flex: 1;
+  width: 1px;
+  margin-bottom: -5px;
+  background: linear-gradient(rgba(225, 218, 242, 0.15), rgba(225, 218, 242, 0.6));
+}
+.bar-spider svg { flex: none; }
+.daysection.today .bar-spider { animation: spider-bob 3.6s steps(54) infinite alternate; }
+@keyframes spider-bob {
+  from { transform: translateY(-5px); }
+  to { transform: translateY(3px); }
+}
+
+/* A spell cast on it is a grinning sigil: a carved face in place of the
+   hexagram, its heart for a nose. */
+.mc-hallow { display: none; }
+.magic-circle .mc-carved { fill: currentColor; stroke: none; }
+.star-cast[data-festival="halloween"] .mc-mid,
+.star-cast[data-festival="halloween"] .mc-inner :is(polygon, circle:not(.mc-heart)) { display: none; }
+.star-cast[data-festival="halloween"] .mc-hallow { display: block; }
+
+/* --- the night itself --- */
+[data-theme="starlit"][data-festival="halloween"] .app > .sky {
+  background:
+    radial-gradient(900px 520px at 58% -6%, rgba(255, 140, 60, 0.13), transparent 70%),
+    radial-gradient(1300px 700px at 18% -10%, rgba(110, 60, 150, 0.24), transparent 70%),
+    radial-gradient(1600px 420px at 50% 115%, rgba(255, 120, 50, 0.1), transparent 70%),
+    linear-gradient(180deg, #110c1a 0%, #0b0912 55%, #08070d 100%);
+}
+/* The moon, orange and low: a harvest moon for the night of spirits. */
+[data-festival="halloween"] .seal-moon {
+  filter: sepia(0.85) saturate(3.2) hue-rotate(-14deg) brightness(1.02) drop-shadow(0 0 26px rgba(255, 150, 60, 0.55));
+}
+/* Mist rolling along the foot of the window, in two drifts going opposite
+   ways, in small steps like everything else that moves forever. */
+.app > .hallow-mist {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 22;
+  height: 22vh;
+  overflow: hidden;
+  opacity: 0.75;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(transparent, #000 45%);
+  mask: linear-gradient(transparent, #000 45%);
+  animation: frost-creep 3s ease-out backwards;
+}
+.hallow-mist i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(100% + 1200px);
+  height: 100%;
+  background: var(--mist) 0 100% / 1200px 100% repeat-x;
+  will-change: transform;
+  animation: mist-drift 110s steps(3300) infinite;
+}
+.hallow-mist i:nth-child(2) {
+  background-position: 600px 100%;
+  opacity: 0.7;
+  animation-duration: 170s;
+  animation-direction: reverse;
+}
+@keyframes mist-drift { to { transform: translateX(-1200px); } }
+/* Great webs in the window's top corners, and their spider. */
+.app > .web-pane {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  pointer-events: none;
+  animation: frost-creep 2.8s ease-out backwards;
+}
+.web-pane i {
+  position: absolute;
+  top: 0;
+  width: min(22vw, 400px);
+  aspect-ratio: 1;
+  background: var(--web-pane) 0 0 / 100% 100% no-repeat;
+}
+.web-pane i:nth-child(1) { left: 0; }
+.web-pane i:nth-child(2) { right: 0; transform: scaleX(-1); }
+.app > .web-spider {
+  position: fixed;
+  top: -420px;
+  right: min(10vw, 170px);
+  z-index: 23;
+  width: 32px;
+  pointer-events: none;
+  animation: spider-climb 14s steps(120) infinite;
+}
+.web-spider .spider { display: flex; flex-direction: column; align-items: center; height: 610px; }
+.web-spider .spider svg { flex: none; }
+@keyframes spider-climb {
+  0%, 12% { transform: translateY(-60px); }
+  50%, 62% { transform: translateY(70px); }
+  100% { transform: translateY(-60px); }
+}
+.app > .hallow-night {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.star-notice[data-festival="halloween"] { border-color: rgba(255, 170, 90, 0.55); }
+.star-notice[data-festival="halloween"] .notice-eyebrow { color: #ffc27a; }
 
 @media (prefers-reduced-motion: reduce) {
   .aurora, .guiding-star, .frost-pane, .mc-flake,
-  .gift.glint::after { animation: none; }
+  .gift.glint::after,
+  .lantern.lit::after, .daysection.today .bar-spider,
+  .hallow-mist, .hallow-mist i, .web-pane, .app > .web-spider { animation: none; }
   .seal-outer, .seal-middle, .seal-inner,
   .mc-outer, .mc-mid, .mc-inner,
   .star-beam span,

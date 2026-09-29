@@ -1,10 +1,11 @@
-// The days of the year that are more than a date: which they are, and the
-// frost that grows over Christmas Eve.
+// The days of the year that are more than a date: which they are, the frost
+// that grows over Christmas Eve and the cobwebs strung across Halloween.
 //
-// Only Christmas Eve for now, and only in Starlit. Each festival is a date
-// and a name; how it looks belongs to the theme (themes.css, Festive.jsx).
+// Only in Starlit, so far. Each festival is a date and a name; how it looks
+// belongs to the theme (themes.css, Festive.jsx).
 
 export const FESTIVALS = [
+  { id: 'halloween', name: 'Halloween', month: 10, day: 31 },
   { id: 'christmas-eve', name: 'Christmas Eve', month: 12, day: 24 },
 ]
 
@@ -128,4 +129,53 @@ export function frostFerns(w, h, seed = 24, {
     glints.push({ x: l.x1, y: l.y1, r: 0.6 + rand() * 1.0 })
   }
   return { lines: kept, rime: dust, glints }
+}
+
+/**
+ * A cobweb strung across the top-left corner of a `w` by `h` pane: spokes
+ * out from the corner to the edges, and the silk laid round them ring by
+ * ring, each strand sagging a little toward the corner between its spokes.
+ * A strand or two is broken, as in any web that has seen some weather, and
+ * a few drops of dew have settled where the silk crosses a spoke.
+ *
+ * Returns the spokes as lines, the silk as curves (a start, a pull and an
+ * end), and the dew. Always the same web for the same seed.
+ */
+export function cobweb(w, h, seed = 31, { spokes = 8, rings = 10, reach = 0.92 } = {}) {
+  const rand = seeded(seed)
+  const angles = []
+  for (let i = 0; i < spokes; i++) {
+    const a = 0.05 + (i / (spokes - 1)) * (Math.PI / 2 - 0.1) + (rand() - 0.5) * 0.09
+    angles.push(Math.max(0.02, Math.min(Math.PI / 2 - 0.02, a)))
+  }
+  // Each spoke runs to the edge of the pane.
+  const lengths = angles.map((a) => Math.min(w / Math.cos(a), h / Math.sin(a)))
+  const lines = angles.map((a, i) => ({
+    x0: 0, y0: 0, x1: Math.cos(a) * lengths[i], y1: Math.sin(a) * lengths[i], alpha: 0.42,
+  }))
+
+  const outer = Math.min(w, h) * reach
+  const silk = []
+  const dew = []
+  for (let k = 1; k <= rings; k++) {
+    const base = outer * (k / rings) ** 0.92
+    const at = angles.map(() => base * (1 + (rand() - 0.5) * 0.08))
+    for (let i = 0; i < spokes - 1; i++) {
+      const r0 = Math.min(at[i], lengths[i])
+      const r1 = Math.min(at[i + 1], lengths[i + 1])
+      if (rand() < 0.07) continue // broken
+      const x0 = Math.cos(angles[i]) * r0
+      const y0 = Math.sin(angles[i]) * r0
+      const x1 = Math.cos(angles[i + 1]) * r1
+      const y1 = Math.sin(angles[i + 1]) * r1
+      const sag = 0.1 + rand() * 0.08
+      silk.push({
+        x0, y0, x1, y1,
+        cx: ((x0 + x1) / 2) * (1 - sag), cy: ((y0 + y1) / 2) * (1 - sag),
+        alpha: 0.36 - (k / rings) * 0.12,
+      })
+      if (rand() < 0.1) dew.push({ x: x0, y: y0, r: 0.7 + rand() * 0.9 })
+    }
+  }
+  return { lines, silk, dew }
 }

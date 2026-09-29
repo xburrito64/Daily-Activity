@@ -1,20 +1,27 @@
 import { useEffect, useRef } from 'react'
-import { frostFerns } from './festivals.js'
+import { frostFerns, cobweb } from './festivals.js'
 import { runLoop, stillness } from './loop.js'
 
-// Christmas Eve, in Starlit.
+// The festival nights of Starlit.
 //
-// Wherever it falls in the list, the day is rimed: frost grown in over the
-// ends of its bar, its date in ice, a snowflake for its diamond and a gift
-// sealed in wax beside it. Painting on it casts a
-// frost sigil that breaks into snow crystals.
+// Christmas Eve. Wherever it falls in the list the day is rimed: frost grown
+// in over the ends of its bar, its date in ice, a snowflake for its diamond
+// and a gift sealed in wax beside it; painting on it casts a frost sigil
+// that breaks into snow crystals. On the night itself the northern lights
+// come out over the grimoire, the guiding star shows, frost creeps in at the
+// corners of the window and snow falls across everything.
 //
-// And on the night itself the whole sky joins in: the northern lights over
-// the grimoire, the guiding star, frost creeping in at the corners of the
-// window, and snow falling across everything.
+// Halloween. The day is strung with cobwebs, a spider hanging off its bar,
+// its date lit amber like candlelight through a carved face, a pumpkin for
+// its diamond and a jack-o'-lantern beside it; painting on it casts a
+// grinning sigil that goes up in a flurry of bats. On the night itself the
+// moon hangs orange over a violet mist, great webs fill the corners of the
+// window with their spider going up and down, bats cross the moon, and
+// will-o'-wisps drift about the page, shying away from the pointer.
 //
-// All of it is drawn once and then only shown, apart from the snow, which
-// runs on the shared clock (loop.js) like every other scene.
+// All of it is drawn once and then only shown, apart from the snow, the
+// wisps and the bats, which run on the shared clock (loop.js) like every
+// other scene.
 
 /** A gift, wrapped in midnight blue, tied in crimson, sealed with a star. */
 export function Gift({ glint = false }) {
@@ -34,6 +41,58 @@ export function Gift({ glint = false }) {
         <path className="gift-snow" d="M3.9 9.7c.3-1.3 1.5-1.6 2.4-1.1.8-1 2.4-.9 3 0 .6-.5 1.5-.5 2 .1h3.6c.7-.8 2-.9 2.7-.2.8-.7 2.3-.6 2.8.3.8-.2 1.7.1 1.9 1Z" />
         <circle className="gift-seal" cx="13" cy="10.9" r="2.2" />
         <path className="gift-sigil" d="m13 9.6.38.92.92.38-.92.38-.38.92-.38-.92-.92-.38.92-.38Z" />
+      </svg>
+    </span>
+  )
+}
+
+/** A jack-o'-lantern, a candle in it shining out through its carved face. */
+export function Lantern({ lit = false }) {
+  return (
+    <span className={`lantern${lit ? ' lit' : ''}`} title="Halloween" aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="lantern-stem" d="M12.2 8.4c.1-2.3.9-4.3 2.9-5.4l1 1.1c-1.6.9-2.3 2.4-2.3 4.4Z" />
+        <ellipse className="lantern-rind" cx="13" cy="15.6" rx="10.6" ry="8.2" />
+        <ellipse className="lantern-rib" cx="8.4" cy="15.6" rx="5.2" ry="7.9" />
+        <ellipse className="lantern-rib" cx="17.6" cy="15.6" rx="5.2" ry="7.9" />
+        <ellipse className="lantern-rib middle" cx="13" cy="15.6" rx="3.5" ry="8.1" />
+        <g className="lantern-face">
+          <path d="M6.6 14.6 8.9 10.9 10.6 14.6Z" />
+          <path d="M15.4 14.6 17.1 10.9 19.4 14.6Z" />
+          <path d="M12.1 16.4 13 15 13.9 16.4Z" />
+          <path d="M6.4 17.6c2.1 3.3 11.1 3.3 13.2 0l-.9-.3-.9 1.3-1.1-1.1-1.2 1.4-1.2-1.3L13 19l-1.3-1.4-1.2 1.3-1.2-1.4-1.1 1.1-.9-1.3Z" />
+        </g>
+      </svg>
+    </span>
+  )
+}
+
+/** Christmas Eve's gift, or Halloween's lantern: what sits by the date. */
+export function FestiveMark({ id, lit = false }) {
+  if (id === 'halloween') return <Lantern lit={lit} />
+  if (id === 'christmas-eve') return <Gift glint={lit} />
+  return null
+}
+
+/** What the sky says as the app opens on a festival night. */
+export const FESTIVE_LINES = {
+  'christmas-eve': { line: 'snow falls over the grimoire', spell: '#cfeaff' },
+  halloween: { line: 'the veil is thin tonight', spell: '#ffb866' },
+}
+
+/** A small spider, let down on its thread. */
+export function Spider({ className = '' }) {
+  return (
+    <span className={`spider ${className}`} aria-hidden="true">
+      <svg viewBox="0 0 20 20">
+        <path
+          className="spider-legs"
+          d="M8.4 9.2 4.6 6.4 2.4 7.6M8.2 10.6 3.8 9.9 1.8 12M8.4 12 4.4 13.8 3.4 16.6M8.9 13.2 6.6 16.4 6.8 19M11.6 9.2l3.8-2.8 2.2 1.2M11.8 10.6l4.4-.7 2 2.1M11.6 12l4 1.8 1 2.8M11.1 13.2l2.3 3.2-.2 2.6"
+        />
+        <ellipse className="spider-body" cx="10" cy="12.6" rx="3.1" ry="3.7" />
+        <circle className="spider-body" cx="10" cy="8.2" r="2" />
+        <circle className="spider-eye" cx="9.3" cy="7.9" r="0.45" />
+        <circle className="spider-eye" cx="10.7" cy="7.9" r="0.45" />
       </svg>
     </span>
   )
@@ -137,6 +196,101 @@ export function makeFrost() {
 /** Frost in the four corners of the window, as if the pane had iced over. */
 export function FrostPane() {
   return <div className="frost-pane" aria-hidden="true"><i /><i /><i /><i /></div>
+}
+
+// --- cobwebs and mist -------------------------------------------------------
+// Two webs, spun once and shared as pictures like the frost: a large one for
+// the top corners of the window, and a small one for the corners of a bar.
+// And the mist that rolls along the foot of the window on Halloween night,
+// a strip that joins up end to end so it can drift forever.
+
+let websMade = null
+export function makeWebs() {
+  if (websMade) return websMade
+  const web = (w, h, seed, shape, strength) => new Promise((resolve) => {
+    const scale = 2
+    const c = document.createElement('canvas')
+    c.width = w * scale
+    c.height = h * scale
+    const g = c.getContext('2d')
+    g.scale(scale, scale)
+    const { lines, silk, dew } = cobweb(w, h, seed, shape)
+    g.lineCap = 'round'
+    g.strokeStyle = `rgba(228, 222, 242, ${0.9 * strength})`
+    g.lineWidth = 0.7
+    g.beginPath()
+    for (const l of lines) { g.moveTo(l.x0, l.y0); g.lineTo(l.x1, l.y1) }
+    g.stroke()
+    g.lineWidth = 0.55
+    g.strokeStyle = `rgba(228, 222, 242, ${0.75 * strength})`
+    g.beginPath()
+    for (const t of silk) { g.moveTo(t.x0, t.y0); g.quadraticCurveTo(t.cx, t.cy, t.x1, t.y1) }
+    g.stroke()
+    for (const d of dew) {
+      const glow = g.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 3)
+      glow.addColorStop(0, 'rgba(255, 236, 200, 0.9)')
+      glow.addColorStop(1, 'rgba(255, 200, 140, 0)')
+      g.fillStyle = glow
+      g.fillRect(d.x - d.r * 3, d.y - d.r * 3, d.r * 6, d.r * 6)
+    }
+    c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
+  })
+  const mist = () => new Promise((resolve) => {
+    const w = 1200
+    const h = 260
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    const g = c.getContext('2d')
+    let a = 13
+    const rand = () => { a = (a * 16807) % 2147483647; return a / 2147483647 }
+    for (let i = 0; i < 70; i++) {
+      const x = rand() * w
+      const y = h * (0.45 + rand() * 0.6)
+      const r = 50 + rand() * 110
+      const tone = rand() < 0.5 ? '150, 118, 196' : '108, 98, 150'
+      const alpha = 0.06 + rand() * 0.1
+      // Drawn at both ends as well, so the strip meets itself seamlessly.
+      for (const dx of [-w, 0, w]) {
+        const puff = g.createRadialGradient(x + dx, y, 0, x + dx, y, r)
+        puff.addColorStop(0, `rgba(${tone}, ${alpha})`)
+        puff.addColorStop(1, `rgba(${tone}, 0)`)
+        g.fillStyle = puff
+        g.fillRect(x + dx - r, y - r, r * 2, r * 2)
+      }
+    }
+    c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
+  })
+  websMade = Promise.all([
+    web(520, 520, 31, { spokes: 9, rings: 13, reach: 0.9 }, 0.8),
+    web(240, 120, 5, { spokes: 7, rings: 7, reach: 0.95 }, 1),
+    mist(),
+  ]).then(([big, small, fog]) => {
+    const root = document.documentElement.style
+    if (big) root.setProperty('--web-pane', `url(${big})`)
+    if (small) root.setProperty('--web-rim', `url(${small})`)
+    if (fog) root.setProperty('--mist', `url(${fog})`)
+  })
+  return websMade
+}
+
+/** Every festival's pictures, made once, whichever festival is in view. */
+export function makePictures() {
+  return Promise.all([makeFrost(), makeWebs()])
+}
+
+/**
+ * Halloween night's own furniture: the mist along the foot of the window,
+ * great webs in its top corners, and their spider going slowly up and down.
+ */
+export function HallowPane() {
+  return (
+    <>
+      <div className="hallow-mist" aria-hidden="true"><i /><i /></div>
+      <div className="web-pane" aria-hidden="true"><i /><i /></div>
+      <div className="web-spider" aria-hidden="true"><Spider /></div>
+    </>
+  )
 }
 
 // --- the northern lights --------------------------------------------------
@@ -371,4 +525,213 @@ export function Snowfall() {
     return () => { stop(); window.removeEventListener('resize', size) }
   }, [])
   return <canvas ref={ref} className="snowfall" aria-hidden="true" />
+}
+
+// --- Halloween night: bats and will-o'-wisps -----------------------------------
+/**
+ * A bat, in three beats of its wings (up, level, down), drawn once each.
+ * Dark against the sky, with a thin rim of light so it shows against it.
+ */
+export function batFrames(px) {
+  return [-0.9, 0, 0.8].map((lift) => {
+    const c = document.createElement('canvas')
+    c.width = px
+    c.height = px
+    const g = c.getContext('2d')
+    const k = px / 32
+    g.translate(px / 2, px / 2)
+    g.scale(k, k)
+    g.fillStyle = '#1c1128'
+    g.strokeStyle = 'rgba(206, 170, 255, 0.7)'
+    g.lineWidth = 1.1
+    g.lineJoin = 'round'
+    const wing = (side) => {
+      const y = (v) => v * lift
+      g.moveTo(side * 2.5, -1)
+      g.lineTo(side * 8, -3 + y(-7))
+      g.lineTo(side * 14.5, -1 + y(-10))
+      g.quadraticCurveTo(side * 12.5, 1.5 + y(-6), side * 11.5, 4 + y(-5))
+      g.quadraticCurveTo(side * 9.5, 2.5 + y(-3), side * 7.5, 4.5 + y(-3))
+      g.quadraticCurveTo(side * 5.5, 3 + y(-1), side * 2.5, 3)
+      g.closePath()
+    }
+    g.beginPath()
+    wing(-1)
+    wing(1)
+    // Body, head and the two ears.
+    g.moveTo(3, 1)
+    g.ellipse(0, 1, 3, 4.2, 0, 0, Math.PI * 2)
+    g.moveTo(-2.4, -3.2)
+    g.lineTo(-2.2, -7)
+    g.lineTo(-0.6, -4.6)
+    g.lineTo(0.6, -4.6)
+    g.lineTo(2.2, -7)
+    g.lineTo(2.4, -3.2)
+    g.closePath()
+    g.stroke()
+    g.fill()
+    return c
+  })
+}
+
+/** A will-o'-wisp's glow, in one of its colours. */
+function wispSprite(rgb) {
+  const px = 64
+  const c = document.createElement('canvas')
+  c.width = px
+  c.height = px
+  const g = c.getContext('2d')
+  const r = px / 2
+  const glow = g.createRadialGradient(r, r, 0, r, r, r)
+  glow.addColorStop(0, 'rgba(255, 255, 255, 1)')
+  glow.addColorStop(0.12, `rgba(${rgb}, 0.95)`)
+  glow.addColorStop(0.4, `rgba(${rgb}, 0.28)`)
+  glow.addColorStop(1, `rgba(${rgb}, 0)`)
+  g.fillStyle = glow
+  g.fillRect(0, 0, px, px)
+  return c
+}
+
+/**
+ * Will-o'-wisps wandering about the page, each on a slow path of its own,
+ * trailing a little light behind it and drifting away from the pointer when
+ * it comes close; and now and then a few bats crossing the sky by the moon.
+ */
+export function HallowNight() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    const g = el.getContext('2d')
+    const tones = ['168, 255, 222', '170, 214, 255', '206, 182, 255']
+    const sprites = tones.map(wispSprite)
+    const bat = batFrames(48)
+    let w = 0
+    let h = 0
+    let wisps = []
+    const pointer = { x: -9999, y: -9999 }
+
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      if (wisps.length === 0) {
+        wisps = Array.from({ length: 7 }, (_, i) => ({
+          x: w * (0.08 + Math.random() * 0.84),
+          y: h * (0.2 + Math.random() * 0.7),
+          vx: 0,
+          vy: 0,
+          r: 9 + Math.random() * 9,
+          sprite: sprites[i % sprites.length],
+          a: Math.random() * 100,
+          b: Math.random() * 100,
+          trail: [],
+        }))
+      }
+    }
+    size()
+    window.addEventListener('resize', size)
+    const onMove = (e) => { pointer.x = e.clientX; pointer.y = e.clientY }
+    const onLeave = () => { pointer.x = -9999; pointer.y = -9999 }
+    window.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerleave', onLeave)
+
+    const draw = (t) => {
+      g.clearRect(0, 0, w, h)
+      g.globalCompositeOperation = 'lighter'
+      for (const s of wisps) {
+        const flicker = 0.62 + 0.25 * Math.sin(t * 2.3 + s.a) + 0.13 * Math.sin(t * 7.1 + s.b)
+        s.trail.forEach((p, i) => {
+          const k = (i + 1) / (s.trail.length + 1)
+          const px = s.r * 1.6 * k
+          g.globalAlpha = 0.22 * k * flicker
+          g.drawImage(s.sprite, p.x - px, p.y - px, px * 2, px * 2)
+        })
+        const px = s.r * 2
+        g.globalAlpha = Math.max(0, Math.min(1, flicker))
+        g.drawImage(s.sprite, s.x - px, s.y - px, px * 2, px * 2)
+      }
+      g.globalCompositeOperation = 'source-over'
+      g.globalAlpha = 1
+    }
+
+    // Bats cross close by the moon, from one side of the sky to the other.
+    let flock = []
+    let nextFlock = performance.now() + 3000 + Math.random() * 4000
+    const launch = () => {
+      const seal = document.querySelector('.app > .seal')
+      const moonY = seal ? parseFloat(seal.style.getPropertyValue('--seal-y')) || 60 : 60
+      const leftward = Math.random() < 0.5
+      const count = 3 + Math.floor(Math.random() * 4)
+      const speed = 190 + Math.random() * 80
+      flock = Array.from({ length: count }, (_, i) => ({
+        x: leftward ? w + 40 + i * (30 + Math.random() * 40) : -40 - i * (30 + Math.random() * 40),
+        y: moonY + (Math.random() - 0.5) * 90,
+        vx: (leftward ? -1 : 1) * speed * (0.85 + Math.random() * 0.3),
+        size: 18 + Math.random() * 12,
+        beat: 8 + Math.random() * 4,
+        phase: Math.random() * 10,
+      }))
+    }
+
+    if (stillness()) {
+      draw(0)
+      return () => {
+        window.removeEventListener('resize', size)
+        window.removeEventListener('pointermove', onMove)
+        document.removeEventListener('pointerleave', onLeave)
+      }
+    }
+
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      for (const s of wisps) {
+        // A slow wandering of its own...
+        let ax = Math.sin(t * 0.31 + s.a) * 16 + Math.sin(t * 0.73 + s.b) * 9
+        let ay = Math.cos(t * 0.27 + s.b) * 12 + Math.sin(t * 0.57 + s.a) * 7
+        // ...away from the pointer when it comes close...
+        const dx = s.x - pointer.x
+        const dy = s.y - pointer.y
+        const d = Math.hypot(dx, dy)
+        if (d < 170 && d > 0.1) {
+          const push = ((170 - d) / 170) ** 2 * 900
+          ax += (dx / d) * push
+          ay += (dy / d) * push
+        }
+        // ...and back in off the edges.
+        if (s.x < 40) ax += 60
+        if (s.x > w - 40) ax -= 60
+        if (s.y < 60) ay += 60
+        if (s.y > h - 40) ay -= 60
+        s.vx = (s.vx + ax * dt) * Math.exp(-dt * 1.1)
+        s.vy = (s.vy + ay * dt) * Math.exp(-dt * 1.1)
+        s.x += s.vx * dt
+        s.y += s.vy * dt
+        s.trail.push({ x: s.x, y: s.y })
+        if (s.trail.length > 7) s.trail.shift()
+      }
+      draw(t)
+
+      if (flock.length === 0 && now > nextFlock) {
+        launch()
+        nextFlock = now + 14000 + Math.random() * 18000
+      }
+      for (const b of flock) {
+        b.x += b.vx * dt
+        const y = b.y + Math.sin(t * 3 + b.phase) * 10
+        const frame = [0, 1, 2, 1][Math.floor((t + b.phase) * b.beat) % 4]
+        g.drawImage(bat[frame], b.x - b.size / 2, y - b.size / 2, b.size, b.size)
+      }
+      if (flock.length && flock.every((b) => b.x < -80 || b.x > w + 80)) flock = []
+    })
+    return () => {
+      stop()
+      window.removeEventListener('resize', size)
+      window.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerleave', onLeave)
+    }
+  }, [])
+  return <canvas ref={ref} className="hallow-night" aria-hidden="true" />
 }

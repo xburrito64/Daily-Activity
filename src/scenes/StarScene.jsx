@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { monthByTag, rankUps, completeDays, starField } from './starlit.js'
 import { MagicCircle, Seal, RankGem, Moonweed } from './StarParts.jsx'
 import { festivalOf } from './festivals.js'
-import { Gift, makeFrost, FrostPane, Aurora, GuidingStar, Snowfall, crystalFlake } from './Festive.jsx'
+import {
+  FestiveMark, FESTIVE_LINES, makePictures, FrostPane, Aurora, GuidingStar, Snowfall, crystalFlake,
+  HallowPane, HallowNight, batFrames,
+} from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
 import { useMinute } from '../useMinute.js'
@@ -30,7 +33,8 @@ import { useMinute } from '../useMinute.js'
 // finished pictures the graphics card only turns. With less movement asked
 // for, nothing turns, breathes or falls.
 //
-// Christmas Eve is a festival night, and its sky is its own: see Festive.jsx.
+// Christmas Eve and Halloween are festival nights, each with a sky of its
+// own: see Festive.jsx.
 
 const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ'
 const CAST_WINDOW_MS = 5000
@@ -191,17 +195,19 @@ export default function StarScene({ days, tags }) {
   }, [])
 
   // --- festivals ---------------------------------------------------------------
-  // The frost is grown once, for any Christmas Eve in the list, whenever it is.
-  useEffect(() => { makeFrost() }, [])
+  // The frost and the webs are made once, for any festival day in the list,
+  // whenever it is.
+  useEffect(() => { makePictures() }, [])
   // On the night itself, the page knows it (for the colder sky in
   // themes.css), and the sky says so once, shortly after opening.
   const festival = tonight?.id ?? null
+  const name = tonight?.name ?? ''
   useEffect(() => {
     if (!festival) return undefined
     const page = document.documentElement
     page.dataset.festival = festival
     const timer = setTimeout(() => {
-      setNotices((was) => [...was, { kind: 'festival', festival, id: `festival-${Date.now()}` }].slice(-3))
+      setNotices((was) => [...was, { kind: 'festival', festival, name, id: `festival-${Date.now()}` }].slice(-3))
     }, 1400)
     return () => { clearTimeout(timer); delete page.dataset.festival }
   }, [festival])
@@ -240,6 +246,7 @@ export default function StarScene({ days, tags }) {
     const gold = moteSprite('rgba(255, 248, 225, 1)', 'rgba(226, 196, 130, 0.8)')
     const pale = moteSprite('rgba(240, 250, 255, 1)', 'rgba(160, 210, 255, 0.8)')
     const flake = crystalFlake(40)
+    const bats = batFrames(40)
     let tinted = new Map()
     const spriteFor = (colour) => {
       if (!tinted.has(colour)) {
@@ -263,13 +270,18 @@ export default function StarScene({ days, tags }) {
       const chip = document.querySelector('.daychips .chip.armed')
       return chip?.style.getPropertyValue('--chip')?.trim() || '#c9a86a'
     }
-    // A spell cast on a day of frost is a frost sigil, in the cold colours.
-    const frosted = (track) => Boolean(track?.closest('[data-festival="christmas-eve"]'))
-    const iceOf = (colour) => `color-mix(in oklab, ${colour} 22%, #e6f6ff)`
-    const show = (node, x, y, px, colour, frost = false) => {
+    // A spell cast on a festival day takes the festival's sigil and colours:
+    // frost on Christmas Eve, candlelight on Halloween.
+    const festivalAt = (track) => track?.closest('[data-festival]')?.dataset.festival ?? ''
+    const tint = (colour, festival) => (festival === 'christmas-eve'
+      ? `color-mix(in oklab, ${colour} 22%, #e6f6ff)`
+      : festival === 'halloween'
+        ? `color-mix(in oklab, ${colour} 22%, #ffb866)`
+        : manaOf(colour))
+    const show = (node, x, y, px, colour, festival = '') => {
       node.style.display = 'block'
-      node.classList.toggle('frost', frost)
-      node.style.color = frost ? iceOf(colour) : manaOf(colour)
+      node.dataset.festival = festival
+      node.style.color = tint(colour, festival)
       node.style.width = `${px}px`
       node.style.height = `${px}px`
       node.style.transform = `translate(${x - px / 2}px, ${y - px / 2}px)`
@@ -293,13 +305,13 @@ export default function StarScene({ days, tags }) {
       const y = r.top + r.height / 2
       const x = Math.max(r.left, Math.min(r.right, e.clientX))
       const colour = casting?.colour ?? armedColour()
-      const frost = frosted(casting?.track ?? track)
-      show(caster.current, x, y, px, colour, frost)
+      const festival = festivalAt(casting?.track ?? track)
+      show(caster.current, x, y, px, colour, festival)
       if (casting && beam.current) {
         const width = Math.abs(x - casting.x)
         Object.assign(beam.current.style, {
           display: width > 6 ? 'block' : 'none',
-          color: frost ? iceOf(colour) : manaOf(colour),
+          color: tint(colour, festival),
           left: `${Math.min(casting.x, x)}px`,
           top: `${y - 9}px`,
           width: `${width}px`,
@@ -314,12 +326,32 @@ export default function StarScene({ days, tags }) {
       const r = track.getBoundingClientRect()
       const px = castSize(r)
       casting = { x: e.clientX, y: r.top + r.height / 2, colour: armedColour(), track }
-      show(anchor.current, casting.x, casting.y, px, casting.colour, frosted(track))
+      show(anchor.current, casting.x, casting.y, px, casting.colour, festivalAt(track))
       onMove(e)
     }
 
-    const burst = (x0, x1, y, colour, count, frost) => {
-      const sprite = spriteFor(manaOf(colour))
+    const burst = (x0, x1, y, colour, count, festival) => {
+      const frost = festival === 'christmas-eve'
+      const hallow = festival === 'halloween'
+      const sprite = spriteFor(tint(colour, festival))
+      // On Halloween the spell goes up in a flurry of bats, off every which way.
+      if (hallow) {
+        for (let i = 0; i < Math.min(9, 3 + count / 8); i++) {
+          const side = Math.random() < 0.5 ? -1 : 1
+          motes.current.push({
+            bat: true,
+            x: x0 + Math.random() * Math.max(1, x1 - x0),
+            y: y + (Math.random() - 0.5) * 20,
+            vx: side * (50 + Math.random() * 110),
+            vy: -(70 + Math.random() * 110),
+            age: 0,
+            life: 1.5 + Math.random() * 0.9,
+            size: 0.8 + Math.random() * 0.5,
+            seed: Math.random() * 100,
+            beat: 9 + Math.random() * 4,
+          })
+        }
+      }
       for (let i = 0; i < count; i++) {
         motes.current.push({
           x: x0 + Math.random() * Math.max(1, x1 - x0),
@@ -333,7 +365,8 @@ export default function StarScene({ days, tags }) {
           // On a day of frost the spell breaks into snow crystals.
           sprite: frost
             ? (i % 2 === 0 ? flake : pale)
-            : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
+            : hallow ? (i % 3 === 0 ? gold : sprite)
+              : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
         })
       }
     }
@@ -358,7 +391,7 @@ export default function StarScene({ days, tags }) {
         hide(anchor.current)
         if (!document.querySelector('.scroller.armed')) hide(caster.current)
       }, 650)
-      burst(Math.min(c.x, x), Math.max(c.x, x), c.y, c.colour, Math.min(60, 16 + Math.abs(x - c.x) / 12), frosted(c.track))
+      burst(Math.min(c.x, x), Math.max(c.x, x), c.y, c.colour, Math.min(60, 16 + Math.abs(x - c.x) / 12), festivalAt(c.track))
       fall.current(0.15)
       lastCast.current = performance.now()
     }
@@ -391,6 +424,7 @@ export default function StarScene({ days, tags }) {
         const m = list[i]
         m.age += dt
         if (m.age >= m.life) { list.splice(i, 1); continue }
+        if (m.bat) continue // drawn below: dark things don't add light
         m.vx *= Math.exp(-dt * 1.2)
         m.vy += 12 * dt
         m.x += (m.vx + Math.sin(t * 2.2 + m.seed) * 16) * dt
@@ -402,6 +436,19 @@ export default function StarScene({ days, tags }) {
       }
       g.globalAlpha = 1
       g.globalCompositeOperation = 'source-over'
+      for (const m of list) {
+        if (!m.bat) continue
+        m.vx *= Math.exp(-dt * 0.4)
+        m.vy -= 10 * dt
+        m.x += (m.vx + Math.sin(t * 5 + m.seed) * 30) * dt
+        m.y += (m.vy + Math.cos(t * 6 + m.seed) * 24) * dt
+        const k = m.age / m.life
+        const px = 22 * m.size * (0.6 + Math.min(1, k * 4) * 0.4)
+        g.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1
+        const frame = [0, 1, 2, 1][Math.floor((t + m.seed) * m.beat) % 4]
+        g.drawImage(bats[frame], m.x - px / 2, m.y - px / 2, px, px)
+      }
+      g.globalAlpha = 1
       dirty = true
     })
 
@@ -463,10 +510,12 @@ export default function StarScene({ days, tags }) {
       <Seal />
       {festival === 'christmas-eve' && <FrostPane />}
       {festival === 'christmas-eve' && <Snowfall />}
+      {festival === 'halloween' && <HallowPane />}
+      {festival === 'halloween' && <HallowNight />}
       <div className="grimoire-frame" aria-hidden="true"><i /><i /><i /><i /></div>
       <canvas ref={moteCanvas} className="star-motes" aria-hidden="true" />
-      <div ref={anchor} className="star-cast anchor" aria-hidden="true"><MagicCircle size="100%" frost /></div>
-      <div ref={caster} className="star-cast" aria-hidden="true"><MagicCircle size="100%" frost /></div>
+      <div ref={anchor} className="star-cast anchor" aria-hidden="true"><MagicCircle size="100%" festive /></div>
+      <div ref={caster} className="star-cast" aria-hidden="true"><MagicCircle size="100%" festive /></div>
       <div ref={beam} className="star-beam" aria-hidden="true"><span>{RUNES.repeat(12)}</span></div>
       <StarNotices notices={notices} tags={tags} />
     </>
@@ -481,16 +530,22 @@ function StarNotices({ notices, tags }) {
     <div className="star-notices" role="status">
       {notices.map((n) => {
         if (n.kind === 'festival') {
+          const words = FESTIVE_LINES[n.festival]
           return (
-            <div key={n.id} className="star-notice festival" style={{ '--spell': '#cfeaff' }}>
+            <div
+              key={n.id}
+              className="star-notice festival"
+              data-festival={n.festival}
+              style={{ '--spell': words?.spell ?? '#cfeaff' }}
+            >
               <span className="notice-mark">
                 <MagicCircle size="100%" className="notice-circle" />
-                <Gift />
+                <FestiveMark id={n.festival} />
               </span>
               <span className="notice-words">
                 <span className="notice-eyebrow">A festival night</span>
-                <b className="notice-title">Christmas Eve</b>
-                <span className="notice-line">snow falls over the grimoire</span>
+                <b className="notice-title">{n.name}</b>
+                <span className="notice-line">{words?.line}</span>
               </span>
             </div>
           )
