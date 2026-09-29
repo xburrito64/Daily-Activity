@@ -315,7 +315,15 @@ h1 {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
+  /* Scrolled by the graphics card, not the page. The list is see-through,
+     for the theme behind it, and the browser will otherwise scroll a
+     see-through list itself — to keep its text a shade crisper — which
+     dropped every other frame. */
+  will-change: scroll-position;
 }
+/* It costs the graphics card a little to keep the list ready to scroll that
+   way, so only while the app is the window in use (see .resting below). */
+.resting .scroller { will-change: auto; }
 .scroller::-webkit-scrollbar { width: 10px; }
 .scroller::-webkit-scrollbar-thumb { background: var(--c-line); border-radius: 5px; }
 

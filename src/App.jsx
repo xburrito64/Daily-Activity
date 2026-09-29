@@ -386,7 +386,7 @@ export default function App() {
    * `at` is where the pointer went down: it decides whether the new block
    * lands above or below whatever is already there.
    */
-  function handlePaint(date, spans, at) {
+  const handlePaint = useCallback((date, spans, at) => {
     if (!armed || armed.date !== date) return
     editDays(spans.map((span) => ({
       date: span.date,
@@ -399,7 +399,7 @@ export default function App() {
       }, { slot: span.date === date ? at.slot : span.startSlot, lane: at.lane }),
     })))
     setArmed(null)
-  }
+  }, [armed, editDays])
 
   /**
    * Say what a block was — which game, which show — or take the name off.
@@ -432,8 +432,19 @@ export default function App() {
   // `at` is only there when the whole block was slid: it is the height the
   // pointer was holding it at. Dragging an edge sends nothing, and keeps the
   // height it already had.
-  const handleResize = (date, id, startSlot, endSlot, at) =>
-    editDay(date, (prev) => applyResize(prev, id, startSlot, endSlot, at))
+  const handleResize = useCallback((date, id, startSlot, endSlot, at) =>
+    editDay(date, (prev) => applyResize(prev, id, startSlot, endSlot, at)), [editDay])
+
+  // The list is told what to do through these, made once: a new one each time
+  // the app redraws would have the whole list — every day, every tag — built
+  // again with it, which is what made scrolling stutter. See DayList's memo.
+  const handleSelect = useCallback((date, id) => setSelected({ date, id }), [])
+  const handlePickDay = useCallback((date) => { setView('day'); setJumpTo(date) }, [])
+  const handleWipeDay = useCallback((date) => {
+    editDay(date, () => [])
+    setSelected((sel) => (sel?.date === date ? null : sel))
+  }, [editDay])
+  const handleJumped = useCallback(() => setJumpTo(null), [])
 
   // Days you have actually written something on — the count under the title.
   // Only the loaded window is in `days`, which is the window you have
@@ -559,16 +570,13 @@ export default function App() {
         onZoom={handleZoom}
         onPaint={handlePaint}
         onResize={handleResize}
-        onSelect={(date, id) => setSelected({ date, id })}
-        onPickDay={(date) => { setView('day'); setJumpTo(date) }}
-        onWipeDay={(date) => {
-          editDay(date, () => [])
-          setSelected((sel) => (sel?.date === date ? null : sel))
-        }}
+        onSelect={handleSelect}
+        onPickDay={handlePickDay}
+        onWipeDay={handleWipeDay}
         onVisibleRange={setVisible}
         find={find}
         jumpTo={jumpTo}
-        onJumped={() => setJumpTo(null)}
+        onJumped={handleJumped}
         />
         {view === 'compact' && <Totals days={days} tags={tags} range={visible} />}
       </div>

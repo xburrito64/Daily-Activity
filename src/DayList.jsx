@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   SLOTS_PER_DAY, MINUTES_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO,
   daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
@@ -408,7 +408,7 @@ function TrashIcon() {
   )
 }
 
-export default function DayList({
+function DayList({
   mode, // 'day' (editable) | 'compact' (read-only)
   days,
   tags,
@@ -613,23 +613,28 @@ export default function DayList({
   }, [reportVisible])
 
   // --- ctrl+scroll zoom, anchored on whatever is under the cursor --------
+  // What the wheel handler needs, kept current without setting it up again:
+  // it is set up once, and only listens while Ctrl is held.
+  const zoomState = useRef(null)
+  zoomState.current = { barHeight, rowTotal, mode, onZoom }
   useEffect(() => {
     const el = scrollRef.current
-    if (!el) return
+    if (!el) return undefined
 
     // Non-passive, so the browser doesn't zoom the whole page instead.
     const onWheel = (e) => {
       if (!e.ctrlKey) return
       e.preventDefault()
+      const { barHeight: height, rowTotal: stride, mode: view, onZoom: zoom } = zoomState.current
 
       const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
-      const limits = ZOOM[mode]
-      const next = Math.round(Math.min(limits.max, Math.max(limits.min, barHeight * factor)))
-      if (next === barHeight) return
+      const limits = ZOOM[view]
+      const next = Math.round(Math.min(limits.max, Math.max(limits.min, height * factor)))
+      if (next === height) return
 
       const rect = el.getBoundingClientRect()
       const cursorY = e.clientY - rect.top
-      const position = (el.scrollTop + cursorY) / rowTotal
+      const position = (el.scrollTop + cursorY) / stride
       const index = Math.min(datesRef.current.length - 1, Math.max(0, Math.floor(position)))
 
       pendingAnchor.current = {
@@ -637,12 +642,32 @@ export default function DayList({
         frac: position - Math.floor(position),
         cursorY,
       }
-      onZoom(next)
+      zoom(next)
     }
 
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [barHeight, rowTotal, mode, onZoom])
+    // Only listened for while Ctrl is held. A wheel listener that can stop the
+    // scroll makes the browser ask it first about every turn of the wheel, so
+    // with one always there, scrolling waited on the app every step of the
+    // way. Without one, scrolling is the graphics card's alone.
+    let listening = false
+    const listen = (on) => {
+      if (on === listening) return
+      listening = on
+      if (on) el.addEventListener('wheel', onWheel, { passive: false })
+      else el.removeEventListener('wheel', onWheel)
+    }
+    const onKey = (e) => listen(e.ctrlKey || e.metaKey)
+    const onBlur = () => listen(false)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKey)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      listen(false)
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onKey)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   // Pixel width of a bar. Labels need it to decide whether the tag name fits,
   // and every block is placed on it — so it is measured before the frame is
@@ -1489,3 +1514,9 @@ ${b.note}` : ''}`}
     </div>
   )
 }
+
+// Built again only when something it is given changes. Scrolling tells the
+// app which days are in view, the app redraws to say so beside the list, and
+// without this the whole list — hundreds of days of tags and blocks — was
+// built again with it, several times a second, while you scrolled.
+export default memo(DayList)
