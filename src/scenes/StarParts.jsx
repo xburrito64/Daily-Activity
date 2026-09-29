@@ -46,6 +46,8 @@ const NODES = Array.from({ length: 6 }, (_, i) => {
  */
 // The six arms of a snowflake, for the frost sigil cast on Christmas Eve.
 const FLAKE_ARM = 'M0 -5V-36M-7 -26 0 -20 7 -26M-5 -33 0 -29 5 -33M-8 -13 0 -9 8 -13'
+// A petal, five of which make the blossom sigil cast at Easter.
+const PETAL = 'M0-7C9-12 9-27 0-33-9-27-9-12 0-7Z'
 // A carved grin, for the sigil cast on Halloween.
 const GRIN = 'M-25 5Q0 32 25 5L19 7.5 15 14 10 9.5 5 16 0 10.5-5 16-10 9.5-15 14-19 7.5Z'
 
@@ -81,7 +83,8 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
       ))}
       {/* Shown in place of the hexagram when the spell is cast on a
           festival day (themes.css, .star-cast[data-festival]): a snowflake
-          on Christmas Eve, a jack-o'-lantern's face on Halloween. */}
+          on Christmas Eve, a jack-o'-lantern's face on Halloween, a blossom
+          at Easter. */}
       {festive && layer('mc-flake', (
         <>
           {[0, 60, 120, 180, 240, 300].map((a) => <path key={a} d={FLAKE_ARM} transform={`rotate(${a})`} />)}
@@ -94,6 +97,12 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           <path className="mc-carved" d="M-20-5-12-21-5-5Z" />
           <path className="mc-carved" d="M5-5 12-21 20-5Z" />
           <path className="mc-carved" d={GRIN} />
+        </>
+      ))}
+      {festive && layer('mc-bloom', (
+        <>
+          <circle r="31" />
+          {[0, 72, 144, 216, 288].map((a) => <path key={a} d={PETAL} transform={`rotate(${a})`} />)}
         </>
       ))}
       {layer('mc-inner', (

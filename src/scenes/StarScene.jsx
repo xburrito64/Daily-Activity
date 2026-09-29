@@ -5,6 +5,7 @@ import { festivalOf } from './festivals.js'
 import {
   FestiveMark, FESTIVE_LINES, makePictures, FrostPane, Aurora, GuidingStar, Snowfall, crystalFlake,
   HallowPane, HallowNight, batFrames,
+  Dawn, Meadow, SpringDay, EggHunt, petalSprite, drawButterfly, BUTTERFLY_TONES,
 } from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
@@ -33,7 +34,7 @@ import { useMinute } from '../useMinute.js'
 // finished pictures the graphics card only turns. With less movement asked
 // for, nothing turns, breathes or falls.
 //
-// Christmas Eve and Halloween are festival nights, each with a sky of its
+// Christmas Eve, Halloween and Easter are festivals, each with a sky of its
 // own: see Festive.jsx.
 
 const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ'
@@ -78,6 +79,9 @@ export default function StarScene({ days, tags }) {
   const tonight = festivalOf(todayISO())
 
   const lastCast = useRef(-Infinity)
+  // Set by the casting below: a burst of petals and butterflies where an
+  // Easter egg was found.
+  const celebrate = useRef(null)
   const motes = useRef([])
   const falling = useRef([])
 
@@ -247,6 +251,7 @@ export default function StarScene({ days, tags }) {
     const pale = moteSprite('rgba(240, 250, 255, 1)', 'rgba(160, 210, 255, 0.8)')
     const flake = crystalFlake(40)
     const bats = batFrames(40)
+    const petal = petalSprite()
     let tinted = new Map()
     const spriteFor = (colour) => {
       if (!tinted.has(colour)) {
@@ -277,7 +282,9 @@ export default function StarScene({ days, tags }) {
       ? `color-mix(in oklab, ${colour} 22%, #e6f6ff)`
       : festival === 'halloween'
         ? `color-mix(in oklab, ${colour} 22%, #ffb866)`
-        : manaOf(colour))
+        : festival === 'easter'
+          ? `color-mix(in oklab, ${colour} 22%, #ffc4dc)`
+          : manaOf(colour))
     const show = (node, x, y, px, colour, festival = '') => {
       node.style.display = 'block'
       node.dataset.festival = festival
@@ -333,6 +340,25 @@ export default function StarScene({ days, tags }) {
     const burst = (x0, x1, y, colour, count, festival) => {
       const frost = festival === 'christmas-eve'
       const hallow = festival === 'halloween'
+      const spring = festival === 'easter'
+      // At Easter it scatters into petals, and a few butterflies take wing.
+      if (spring) {
+        for (let i = 0; i < Math.min(5, 1 + count / 14); i++) {
+          motes.current.push({
+            fly: true,
+            x: x0 + Math.random() * Math.max(1, x1 - x0),
+            y: y + (Math.random() - 0.5) * 16,
+            vx: (Math.random() - 0.5) * 90,
+            vy: -(40 + Math.random() * 60),
+            age: 0,
+            life: 2.4 + Math.random() * 1.4,
+            size: 0.8 + Math.random() * 0.4,
+            seed: Math.random() * 100,
+            beat: 7 + Math.random() * 4,
+            tone: BUTTERFLY_TONES[Math.floor(Math.random() * BUTTERFLY_TONES.length)],
+          })
+        }
+      }
       const sprite = spriteFor(tint(colour, festival))
       // On Halloween the spell goes up in a flurry of bats, off every which way.
       if (hallow) {
@@ -366,7 +392,8 @@ export default function StarScene({ days, tags }) {
           sprite: frost
             ? (i % 2 === 0 ? flake : pale)
             : hallow ? (i % 3 === 0 ? gold : sprite)
-              : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
+              : spring ? (i % 3 === 0 ? sprite : petal)
+                : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
         })
       }
     }
@@ -394,6 +421,11 @@ export default function StarScene({ days, tags }) {
       burst(Math.min(c.x, x), Math.max(c.x, x), c.y, c.colour, Math.min(60, 16 + Math.abs(x - c.x) / 12), festivalAt(c.track))
       fall.current(0.15)
       lastCast.current = performance.now()
+    }
+
+    celebrate.current = (x, y, big) => {
+      burst(x - (big ? 60 : 8), x + (big ? 60 : 8), y, '#ffc4dc', big ? 60 : 22, 'easter')
+      if (big) for (let i = 0; i < 10; i++) fall.current(i * 0.2 + Math.random() * 0.2)
     }
 
     const onKey = (e) => {
@@ -424,7 +456,7 @@ export default function StarScene({ days, tags }) {
         const m = list[i]
         m.age += dt
         if (m.age >= m.life) { list.splice(i, 1); continue }
-        if (m.bat) continue // drawn below: dark things don't add light
+        if (m.bat || m.fly) continue // drawn below
         m.vx *= Math.exp(-dt * 1.2)
         m.vy += 12 * dt
         m.x += (m.vx + Math.sin(t * 2.2 + m.seed) * 16) * dt
@@ -448,6 +480,18 @@ export default function StarScene({ days, tags }) {
         const frame = [0, 1, 2, 1][Math.floor((t + m.seed) * m.beat) % 4]
         g.drawImage(bats[frame], m.x - px / 2, m.y - px / 2, px, px)
       }
+      g.globalCompositeOperation = 'lighter'
+      for (const m of list) {
+        if (!m.fly) continue
+        m.vx = m.vx * Math.exp(-dt * 0.6) + Math.sin(t * 1.9 + m.seed) * 60 * dt
+        m.vy = m.vy * Math.exp(-dt * 0.6) + (Math.cos(t * 2.6 + m.seed) * 50 - 8) * dt
+        m.x += m.vx * dt
+        m.y += m.vy * dt
+        const k = m.age / m.life
+        g.globalAlpha = k < 0.1 ? k / 0.1 : k > 0.75 ? (1 - k) / 0.25 : 1
+        drawButterfly(g, m.x, m.y, 18 * m.size, Math.sin((t + m.seed) * m.beat), m.tone, Math.max(-0.5, Math.min(0.5, m.vx / 120)))
+      }
+      g.globalCompositeOperation = 'source-over'
       g.globalAlpha = 1
       dirty = true
     })
@@ -504,6 +548,7 @@ export default function StarScene({ days, tags }) {
   return (
     <>
       {festival === 'christmas-eve' && <Aurora />}
+      {festival === 'easter' && <Dawn />}
       <canvas ref={stillCanvas} className="star-field" aria-hidden="true" />
       <canvas ref={liveCanvas} className="star-field" aria-hidden="true" />
       {festival === 'christmas-eve' && <GuidingStar />}
@@ -512,6 +557,22 @@ export default function StarScene({ days, tags }) {
       {festival === 'christmas-eve' && <Snowfall />}
       {festival === 'halloween' && <HallowPane />}
       {festival === 'halloween' && <HallowNight />}
+      {festival === 'easter' && <Meadow />}
+      {festival === 'easter' && <SpringDay />}
+      {festival === 'easter' && (
+        <EggHunt
+          day={todayISO()}
+          onFound={(x, y, found, of) => {
+            celebrate.current?.(x, y, found === of)
+            if (found === of) {
+              setNotices((was) => [...was, {
+                kind: 'festival', festival: 'easter', id: `eggs-${Date.now()}`,
+                eyebrow: 'Egg hunt', name: `All ${of} eggs found`, line: 'spring thanks you for looking',
+              }].slice(-3))
+            }
+          }}
+        />
+      )}
       <div className="grimoire-frame" aria-hidden="true"><i /><i /><i /><i /></div>
       <canvas ref={moteCanvas} className="star-motes" aria-hidden="true" />
       <div ref={anchor} className="star-cast anchor" aria-hidden="true"><MagicCircle size="100%" festive /></div>
@@ -543,9 +604,9 @@ function StarNotices({ notices, tags }) {
                 <FestiveMark id={n.festival} />
               </span>
               <span className="notice-words">
-                <span className="notice-eyebrow">A festival night</span>
+                <span className="notice-eyebrow">{n.eyebrow ?? words?.eyebrow ?? 'A festival night'}</span>
                 <b className="notice-title">{n.name}</b>
-                <span className="notice-line">{words?.line}</span>
+                <span className="notice-line">{n.line ?? words?.line}</span>
               </span>
             </div>
           )

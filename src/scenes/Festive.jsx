@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { frostFerns, cobweb } from './festivals.js'
+import { useEffect, useId, useRef, useState } from 'react'
+import { frostFerns, cobweb, blossomBranch, meadow } from './festivals.js'
 import { runLoop, stillness } from './loop.js'
 
 // The festival nights of Starlit.
@@ -19,9 +19,18 @@ import { runLoop, stillness } from './loop.js'
 // window with their spider going up and down, bats cross the moon, and
 // will-o'-wisps drift about the page, shying away from the pointer.
 //
+// Easter. The day breaks into blossom: a flowering branch reaching in over
+// its bar, a warm dawn along the foot of it, its date in the colours of
+// sunrise, an egg for its diamond and a rune-painted egg beside it; painting
+// on it casts a blossom sigil that scatters into petals and butterflies. On
+// the day itself the night gives way to dawn, petals drift down, luminous
+// butterflies wander the page, a field of flowers blooms along the foot of
+// the window (the spell for a field of flowers, the gentlest there is), and
+// five eggs are hidden about the grimoire for finding.
+//
 // All of it is drawn once and then only shown, apart from the snow, the
-// wisps and the bats, which run on the shared clock (loop.js) like every
-// other scene.
+// wisps, the bats, the petals and the butterflies, which run on the shared
+// clock (loop.js) like every other scene.
 
 /** A gift, wrapped in midnight blue, tied in crimson, sealed with a star. */
 export function Gift({ glint = false }) {
@@ -67,8 +76,41 @@ export function Lantern({ lit = false }) {
   )
 }
 
-/** Christmas Eve's gift, or Halloween's lantern: what sits by the date. */
+// An egg's outline, for the painted eggs.
+const EGG = 'M13 2.6C8.9 2.6 5.6 9.6 5.6 14.9c0 4.8 3.3 8.3 7.4 8.3s7.4-3.5 7.4-8.3C20.4 9.6 17.1 2.6 13 2.6Z'
+
+/**
+ * An egg painted the old way: two bands, a zigzag between them, dots at
+ * either end, a fine gold rim. `tone` picks one of five sets of colours
+ * (themes.css); a wobbling egg rocks now and then, as if about to hatch.
+ */
+export function Egg({ tone = 0, wobble = false, className = '' }) {
+  const clip = `egg${useId().replace(/:/g, '')}`
+  return (
+    <span className={`egg tone-${tone}${wobble ? ' wobble' : ''} ${className}`} aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <defs><clipPath id={clip}><path d={EGG} /></clipPath></defs>
+        <path className="egg-shell" d={EGG} />
+        <g clipPath={`url(#${clip})`}>
+          <rect className="egg-band" x="0" y="9.2" width="26" height="2.6" />
+          <path className="egg-zig" d="M3.6 15.4l2.1-2 2.1 2 2.1-2 2.1 2 2.1-2 2.1 2 2.1-2 2.1 2 2.1-2" />
+          <rect className="egg-band" x="0" y="17.8" width="26" height="2.2" />
+          <circle className="egg-dot" cx="10.2" cy="6.6" r="0.85" />
+          <circle className="egg-dot" cx="15.8" cy="6.6" r="0.85" />
+          <circle className="egg-dot" cx="13" cy="4.8" r="0.75" />
+          <circle className="egg-dot" cx="9.4" cy="21.9" r="0.75" />
+          <circle className="egg-dot" cx="13" cy="22.5" r="0.75" />
+          <circle className="egg-dot" cx="16.6" cy="21.9" r="0.75" />
+        </g>
+        <path className="egg-rim" d={EGG} />
+      </svg>
+    </span>
+  )
+}
+
+/** Christmas Eve's gift, Halloween's lantern, or Easter's egg: what sits by the date. */
 export function FestiveMark({ id, lit = false }) {
+  if (id === 'easter') return <Egg wobble={lit} />
   if (id === 'halloween') return <Lantern lit={lit} />
   if (id === 'christmas-eve') return <Gift glint={lit} />
   return null
@@ -78,6 +120,7 @@ export function FestiveMark({ id, lit = false }) {
 export const FESTIVE_LINES = {
   'christmas-eve': { line: 'snow falls over the grimoire', spell: '#cfeaff' },
   halloween: { line: 'the veil is thin tonight', spell: '#ffb866' },
+  easter: { line: 'five eggs are hidden about the grimoire', spell: '#ffc4dc', eyebrow: 'A festival morning' },
 }
 
 /** A small spider, let down on its thread. */
@@ -274,9 +317,86 @@ export function makeWebs() {
   return websMade
 }
 
+// --- blossom ------------------------------------------------------------------
+// The four tints of blossom, and of the flowers in the field.
+const BLOOM_TONES = ['255, 196, 220', '250, 246, 255', '255, 214, 232', '232, 206, 255']
+const FLOWER_TONES = ['150, 205, 255', '242, 246, 255', '255, 188, 214', '255, 226, 140']
+
+/** Five round petals about a golden heart, with a soft light round them. */
+function drawBloom(g, x, y, r, rgb, turn, glow = 0.3) {
+  const halo = g.createRadialGradient(x, y, 0, x, y, r * 2.6)
+  halo.addColorStop(0, `rgba(${rgb}, ${glow})`)
+  halo.addColorStop(1, `rgba(${rgb}, 0)`)
+  g.fillStyle = halo
+  g.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2)
+  g.fillStyle = `rgba(${rgb}, 0.95)`
+  for (let i = 0; i < 5; i++) {
+    const a = turn + (i * Math.PI * 2) / 5
+    g.beginPath()
+    g.ellipse(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.55, r * 0.4, a, 0, Math.PI * 2)
+    g.fill()
+  }
+  g.fillStyle = 'rgba(255, 222, 130, 1)'
+  g.beginPath()
+  g.arc(x, y, r * 0.26, 0, Math.PI * 2)
+  g.fill()
+}
+
+// The flowering branch, grown once and shared as a picture like the frost
+// and the webs, for the top corners of a bar.
+let bloomsMade = null
+export function makeBlooms() {
+  if (bloomsMade) return bloomsMade
+  bloomsMade = new Promise((resolve) => {
+    const w = 360
+    const h = 120
+    const scale = 2
+    const c = document.createElement('canvas')
+    c.width = w * scale
+    c.height = h * scale
+    const g = c.getContext('2d')
+    g.scale(scale, scale)
+    const { wood, blossoms, leaves } = blossomBranch(w, h)
+    g.lineCap = 'round'
+    for (const l of wood) {
+      g.strokeStyle = '#3a2a2a'
+      g.lineWidth = l.width + 0.8
+      g.beginPath(); g.moveTo(l.x0, l.y0); g.lineTo(l.x1, l.y1); g.stroke()
+      g.strokeStyle = 'rgba(140, 104, 96, 0.9)'
+      g.lineWidth = Math.max(0.5, l.width * 0.45)
+      g.beginPath(); g.moveTo(l.x0, l.y0 - l.width * 0.2); g.lineTo(l.x1, l.y1 - l.width * 0.2); g.stroke()
+    }
+    for (const f of leaves) {
+      g.save()
+      g.translate(f.x, f.y)
+      g.rotate(f.angle)
+      g.fillStyle = 'rgba(120, 196, 140, 0.85)'
+      g.beginPath()
+      g.ellipse(f.length / 2, 0, f.length / 2, f.length / 5, 0, 0, Math.PI * 2)
+      g.fill()
+      g.restore()
+    }
+    for (const b of blossoms) drawBloom(g, b.x, b.y, b.r, BLOOM_TONES[b.tone], b.turn, 0.2)
+    // Fading out along the bar and down it, so the branch has no edge of
+    // its own.
+    g.globalCompositeOperation = 'destination-in'
+    for (const fade of [g.createLinearGradient(w * 0.6, 0, w, 0), g.createLinearGradient(0, h * 0.6, 0, h)]) {
+      fade.addColorStop(0, 'rgba(0, 0, 0, 1)')
+      fade.addColorStop(1, 'rgba(0, 0, 0, 0)')
+      g.fillStyle = fade
+      g.fillRect(0, 0, w, h)
+    }
+    c.toBlob((blob) => {
+      if (blob) document.documentElement.style.setProperty('--bloom-rim', `url(${URL.createObjectURL(blob)})`)
+      resolve()
+    })
+  })
+  return bloomsMade
+}
+
 /** Every festival's pictures, made once, whichever festival is in view. */
 export function makePictures() {
-  return Promise.all([makeFrost(), makeWebs()])
+  return Promise.all([makeFrost(), makeWebs(), makeBlooms()])
 }
 
 /**
@@ -734,4 +854,270 @@ export function HallowNight() {
     }
   }, [])
   return <canvas ref={ref} className="hallow-night" aria-hidden="true" />
+}
+
+// --- Easter: dawn, petals, butterflies, the flower field and the egg hunt ----------
+/** The light of dawn coming up from below the page, rays and all. */
+export function Dawn() {
+  return <div className="dawn" aria-hidden="true" />
+}
+
+/** A field of flowers along the foot of the window, blooming in as it opens. */
+export function Meadow() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    const paint = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const w = window.innerWidth
+      const h = 96
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      const g = el.getContext('2d')
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      g.clearRect(0, 0, w, h)
+      const { blades, flowers } = meadow(w, h)
+      const grass = g.createLinearGradient(0, h, 0, h * 0.3)
+      grass.addColorStop(0, '#0b1714')
+      grass.addColorStop(0.55, '#1d4636')
+      grass.addColorStop(1, 'rgba(126, 200, 160, 0.9)')
+      g.fillStyle = grass
+      for (const b of blades) {
+        g.beginPath()
+        g.moveTo(b.x - b.width / 2, h)
+        g.quadraticCurveTo(b.x + b.lean * 0.3, h - b.height * 0.6, b.x + b.lean, h - b.height)
+        g.quadraticCurveTo(b.x + b.lean * 0.3 + b.width * 0.3, h - b.height * 0.6, b.x + b.width / 2, h)
+        g.fill()
+      }
+      g.lineCap = 'round'
+      for (const f of flowers) {
+        g.strokeStyle = 'rgba(96, 164, 124, 0.8)'
+        g.lineWidth = 0.9
+        g.beginPath()
+        g.moveTo(f.x, h)
+        g.quadraticCurveTo(f.x + f.lean * 0.2, h - f.height * 0.5, f.x + f.lean, h - f.height)
+        g.stroke()
+        drawBloom(g, f.x + f.lean, h - f.height, f.r, FLOWER_TONES[f.kind], f.turn, 0.4)
+      }
+    }
+    paint()
+    window.addEventListener('resize', paint)
+    return () => window.removeEventListener('resize', paint)
+  }, [])
+  return <canvas ref={ref} className="meadow" aria-hidden="true" />
+}
+
+/** A blossom petal, drawn once and stamped, turning, from then on. */
+export function petalSprite(rgb = BLOOM_TONES[0]) {
+  const c = document.createElement('canvas')
+  c.width = 24
+  c.height = 24
+  const g = c.getContext('2d')
+  const fill = g.createLinearGradient(12, 2, 12, 22)
+  fill.addColorStop(0, 'rgba(255, 250, 252, 0.95)')
+  fill.addColorStop(1, `rgba(${rgb}, 0.95)`)
+  g.fillStyle = fill
+  g.beginPath()
+  g.moveTo(12, 22)
+  g.bezierCurveTo(3, 15, 5, 4, 10, 2.5)
+  g.quadraticCurveTo(12, 4.5, 14, 2.5)
+  g.bezierCurveTo(19, 4, 21, 15, 12, 22)
+  g.fill()
+  return c
+}
+
+/**
+ * A butterfly of light, its wings opening and closing (`flap`, -1 to 1),
+ * drawn straight onto the canvas: there are only ever a few of them.
+ */
+export function drawButterfly(g, x, y, size, flap, rgb, heading = 0) {
+  const k = size / 20
+  const open = 0.18 + 0.82 * Math.abs(flap)
+  g.save()
+  g.translate(x, y)
+  g.rotate(heading)
+  g.scale(k, k)
+  for (const side of [-1, 1]) {
+    g.save()
+    g.scale(side * open, 1)
+    const fill = g.createRadialGradient(1, 0, 0, 5, 0, 9)
+    fill.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
+    fill.addColorStop(0.35, `rgba(${rgb}, 0.85)`)
+    fill.addColorStop(1, `rgba(${rgb}, 0.15)`)
+    g.fillStyle = fill
+    g.beginPath()
+    g.ellipse(6, -3.4, 6.2, 5, -0.5, 0, Math.PI * 2)
+    g.fill()
+    g.beginPath()
+    g.ellipse(4.6, 4, 4.2, 3.6, 0.55, 0, Math.PI * 2)
+    g.fill()
+    g.restore()
+  }
+  g.fillStyle = 'rgba(255, 250, 240, 0.9)'
+  g.beginPath()
+  g.ellipse(0, 0.6, 0.9, 5, 0, 0, Math.PI * 2)
+  g.fill()
+  g.restore()
+}
+
+export const BUTTERFLY_TONES = ['255, 190, 222', '180, 212, 255', '200, 255, 214', '255, 232, 160', '224, 196, 255']
+
+/**
+ * Easter's sky: petals drifting down across the page, turning over as they
+ * fall, and a few butterflies of light wandering about it.
+ */
+export function SpringDay() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    const sprites = BLOOM_TONES.map(petalSprite)
+    let w = 0
+    let h = 0
+    let petals = []
+    let flies = []
+    const make = (anywhere) => ({
+      x: Math.random() * (w + 200),
+      y: anywhere ? Math.random() * h : -20,
+      size: 7 + Math.random() * 7,
+      fall: 22 + Math.random() * 26,
+      drift: -(14 + Math.random() * 20),
+      sway: 12 + Math.random() * 18,
+      turn: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 2.4,
+      flip: Math.random() * Math.PI * 2,
+      flipRate: 1.5 + Math.random() * 2.5,
+      phase: Math.random() * 10,
+      sprite: sprites[Math.floor(Math.random() * sprites.length)],
+      alpha: 0.55 + Math.random() * 0.4,
+    })
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      petals = Array.from({ length: Math.round((w * h) / 70000) }, () => make(true))
+      if (flies.length === 0) {
+        flies = Array.from({ length: 4 }, (_, i) => ({
+          x: w * (0.15 + Math.random() * 0.7),
+          y: h * (0.25 + Math.random() * 0.6),
+          vx: 0,
+          vy: 0,
+          a: Math.random() * 100,
+          b: Math.random() * 100,
+          beat: 7 + Math.random() * 4,
+          size: 16 + Math.random() * 8,
+          tone: BUTTERFLY_TONES[i % BUTTERFLY_TONES.length],
+        }))
+      }
+    }
+    size()
+    window.addEventListener('resize', size)
+
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      g.clearRect(0, 0, w, h)
+      for (const p of petals) {
+        p.y += p.fall * dt
+        p.x += (p.drift + Math.sin(t * 0.9 + p.phase) * p.sway) * dt
+        p.turn += p.spin * dt
+        p.flip += p.flipRate * dt
+        if (p.y > h + 20 || p.x < -30) Object.assign(p, make(false))
+        g.save()
+        g.globalAlpha = p.alpha
+        g.translate(p.x, p.y)
+        g.rotate(p.turn)
+        g.scale(Math.cos(p.flip), 1)
+        g.drawImage(p.sprite, -p.size / 2, -p.size / 2, p.size, p.size)
+        g.restore()
+      }
+      g.globalAlpha = 1
+      g.globalCompositeOperation = 'lighter'
+      for (const f of flies) {
+        // Wandering, with the fits and starts a butterfly flies in.
+        const ax = Math.sin(t * 0.43 + f.a) * 40 + Math.sin(t * 1.7 + f.b) * 30
+        let ay = Math.cos(t * 0.37 + f.b) * 30 + Math.sin(t * 2.3 + f.a) * 26
+        let bx = 0
+        if (f.x < 60) bx = 60
+        if (f.x > w - 60) bx = -60
+        if (f.y < 90) ay += 60
+        if (f.y > h - 70) ay -= 60
+        f.vx = (f.vx + (ax + bx) * dt) * Math.exp(-dt * 0.8)
+        f.vy = (f.vy + ay * dt) * Math.exp(-dt * 0.8)
+        f.x += f.vx * dt
+        f.y += f.vy * dt
+        drawButterfly(g, f.x, f.y, f.size, Math.sin((t + f.a) * f.beat), f.tone, Math.max(-0.5, Math.min(0.5, f.vx / 120)))
+      }
+      g.globalCompositeOperation = 'source-over'
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
+  }, [])
+  return <canvas ref={ref} className="spring-day" aria-hidden="true" />
+}
+
+export const EGGS = 5
+
+/**
+ * Five eggs hidden about the page: leaning on the moon, in the open sky of
+ * the header either side of it, tucked against the left edge of the page,
+ * and down in the flower field. Each one found is gone, and remembered for
+ * the day; `onFound(x, y, found, of)` is told where, and how many so far.
+ */
+export function EggHunt({ day, onFound }) {
+  const key = `daily-documenter:eggs:${day}`
+  const [found, setFound] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
+  })
+  const [spots, setSpots] = useState([])
+  useEffect(() => {
+    const place = () => {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      const left = document.querySelector('.viewswitch')?.getBoundingClientRect()
+      const right = document.querySelector('.nav.today')?.getBoundingClientRect()
+      const moon = document.querySelector('.seal-moon')?.getBoundingClientRect()
+      const from = left?.right ?? w * 0.3
+      const to = right?.left ?? w * 0.8
+      const mid = left ? left.top + left.height / 2 : 50
+      setSpots([
+        moon ? { x: moon.right - 8, y: moon.bottom - 14, turn: 22 } : { x: w * 0.6, y: 60, turn: 22 },
+        { x: from + (to - from) * 0.16, y: mid + 4, turn: -14 },
+        { x: from + (to - from) * 0.86, y: mid - 18, turn: 9 },
+        { x: 2, y: h * 0.57, turn: -26 },
+        { x: w * 0.71, y: h - 28, turn: 6 },
+      ])
+    }
+    place()
+    const settle = () => requestAnimationFrame(() => requestAnimationFrame(place))
+    const later = setTimeout(place, 800)
+    window.addEventListener('resize', settle)
+    return () => { clearTimeout(later); window.removeEventListener('resize', settle) }
+  }, [])
+  const find = (i, e) => {
+    if (found.includes(i)) return
+    const next = [...found, i]
+    setFound(next)
+    try { localStorage.setItem(key, JSON.stringify(next)) } catch { /* only remembered until closed */ }
+    const r = e.currentTarget.getBoundingClientRect()
+    onFound?.(r.left + r.width / 2, r.top + r.height / 2, next.length, EGGS)
+  }
+  return (
+    <div className="egg-hunt">
+      {spots.map((s, i) => (found.includes(i) ? null : (
+        <button
+          key={i}
+          type="button"
+          className="hidden-egg"
+          aria-label="A hidden egg"
+          style={{ left: `${s.x}px`, top: `${s.y}px`, transform: `rotate(${s.turn}deg)` }}
+          onClick={(e) => find(i, e)}
+        >
+          <Egg tone={i} />
+        </button>
+      )))}
+    </div>
+  )
 }

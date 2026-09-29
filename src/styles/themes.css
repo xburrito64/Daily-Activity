@@ -2651,7 +2651,7 @@
 }
 .star-notice[data-festival="christmas-eve"] { border-color: rgba(205, 232, 255, 0.55); }
 .star-notice[data-festival="christmas-eve"] .notice-eyebrow { color: #cfe6fb; }
-.star-notice.festival :is(.gift, .lantern) { width: 30px; height: 30px; margin: 0; }
+.star-notice.festival :is(.gift, .lantern, .egg) { width: 30px; height: 30px; margin: 0; }
 
 /* --- Halloween ---------------------------------------------------------------
    All Hallows' Eve: the day strung with cobwebs and lit by a carved lantern;
@@ -2886,11 +2886,197 @@
 .star-notice[data-festival="halloween"] { border-color: rgba(255, 170, 90, 0.55); }
 .star-notice[data-festival="halloween"] .notice-eyebrow { color: #ffc27a; }
 
+/* --- Easter ------------------------------------------------------------------
+   The day breaks into blossom; on the day itself the night gives way to
+   dawn, petals drift down, butterflies of light wander the page, a field of
+   flowers blooms along the foot of the window, and five eggs are hidden
+   about it for finding (scenes/Festive.jsx). */
+
+/* Its diamond is an egg, in the colours of the morning. */
+[data-theme="starlit"] .daysection[data-festival="easter"] .dayhead::before {
+  width: 12px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(160deg, #ffe0ea, #d2beff 55%, #a9d8ff);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='4 1 16 22'><path d='M12 2C8 2 4.6 8.6 4.6 13.8 4.6 18.6 7.9 22 12 22s7.4-3.4 7.4-8.2C19.4 8.6 16 2 12 2Z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='4 1 16 22'><path d='M12 2C8 2 4.6 8.6 4.6 13.8 4.6 18.6 7.9 22 12 22s7.4-3.4 7.4-8.2C19.4 8.6 16 2 12 2Z'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="easter"] .dayhead::before {
+  background: linear-gradient(160deg, #ffffff, #ffd3e2 50%, #bfe2ff);
+}
+
+/* The date in the colours of sunrise. */
+[data-festival="easter"] .festdate {
+  background: linear-gradient(180deg, #fff6dc 0%, #ffdcae 40%, #ffb6cb 76%, #e79bbd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 180, 200, 0.35));
+}
+[data-festival="easter"] .festname {
+  color: #ffcadd;
+  text-shadow: 0 0 10px rgba(255, 170, 200, 0.5);
+}
+.compactrow[data-festival="easter"] .gdate {
+  color: #ffcadd;
+  text-shadow: 0 0 8px rgba(255, 170, 200, 0.6);
+}
+
+/* The painted eggs: five sets of colours, a gold rim. On the day itself the
+   one by the date rocks now and then, as if something inside were stirring. */
+.egg {
+  --shell: #b7a3ec;
+  --band: #f4a9c0;
+  --zig: #f3d28a;
+  --dot: #fff6e0;
+  position: relative;
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  margin: -7px 0 -4px;
+  filter: drop-shadow(0 0 5px rgba(255, 200, 225, 0.4));
+}
+.egg.tone-1 { --shell: #9fdcc0; --band: #a9d2ff; --zig: #fff1c4; }
+.egg.tone-2 { --shell: #f3b0c8; --band: #f6d98e; --zig: #ffffff; }
+.egg.tone-3 { --shell: #a8c8f4; --band: #d4b8ff; --zig: #ffe7a0; }
+.egg.tone-4 { --shell: #f4dc98; --band: #9fdcc0; --zig: #f09cb8; }
+.egg svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.egg-shell { fill: var(--shell); }
+.egg-band { fill: var(--band); }
+.egg-zig { fill: none; stroke: var(--zig); stroke-width: 1.1; stroke-linejoin: round; }
+.egg-dot { fill: var(--dot); }
+.egg-rim { fill: none; stroke: #e0bf78; stroke-width: 0.7; }
+.egg.wobble {
+  transform-origin: 50% 88%;
+  animation: egg-wobble 4.4s steps(132) infinite;
+}
+@keyframes egg-wobble {
+  0%, 70%, 100% { transform: none; }
+  74% { transform: rotate(-10deg); }
+  78% { transform: rotate(8deg); }
+  82% { transform: rotate(-6deg); }
+  86% { transform: rotate(3deg); }
+  90% { transform: none; }
+}
+
+/* A flowering branch over the top corners of its bar, and dawn warming the
+   foot of it. */
+[data-theme="starlit"] [data-festival="easter"] .track {
+  border-color: rgba(255, 205, 225, 0.4);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 0 0 3px rgba(255, 205, 225, 0.07),
+    inset 0 -26px 28px -18px rgba(255, 190, 150, 0.32),
+    0 0 20px -6px rgba(255, 170, 205, 0.3);
+}
+[data-theme="starlit"] [data-festival="easter"] .track::before,
+[data-theme="starlit"] [data-festival="easter"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--bloom-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="easter"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="easter"] .track::after { right: 0; transform: scaleX(-1); }
+
+/* A spell cast on it is a blossom sigil. */
+.mc-bloom { display: none; animation: mc-spin 22s linear infinite; }
+.star-cast[data-festival="easter"] .mc-mid,
+.star-cast[data-festival="easter"] .mc-inner :is(polygon, circle:not(.mc-heart)) { display: none; }
+.star-cast[data-festival="easter"] .mc-bloom { display: block; }
+
+/* --- the day itself --- */
+[data-theme="starlit"][data-festival="easter"] .app > .sky {
+  background:
+    radial-gradient(1500px 520px at 50% 118%, rgba(255, 196, 150, 0.3), rgba(255, 150, 180, 0.12) 45%, transparent 75%),
+    radial-gradient(1200px 600px at 62% -8%, rgba(120, 110, 190, 0.2), transparent 70%),
+    linear-gradient(180deg, #0e1020 0%, #15142a 45%, #241a30 80%, #32222e 100%);
+}
+/* The stars going out as it gets light, and the moon paling. */
+[data-festival="easter"] .app > .star-field { opacity: 0.55; }
+[data-festival="easter"] .seal-moon { filter: drop-shadow(0 0 26px rgba(255, 205, 225, 0.55)); }
+/* Rays of the sun, not yet up, fanning from below the page. */
+.app > .dawn {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  height: 75vh;
+  pointer-events: none;
+  background: repeating-conic-gradient(from -90deg at 50% 118%, rgba(255, 226, 190, 0.07) 0deg 2.5deg, transparent 2.5deg 9deg);
+  -webkit-mask: radial-gradient(120% 100% at 50% 118%, #000 25%, transparent 75%);
+  mask: radial-gradient(120% 100% at 50% 118%, #000 25%, transparent 75%);
+  will-change: opacity;
+  animation: dawn-breathe 12s steps(180) infinite alternate;
+}
+@keyframes dawn-breathe {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+/* The field of flowers, growing in as the page opens. It holds still after:
+   swaying it had the page redraw the days under it, a fifth of a processor. */
+.app > .meadow {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 22;
+  width: 100%;
+  height: 96px;
+  pointer-events: none;
+  opacity: 0.92;
+  transform-origin: 50% 100%;
+  animation: meadow-grow 2.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes meadow-grow { from { transform: scaleY(0); opacity: 0; } }
+.app > .spring-day {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+/* The hidden eggs: above everything, but only the eggs themselves catch the
+   pointer. */
+.app > .egg-hunt {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+.hidden-egg {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hidden-egg .egg { width: 18px; height: 18px; margin: 0; transition: transform 0.15s ease-out; }
+.hidden-egg:hover .egg,
+.hidden-egg:focus-visible .egg { transform: scale(1.3); filter: drop-shadow(0 0 7px rgba(255, 220, 240, 0.9)); }
+.hidden-egg:focus-visible { outline: 1px solid rgba(255, 220, 240, 0.8); outline-offset: 2px; }
+.star-notice[data-festival="easter"] { border-color: rgba(255, 205, 225, 0.55); }
+.star-notice[data-festival="easter"] .notice-eyebrow { color: #ffcadd; }
+
 @media (prefers-reduced-motion: reduce) {
   .aurora, .guiding-star, .frost-pane, .mc-flake,
   .gift.glint::after,
   .lantern.lit::after, .daysection.today .bar-spider,
-  .hallow-mist, .hallow-mist i, .web-pane, .app > .web-spider { animation: none; }
+  .hallow-mist, .hallow-mist i, .web-pane, .app > .web-spider,
+  .app > .dawn, .app > .meadow, .egg.wobble, .mc-bloom { animation: none; }
   .seal-outer, .seal-middle, .seal-inner,
   .mc-outer, .mc-mid, .mc-inner,
   .star-beam span,

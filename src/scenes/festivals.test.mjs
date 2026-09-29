@@ -1,7 +1,7 @@
 // Festivals: which days are more than a date, and the frost on Christmas Eve.
 
 import assert from 'node:assert/strict'
-import { festivalOf, frostFerns, cobweb } from './festivals.js'
+import { festivalOf, frostFerns, cobweb, easterSunday, blossomBranch, meadow } from './festivals.js'
 
 let passed = 0
 let failed = 0
@@ -79,6 +79,35 @@ t('a cobweb is the same web every time, spun inside its corner', () => {
   for (const s of a.silk) {
     // Each strand sags toward the corner, never away from it.
     assert.ok(Math.hypot(s.cx, s.cy) < Math.hypot((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2))
+  }
+})
+
+t('Easter Sunday moves with the moon, and lands where the calendars say', () => {
+  const known = {
+    2019: '04-21', 2024: '03-31', 2025: '04-20', 2026: '04-05', 2027: '03-28',
+    2028: '04-16', 2030: '04-21', 2038: '04-25', 2285: '03-22',
+  }
+  for (const [year, day] of Object.entries(known)) {
+    const { month, day: d } = easterSunday(Number(year))
+    assert.equal(`${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`, day, year)
+    assert.equal(festivalOf(`${year}-${day}`)?.id, 'easter', year)
+  }
+  // The day before and after it are ordinary, and so is last year's date.
+  assert.equal(festivalOf('2027-03-27'), null)
+  assert.equal(festivalOf('2027-03-29'), null)
+  assert.equal(festivalOf('2027-04-05'), null)
+})
+
+t('the blossom branch and the flower field stay on their panes', () => {
+  const b = blossomBranch(360, 120)
+  assert.deepEqual(b, blossomBranch(360, 120))
+  assert.ok(b.wood.length > 10 && b.blossoms.length > 5)
+  for (const f of b.blossoms) assert.ok(f.tone >= 0 && f.tone < 4)
+  const m = meadow(1200, 96)
+  assert.ok(m.blades.length > 200 && m.flowers.length > 20)
+  for (const f of m.flowers) {
+    assert.ok(f.height > 0 && f.height < 96, 'no flower taller than the field')
+    assert.ok(f.kind >= 0 && f.kind < 4)
   }
 })
 

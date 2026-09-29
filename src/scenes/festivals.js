@@ -1,21 +1,51 @@
 // The days of the year that are more than a date: which they are, the frost
-// that grows over Christmas Eve and the cobwebs strung across Halloween.
+// that grows over Christmas Eve, the cobwebs strung across Halloween, and
+// the blossom and the flower field of Easter.
 //
 // Only in Starlit, so far. Each festival is a date and a name; how it looks
 // belongs to the theme (themes.css, Festive.jsx).
 
+/**
+ * Easter Sunday in a given year, by the Gregorian computus: the first Sunday
+ * after the first full moon on or after the spring equinox, as the church
+ * reckons them. Returns { month, day }.
+ */
+export function easterSunday(year) {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const n = h + l - 7 * m + 114
+  return { month: Math.floor(n / 31), day: (n % 31) + 1 }
+}
+
+// A festival on the same date every year has a month and a day; one that
+// moves has `on`, which finds its date in a given year.
 export const FESTIVALS = [
+  { id: 'easter', name: 'Easter', on: easterSunday },
   { id: 'halloween', name: 'Halloween', month: 10, day: 31 },
   { id: 'christmas-eve', name: 'Christmas Eve', month: 12, day: 24 },
 ]
 
 /** The festival falling on this date (YYYY-MM-DD), or null. */
 export function festivalOf(date) {
-  const m = String(date ?? '').match(/^\d{4}-(\d{2})-(\d{2})$/)
+  const m = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!m) return null
-  const month = Number(m[1])
-  const day = Number(m[2])
-  return FESTIVALS.find((f) => f.month === month && f.day === day) ?? null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  return FESTIVALS.find((f) => {
+    const at = f.on ? f.on(year) : f
+    return at.month === month && at.day === day
+  }) ?? null
 }
 
 /** The same small generator the star field uses: one seed, one picture. */
@@ -178,4 +208,75 @@ export function cobweb(w, h, seed = 31, { spokes = 8, rings = 10, reach = 0.92 }
     }
   }
   return { lines, silk, dew }
+}
+
+/**
+ * A branch in blossom reaching in over the top-left corner of a `w` by `h`
+ * pane: a crooked bough out along the top edge, twigs off it bending down,
+ * and blossom gathered at their tips, five petals each, with a few leaves.
+ *
+ * Returns the wood as tapering segments, the blossoms (where, how big, which
+ * of four tints, turned how far) and the leaves. Always the same branch for
+ * the same seed.
+ */
+export function blossomBranch(w, h, seed = 12) {
+  const rand = seeded(seed)
+  const wood = []
+  const blossoms = []
+  const leaves = []
+  const grow = (x, y, angle, length, width, depth) => {
+    const steps = Math.max(3, Math.floor(length / 7))
+    let a = angle
+    for (let i = 0; i < steps; i++) {
+      a += (rand() - 0.5) * 0.35
+      const nx = x + Math.cos(a) * (length / steps)
+      const ny = y + Math.sin(a) * (length / steps)
+      const along = i / steps
+      wood.push({ x0: x, y0: y, x1: nx, y1: ny, width: width * (1 - along * 0.6) })
+      if (depth > 0 && i > 0 && rand() < 0.32) {
+        const turn = rand() < 0.7 ? 1 : -1 // twigs mostly hang down
+        grow(nx, ny, a + turn * (0.5 + rand() * 0.6), length * (0.3 + rand() * 0.25), width * 0.55, depth - 1)
+      }
+      if (depth < 2 && rand() < 0.16) {
+        blossoms.push({ x: nx + (rand() - 0.5) * 6, y: ny + (rand() - 0.5) * 6, r: 2.4 + rand() * 2.2, tone: Math.floor(rand() * 4), turn: rand() * Math.PI })
+      }
+      if (rand() < 0.22) leaves.push({ x: nx, y: ny, angle: a + (rand() < 0.5 ? 1 : -1) * (0.7 + rand() * 0.5), length: 5 + rand() * 5 })
+      x = nx
+      y = ny
+    }
+    // A little cluster at the tip.
+    for (let i = 0; i < 2 + Math.floor(rand() * 2); i++) {
+      blossoms.push({ x: x + (rand() - 0.5) * 9, y: y + (rand() - 0.5) * 7, r: 2.8 + rand() * 2.4, tone: Math.floor(rand() * 4), turn: rand() * Math.PI })
+    }
+  }
+  grow(-4, h * 0.08, 0.12, w * 0.8, 3.2, 2)
+  grow(-4, h * 0.3, 0.45, w * 0.35, 2.2, 1)
+  return { wood, blossoms, leaves }
+}
+
+/**
+ * A field of flowers along the foot of a `w` wide pane, `h` tall: grass
+ * blades leaning this way and that, and flowers standing among them, each
+ * of four kinds, the taller ones fewer. Positions are measured up from the
+ * bottom. Always the same field for the same seed and width.
+ */
+export function meadow(w, h, seed = 5) {
+  const rand = seeded(seed)
+  const blades = []
+  const flowers = []
+  for (let x = 0; x < w; x += 2.2 + rand() * 2.6) {
+    blades.push({ x, height: h * (0.18 + rand() ** 1.6 * 0.5), lean: (rand() - 0.5) * 14, width: 1.2 + rand() * 1.6 })
+  }
+  for (let x = 6; x < w; x += 12 + rand() * 30) {
+    const tall = rand()
+    flowers.push({
+      x: x + (rand() - 0.5) * 8,
+      height: h * (0.22 + tall ** 1.8 * 0.6),
+      lean: (rand() - 0.5) * 10,
+      r: 2.6 + rand() * 2.8,
+      kind: Math.floor(rand() * 4),
+      turn: rand() * Math.PI,
+    })
+  }
+  return { blades, flowers }
 }
