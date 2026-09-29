@@ -1588,3 +1588,256 @@ h1 {
   .block { animation: none; }
   .chip.armed { animation: none; box-shadow: var(--glow-armed); }
 }
+
+/* ============ Settings ============ */
+/* A gear beside the status, the same size and weight as the controls it sits
+   with. Gold while the panel is open, so it reads as the thing to press to
+   put it away again. */
+.gear {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.gear svg { width: 18px; height: 18px; display: block; }
+.gear:hover { color: var(--c-text); border-color: var(--c-text-dim); }
+.gear.on { color: var(--c-accent); border-color: var(--c-line-strong); }
+.gear:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; }
+
+/* Down the right of the window, over the days rather than pushing them
+   aside: moving the bars every time the panel opened would make "how wide is
+   the bar" impossible to judge from inside it. */
+.app > .settings {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: min(400px, 92vw);
+  overflow-y: auto;
+  padding: var(--s-7) var(--s-7) var(--s-9);
+  background: var(--c-surface);
+  border-left: 1px solid var(--c-line);
+  box-shadow: -18px 0 44px rgba(0, 0, 0, 0.5);
+}
+.settingshead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--s-5);
+  margin-bottom: var(--s-6);
+  border-bottom: 1px solid var(--c-line-strong);
+}
+.settingshead h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--f-xl);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--ls-display);
+  color: var(--c-text-bright);
+}
+.settingsclose {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-dim);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.settingsclose svg { width: 14px; height: 14px; }
+.settingsclose:hover { color: var(--c-text); border-color: var(--c-line); }
+
+.settingsgroup { display: grid; gap: var(--s-4); margin-bottom: var(--s-8); }
+.settingsgroup h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--f-sm);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+.settingsnote {
+  margin: 0;
+  font-family: var(--font-meta);
+  font-style: italic;
+  font-size: var(--f-base);
+  line-height: 1.35;
+  color: var(--c-text-dim);
+}
+
+.widthrow { display: flex; align-items: center; gap: var(--s-5); }
+.widthrow input { flex: 1; accent-color: var(--c-accent); }
+.widthvalue {
+  min-width: 7ch;
+  text-align: right;
+  font-size: var(--f-md);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text);
+}
+.settingsreset {
+  justify-self: start;
+  padding: 0;
+  font: inherit;
+  font-size: var(--f-sm);
+  color: var(--c-text-dim);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.settingsreset:hover { color: var(--c-text); }
+
+/* One card per choice. The chosen one wears the gold the view switch does. */
+.choicelist { display: grid; gap: var(--s-4); }
+.choice {
+  display: grid;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-5) var(--s-5) var(--s-5) var(--s-6);
+  font: inherit;
+  text-align: left;
+  color: var(--c-text);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+.choice:hover { border-color: var(--c-text-faint); }
+.choice:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; }
+.choice.on { border-color: var(--c-accent); box-shadow: inset 0 0 0 1px var(--c-accent); }
+.choicename {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: var(--f-base);
+  font-weight: var(--w-medium);
+  color: var(--c-text-bright);
+}
+.choicecount {
+  font-size: var(--f-sm);
+  font-weight: var(--w-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-faint);
+}
+.choicenote { font-size: var(--f-sm); line-height: 1.35; color: var(--c-text-dim); }
+.setpreview { display: flex; gap: var(--s-4); min-height: 30px; align-items: center; }
+.setpreview img { width: 30px; height: 30px; object-fit: contain; }
+.chipsample { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-2); }
+.chipsample .chip { cursor: inherit; }
+
+/* ============ Tag box looks ============ */
+/* Each look is chosen per chip with data-look, not per page, so the settings
+   can show all of them side by side. "classic" has no rules of its own: it
+   is .chip as it has always been. Every look spells out its own hover and
+   armed states, because the shared ones are written for a filled box and
+   would paint one over any look that has none. */
+
+/* Stub: clipped corner, hairline ring, colour on the footing. */
+.chip[data-look="stub"] {
+  position: relative;
+  background: color-mix(in oklab, var(--chip) 16%, var(--c-surface));
+  border: 1px solid color-mix(in oklab, var(--chip) 45%, var(--c-line));
+  border-bottom: 2px solid var(--chip);
+  border-radius: var(--r-sm);
+}
+/* The clipped corner, drawn rather than cut: a cut would take the armed glow
+   off with it. A small triangle the colour of the page, with the ring carried
+   across its long side. Both places a chip sits, the day list and the cards
+   in the settings, are the page colour underneath. */
+.chip[data-look="stub"]::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(
+    225deg,
+    var(--c-bg) 0 calc(50% - 0.5px),
+    color-mix(in oklab, var(--chip) 45%, var(--c-line)) calc(50% - 0.5px) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+  pointer-events: none;
+}
+.chip[data-look="stub"]:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--chip) 28%, var(--c-surface));
+}
+.chip[data-look="stub"].armed {
+  background: color-mix(in oklab, var(--chip) 38%, var(--c-surface));
+  color: #fff;
+  border-color: rgba(216, 178, 96, 0.9);
+  border-bottom-color: var(--chip);
+}
+
+/* Seal: the icon in a round coloured medallion, the box itself left dark. */
+.chip[data-look="seal"] {
+  padding-left: var(--s-2);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+}
+.chip[data-look="seal"] .tagicon {
+  box-sizing: content-box;
+  padding: 4px;
+  background: var(--chip);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.chip[data-look="seal"]:hover:not(:disabled) {
+  background: var(--c-surface-hi);
+  border-color: color-mix(in oklab, var(--chip) 60%, var(--c-line));
+}
+.chip[data-look="seal"].armed {
+  background: color-mix(in oklab, var(--chip) 30%, var(--c-surface));
+  color: #fff;
+  border-color: rgba(216, 178, 96, 0.9);
+}
+
+/* Ink: no box at all. The icon and the name, underlined in the tag colour. */
+.chip[data-look="ink"] {
+  padding: 0 var(--s-3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid color-mix(in oklab, var(--chip) 85%, transparent);
+  border-radius: 0;
+}
+.chip[data-look="ink"]:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--chip) 16%, transparent);
+}
+.chip[data-look="ink"].armed {
+  background: color-mix(in oklab, var(--chip) 30%, transparent);
+  color: #fff;
+  border-bottom-color: #e0c184;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+}
+
+/* Banner: solid colour, like the blocks on the bar the tag paints. */
+.chip[data-look="banner"] {
+  color: var(--c-text-on-block);
+  background: var(--chip);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+.chip[data-look="banner"]:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--chip) 85%, #fff);
+}
+.chip[data-look="banner"].armed {
+  background: var(--chip);
+  border-color: rgba(216, 178, 96, 0.9);
+}

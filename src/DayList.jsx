@@ -6,6 +6,7 @@ import {
 } from './time.js'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
+import { Appearance } from './appearance.js'
 import TagIcon, { clampScale } from './TagIcon.jsx'
 
 const pct = (slot) => (slot / SLOTS_PER_DAY) * 100
@@ -169,13 +170,13 @@ function silhouette(mine, pieces) {
  * both centred the roomier one wins — which is the whole of what fixes a
  * picture squeezed by a neighbour that only covers part of the block.
  */
-function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
+function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces, withNames = true) {
   const pxOf = (slots) => (slots / SLOTS_PER_DAY) * trackWidth
   const inSlots = (px) => (px / Math.max(1, trackWidth)) * SLOTS_PER_DAY
   const strips = stripsOf(mine, pieces)
 
   const measure = (top, bottom, from, to) => {
-    const label = fitLabel(tag, fallback, pxOf(to - from), barHeight * (bottom - top))
+    const label = fitLabel(tag, fallback, pxOf(to - from), barHeight * (bottom - top), withNames)
     return label
       ? { label, top, bottom, from, to, off: Math.abs((from + to) / 2 - middle) }
       : null
@@ -275,7 +276,7 @@ function bandFor(mine, middle, tag, fallback, barHeight, trackWidth, pieces) {
  * and scales with the size it is drawn at; a game's cover is upright, and is
  * the one of the three that is bounded by the block rather than by a size.
  */
-function fitLabel(tag, fallback, widthPx, lanePx) {
+function fitLabel(tag, fallback, widthPx, lanePx, withNames = true) {
   const room = widthPx - LABEL_PADDING
   const named = lanePx >= LABEL_MIN_LANE
   if (!tag) {
@@ -333,8 +334,10 @@ function fitLabel(tag, fallback, widthPx, lanePx) {
   // readable would let a smudge through.
   const floor = Math.min(ICON_MIN_PX, base)
 
+  // "Icon only" in the settings: a name is never put beside the picture,
+  // however much room there is for one.
   const withName = widthAt(wanted) + ICON_GAP + textWidth(tag.name)
-  if (named && withName <= room) {
+  if (withNames && named && withName <= room) {
     return { mode: 'full', iconPx: wanted }
   }
 
@@ -992,6 +995,7 @@ export default function DayList({
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
   const covers = useContext(Covers)
+  const { chipLook, labels } = useContext(Appearance)
   // Dragging a named game around should read as that game, not as "Game".
   const readoutTag = painting
     ? armedTag
@@ -1226,7 +1230,13 @@ ${b.note}` : ''}`}
                 // Twenty Game blocks in a week all called "Game" say nothing
                 // the colour hasn't already said.
                 const tag = blockFace(tagById(b.tag), b, covers)
-                const band = bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn)
+                // "Name only" is laid out as a block with no picture at all,
+                // which the fitting already knows how to do: the name, where
+                // it fits, and nothing where it doesn't.
+                const wordsOnly = labels === 'name'
+                const band = wordsOnly
+                  ? bandFor(mine, middle, null, tag?.name ?? b.tag, barHeight, trackWidth, drawn)
+                  : bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn, labels !== 'icon')
                 if (!band) return null
                 const { label, top, bottom, from, to } = band
                 return (
@@ -1243,7 +1253,7 @@ ${b.note}` : ''}`}
                       height: `${(bottom - top) * 100}%`,
                     }}
                   >
-                    <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />
+                    {!wordsOnly && <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />}
                     {label.mode === 'full' && (tag ? tag.name : b.tag)}
                   </span>
                 )
@@ -1362,6 +1372,7 @@ ${b.note}` : ''}`}
                     key={t.id}
                     type="button"
                     className={`chip${armed?.date === date && armed?.tag === t.id ? ' armed' : ''}`}
+                    data-look={chipLook}
                     style={{ '--chip': t.colour }}
                     disabled={day?.malformed}
                     onClick={() => onArm(date, t.id)}

@@ -3,9 +3,13 @@ import DayList, { ZOOM } from './DayList.jsx'
 import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
 import FindBar from './FindBar.jsx'
+import Settings from './Settings.jsx'
 import { useDays } from './useDays.js'
 import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
 import { Covers } from './face.js'
+import {
+  Appearance, loadAppearance, saveAppearance, normalise, widthOf,
+} from './appearance.js'
 import {
   applyPaint, applyResize, removeBlock, setNote, setGame, setShow,
   newId, pasteAt, overlapCluster,
@@ -119,21 +123,34 @@ export default function App() {
     }
   }, [])
 
-  useEffect(() => {
-    getTags().then(setTags).catch((err) => setTagError(err.message))
-  }, [])
+  // How the app looks — picked in the settings, kept on this machine.
+  const [appearance, setAppearance] = useState(loadAppearance)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const changeAppearance = (next) => {
+    const kept = normalise(next)
+    setAppearance(kept)
+    saveAppearance(kept)
+  }
 
-  // Escape disarms, then closes the note.
+  // Asked again whenever the icon set changes: the server works out which
+  // picture each tag wears, so a different set is a different list of tags.
+  useEffect(() => {
+    getTags(appearance.iconSet).then(setTags).catch((err) => setTagError(err.message))
+  }, [appearance.iconSet])
+
+  // Escape closes the search, then the settings, then disarms, then closes
+  // the note — whatever was opened last goes first.
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       if (find) setFind(null)
+      else if (settingsOpen) setSettingsOpen(false)
       else if (armed) setArmed(null)
       else setSelected(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [armed, find])
+  }, [armed, find, settingsOpen])
 
   // Delete removes the block whose note is open. Same change the button in the
   // note makes, so ctrl+z takes it back the same way.
@@ -390,8 +407,9 @@ export default function App() {
   const selectedCluster = selectedBlock ? overlapCluster(dayBlocks, selected.id) : []
 
   return (
+    <Appearance.Provider value={appearance}>
     <Covers.Provider value={covers}>
-    <div className="app">
+    <div className="app" style={{ maxWidth: widthOf(appearance.barWidth) }}>
       {/* The sky. Each layer is a size of star with its own rate and its own
           brightness — see app.css. Decoration only, so it is hidden from
           anything reading the page. */}
@@ -429,6 +447,24 @@ export default function App() {
             />
           </label>
           <Status status={status} />
+          <button
+            type="button"
+            className={`gear${settingsOpen ? ' on' : ''}`}
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-label="Settings"
+            aria-expanded={settingsOpen}
+            title="Settings"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path
+                d="M10 6.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm7.2 4.6.1-1.2-.1-1.2 1.6-1.3-1.6-2.8-2 .7a6.6 6.6 0 0 0-2-1.2L12.8 2H9.6l-.4 2.1a6.6 6.6 0 0 0-2 1.2l-2-.7L3.6 7.4l1.6 1.3-.1 1.3.1 1.2-1.6 1.3 1.6 2.8 2-.7c.6.5 1.3.9 2 1.2l.4 2.1h3.2l.4-2.1a6.6 6.6 0 0 0 2-1.2l2 .7 1.6-2.8z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -502,7 +538,16 @@ export default function App() {
           onClose={() => setSelected(null)}
         />
       )}
+      {settingsOpen && (
+        <Settings
+          appearance={appearance}
+          onChange={changeAppearance}
+          tags={tags}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
     </Covers.Provider>
+    </Appearance.Provider>
   )
 }
