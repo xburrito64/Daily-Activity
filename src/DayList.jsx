@@ -97,7 +97,23 @@ let measureCtx = null
 let iconBase = null
 
 /** The size a tag icon is normally drawn at, read from the tokens. */
+/**
+ * Everything measured off the page's styles is only true of the theme it was
+ * measured in: a name in a monospace face is wider than the same name in a
+ * serif. So the moment the page is wearing another one, it is all forgotten.
+ */
+let measuredIn
+function sameTheme() {
+  const theme = document.documentElement.dataset.theme ?? ''
+  if (theme === measuredIn) return
+  measuredIn = theme
+  iconBase = null
+  labelFont = null
+  widths.clear()
+}
+
 function baseIconPx() {
+  sameTheme()
   if (iconBase === null) {
     const token = getComputedStyle(document.documentElement).getPropertyValue('--tagicon-size')
     iconBase = parseFloat(token) || 16
@@ -106,6 +122,7 @@ function baseIconPx() {
 }
 
 function textWidth(text) {
+  sameTheme()
   if (labelFont === null) {
     const root = getComputedStyle(document.documentElement)
     labelFont = [

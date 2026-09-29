@@ -16,6 +16,20 @@ export const BAR_WIDTH = { min: 800, max: 3000, step: 50, usual: 2400 }
 export const NO_LIMIT = BAR_WIDTH.max
 
 /**
+ * Whole looks for the app: colours, faces, corners, the sky and what moves
+ * in it. See styles/themes.css, where each one is drawn. `swatch` is four
+ * colours a card can show before its preview has painted.
+ */
+export const THEMES = [
+  { id: 'starlit', name: 'Starlit', note: 'Night sky and gold leaf, stars coming and going. The app as it began.' },
+  { id: 'scriptorium', name: 'Scriptorium', note: 'Vellum, iron-gall ink and red rubrics, like a page of an illuminated manuscript.' },
+  { id: 'hearthfire', name: 'Hearthfire', note: 'Charred wood and a fire just out of sight, embers drifting up past the days.' },
+  { id: 'tidewater', name: 'Tidewater', note: 'Deep water by moonlight, with light rippling slowly across the dark.' },
+  { id: 'petalfall', name: 'Petalfall', note: 'Plum twilight and rose haze, sakura petals drifting down.' },
+  { id: 'nightshift', name: 'Nightshift', note: 'A green phosphor terminal: square corners, a blinking cursor, scanlines.' },
+]
+
+/**
  * Ways to draw a tag's box. `note` is what the settings say under each one —
  * what it is, in the few words a person choosing between them needs.
  */
@@ -35,6 +49,7 @@ export const LABEL_STYLES = [
 ]
 
 export const DEFAULTS = {
+  theme: 'starlit',
   barWidth: BAR_WIDTH.usual,
   iconSet: '',
   chipLook: 'classic',
@@ -55,6 +70,7 @@ export function normalise(raw) {
   const got = raw && typeof raw === 'object' ? raw : {}
   const width = Math.round(Number(got.barWidth))
   return {
+    theme: THEMES.some((theme) => theme.id === got.theme) ? got.theme : DEFAULTS.theme,
     barWidth: Number.isFinite(width)
       ? Math.min(BAR_WIDTH.max, Math.max(BAR_WIDTH.min, width))
       : DEFAULTS.barWidth,
@@ -64,6 +80,17 @@ export function normalise(raw) {
     covers: typeof got.covers === 'boolean' ? got.covers : DEFAULTS.covers,
     hints: typeof got.hints === 'boolean' ? got.hints : DEFAULTS.hints,
   }
+}
+
+/**
+ * Put a theme on the page. Done straight away rather than after the next
+ * draw: the bar measures its labels in the theme's own face, and measuring in
+ * the old one would fit names to the wrong widths until something moved.
+ */
+export function wearTheme(theme) {
+  try {
+    document.documentElement.dataset.theme = theme
+  } catch { /* no page to wear it — a test, say */ }
 }
 
 /** The CSS max-width the page takes for a given setting. */

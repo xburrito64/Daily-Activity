@@ -8,7 +8,7 @@ body {
   color: var(--c-text);
   font: var(--f-base) / 1.5 var(--font-ui);
   overflow: hidden; /* the day list scrolls, not the page */
-  color-scheme: dark;
+  color-scheme: var(--scheme);
 }
 
 button { font: inherit; color: inherit; }

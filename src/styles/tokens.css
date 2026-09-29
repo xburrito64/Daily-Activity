@@ -9,7 +9,13 @@
  *   --c-*   colour        --s-*   spacing       --r-*   radius
  *   --f-*   font size     --w-*   font weight   --z-*   layer
  */
-:root {
+/* The theme called Starlit: the app as it was first drawn, and the one it
+   falls back to. Written for the page and, under its own name, for anything
+   that asks to be drawn in it — the preview of it in the settings, say, while
+   the page itself wears another. Every other theme is in themes.css and sets
+   the same names. */
+:root,
+[data-theme="starlit"] {
   /* --- palette: night sky, gold leaf ---------------------------------- */
   --c-bg:            #0d1017;  /* page — cold near-black, not brown */
   --c-surface:       #141a24;  /* panels, controls */
@@ -97,7 +103,7 @@
      a seam, and anything drawn down the sides would outline each piece
      separately and give the join away. */
   --block-ring: inset 0  1px 0 rgba(255, 255, 255, 0.16),
-                inset 0  2px 0 rgba(216, 178, 96, 0.14),
+                inset 0  2px 0 rgb(var(--glow-rgb) / 0.14),
                 inset 0 -1px 0 rgba(0, 0, 0, 0.30);
 
   --handle-width: 7px;
@@ -117,9 +123,31 @@
   --control-height: 36px;       /* was 34 */
 
   /* --- decoration, read by the ornament rules in app.css ---------------- */
-  --glow-armed: 0 0 0 1px rgba(216, 178, 96, 0.9),
-                0 0 18px 2px rgba(216, 178, 96, 0.35);
+  --glow-armed: 0 0 0 1px rgb(var(--glow-rgb) / 0.9),
+                0 0 18px 2px rgb(var(--glow-rgb) / 0.35);
   --rule-gold: linear-gradient(90deg, transparent, #3a3016 12%, #5d4a1c 50%,
                                #3a3016 88%, transparent);
   --star-colour: var(--c-text-bright);
+
+  /* --- what a theme may change that is not one of the colours above ------ */
+  --scheme: dark;                          /* the browser's own controls */
+  /* The glow everything gold is lit with — armed chips, the found block, the
+     selected block — as bare channels, so each use can set its own strength. */
+  --glow-rgb: 216 178 96;
+  /* Gold leaf, for the button that says which view or tab you are in. */
+  --gold-hi: #e0c184;
+  --gold-edge: #d8b260;
+  --on-gold: #1b1408;
+  /* The tag chips under each day: how much of the tag's own colour goes into
+     the box, and what the name on it is written in. */
+  --chip-mix: 62%;
+  --chip-mix-hover: 78%;
+  --chip-text: #f0e6d4;
+  --sky-wash: #1a2130;                     /* the glow behind the title */
+  --track-well: inset 0 2px 10px rgba(0, 0, 0, 0.55);
+  --empty-line: #232a37;                   /* a day with nothing on it */
+  --empty-a: #0f141d;
+  --empty-b: #111721;
+  --empty-text: #3f4a5c;
+  --rule-faint: linear-gradient(90deg, transparent, #3a3016, transparent);
 }

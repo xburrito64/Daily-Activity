@@ -8,7 +8,7 @@ import { useDays } from './useDays.js'
 import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
 import { Covers } from './face.js'
 import {
-  Appearance, loadAppearance, saveAppearance, normalise, widthOf,
+  Appearance, loadAppearance, saveAppearance, normalise, widthOf, wearTheme,
 } from './appearance.js'
 import {
   applyPaint, applyResize, removeBlock, setNote, setGame, setShow,
@@ -129,10 +129,17 @@ export default function App() {
   }, [refreshCovers])
 
   // How the app looks — picked in the settings, kept on this machine.
-  const [appearance, setAppearance] = useState(loadAppearance)
+  const [appearance, setAppearance] = useState(() => {
+    const kept = loadAppearance()
+    wearTheme(kept.theme)
+    return kept
+  })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const changeAppearance = (next) => {
     const kept = normalise(next)
+    // Before the state changes, so the draw it causes is already in the new
+    // theme — see wearTheme.
+    wearTheme(kept.theme)
     setAppearance(kept)
     saveAppearance(kept)
   }

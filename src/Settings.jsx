@@ -4,7 +4,7 @@ import TagIcon from './TagIcon.jsx'
 import TagEditor from './TagEditor.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import {
-  BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, LABEL_STYLES, DEFAULTS,
+  BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, LABEL_STYLES, DEFAULTS, THEMES,
 } from './appearance.js'
 
 // How many tags a tag-box look is shown with. Enough to see the colours
@@ -120,8 +120,49 @@ function Look({ appearance, onChange, tags, onResetRows, onCoversFound }) {
     }
   }
 
+  // What a preview bar is painted with: the first few real tags, at the
+  // shares a day might plausibly have them in.
+  const barTags = tags.filter((tag) => !tag.hidden).slice(0, 5)
+  const shares = [34, 12, 22, 9, 23]
+
   return (
     <>
+      <section className="settingsgroup">
+        <h3>Theme</h3>
+        <p className="settingsnote">The whole look of the app. Tag colours stay the same in every one.</p>
+        <div className="choicelist">
+          {THEMES.map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              className={`choice${appearance.theme === theme.id ? ' on' : ''}`}
+              aria-pressed={appearance.theme === theme.id}
+              onClick={() => set('theme')(theme.id)}
+            >
+              {/* A little room in that theme: it sets its own names, so
+                  everything in here wears it whatever the page is wearing. */}
+              <span className="themepreview" data-theme={theme.id} aria-hidden="true">
+                <span className="tp-title">Daily Documentation</span>
+                <span className="tp-rule" />
+                <span className="tp-bar">
+                  {barTags.map((tag, i) => (
+                    <span key={tag.id} style={{ flex: shares[i], background: tag.colour }} />
+                  ))}
+                </span>
+                <span className="tp-row">
+                  {barTags.slice(0, 2).map((tag) => (
+                    <span key={tag.id} className="tp-chip" style={{ '--chip': tag.colour }}>{tag.name}</span>
+                  ))}
+                  <span className="tp-pill">Day</span>
+                </span>
+              </span>
+              <span className="choicename">{theme.name}</span>
+              <span className="choicenote">{theme.note}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="settingsgroup">
         <h3>Bar width</h3>
         <p className="settingsnote">How wide the days may get. The bar never grows past the window.</p>

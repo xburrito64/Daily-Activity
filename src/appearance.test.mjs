@@ -25,11 +25,12 @@ t('nothing saved is the app as it has always looked', () => {
   assert.deepEqual(normalise(undefined), DEFAULTS)
   assert.deepEqual(normalise('nonsense'), DEFAULTS)
   assert.equal(DEFAULTS.barWidth, 2400, 'the width it was drawn at before this was a setting')
+  assert.equal(DEFAULTS.theme, 'starlit', 'and the theme it was drawn in')
 })
 
 t('a good choice is kept exactly', () => {
   const picked = {
-    barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', labels: 'icon', covers: false, hints: false,
+    theme: 'tidewater', barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', labels: 'icon', covers: false, hints: false,
   }
   assert.deepEqual(normalise(picked), picked)
 })
@@ -45,6 +46,7 @@ t('a look or a label style that no longer exists falls back', () => {
   assert.equal(normalise({ chipLook: 'retired-look' }).chipLook, 'classic')
   assert.equal(normalise({ labels: 'sideways' }).labels, 'auto')
   assert.equal(normalise({ iconSet: 42 }).iconSet, '')
+  assert.equal(normalise({ theme: 'vaporwave' }).theme, 'starlit')
 })
 
 t('covers and hints are on unless switched off', () => {
