@@ -23,7 +23,7 @@ export const NO_LIMIT = BAR_WIDTH.max
 export const THEMES = [
   { id: 'starlit', name: 'Starlit', note: 'Night sky and gold leaf, stars coming and going. The app as it began.' },
   { id: 'scriptorium', name: 'Scriptorium', note: 'Vellum, iron-gall ink and red rubrics, like a page of an illuminated manuscript.' },
-  { id: 'hearthfire', name: 'Hearthfire', note: 'Charred wood and a fire just out of sight, embers drifting up past the days.' },
+  { id: 'hearthfire', name: 'Hearthfire', note: 'A fire you keep going by logging. Leave it and it burns down; the hours you missed turn to ash.' },
   { id: 'tidewater', name: 'Tidewater', note: 'Deep water by moonlight, with light rippling slowly across the dark.' },
   { id: 'petalfall', name: 'Petalfall', note: 'Plum twilight and rose haze, sakura petals drifting down.' },
   { id: 'nightshift', name: 'Nightshift', note: 'A green phosphor terminal: square corners, a blinking cursor, scanlines.' },

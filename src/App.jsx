@@ -6,6 +6,7 @@ import FindBar from './FindBar.jsx'
 import Settings from './Settings.jsx'
 import TideScene, { daysDown } from './scenes/TideScene.jsx'
 import PetalScene from './scenes/PetalScene.jsx'
+import HearthScene from './scenes/HearthScene.jsx'
 import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
@@ -565,6 +566,11 @@ export default function App() {
           }}
           onClose={() => setSelected(null)}
         />
+      )}
+      {/* Hearthfire's fire has a strip of its own at the foot of the page,
+          so it comes last, under everything else. */}
+      {appearance.theme === 'hearthfire' && (
+        <HearthScene days={days} onToday={() => { setView('day'); setJumpTo(todayISO()) }} />
       )}
       {settingsOpen && (
         <Settings

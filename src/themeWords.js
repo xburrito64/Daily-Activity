@@ -20,6 +20,13 @@ const WORDS = {
     wipe: 'Let it fall',
     wipeConfirm: 'Let it all fall?',
   },
+  hearthfire: {
+    recorded: (n) => (n === 1 ? 'one day kindled' : `${n} days kindled`),
+    emptyDay: 'cold hearth — nothing kindled here yet',
+    blank: 'unlit',
+    wipe: 'Douse',
+    wipeConfirm: 'Douse it?',
+  },
   tidewater: {
     recorded: (n) => (n === 1 ? 'one day charted' : `${n} days charted`),
     emptyDay: 'calm water — nothing charted here yet',

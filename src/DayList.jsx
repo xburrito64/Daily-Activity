@@ -2,8 +2,9 @@ import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState }
 import {
   SLOTS_PER_DAY, MINUTES_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO,
   daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
-  minutesNow, msToNextMinute, paintSpans,
+  paintSpans,
 } from './time.js'
+import { useMinute } from './useMinute.js'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -374,26 +375,24 @@ function fitLabel(tag, fallback, widthPx, lanePx, withNames = true) {
  * turning over re-renders this one line instead of every day in the list —
  * there can be several hundred of those, and none of the rest of them have
  * changed.
- *
- * The first tick is timed to the turn of the minute rather than a minute from
- * now, so the mark moves when the clock does.
  */
 function NowLine({ date }) {
-  const [minute, setMinute] = useState(minutesNow)
-
-  useEffect(() => {
-    let interval
-    const timeout = setTimeout(() => {
-      setMinute(minutesNow())
-      interval = setInterval(() => setMinute(minutesNow()), 60_000)
-    }, msToNextMinute())
-    return () => { clearTimeout(timeout); clearInterval(interval) }
-  }, [])
-
+  const minute = useMinute()
   // Past midnight this is yesterday's row, and the mark belongs on the new
   // day rather than back at the start of this one.
   if (date !== todayISO()) return null
   return <i className="nowline" style={{ left: `${(minute / MINUTES_PER_DAY) * 100}%` }} />
+}
+
+/**
+ * Hearthfire only: the part of today that has already burned. It sits under
+ * the blocks, so what shows of it is exactly the time that went by with
+ * nothing logged — the hours you missed, gone to ash.
+ */
+function Burnt({ date }) {
+  const minute = useMinute()
+  if (date !== todayISO()) return null
+  return <i className="burnt" style={{ width: `${(minute / MINUTES_PER_DAY) * 100}%` }} />
 }
 
 function TrashIcon() {
@@ -1180,6 +1179,8 @@ export default function DayList({
               data-track-date={date}
               style={{ height: barHeight }}
             >
+              {isToday && theme === 'hearthfire' && !day?.malformed && <Burnt date={date} />}
+
               {/* One per hour, on the same whole pixels the blocks use, so a
                   gridline sits exactly under the edge that covers it. */}
               {!dense && Array.from({ length: 23 }, (_, i) => (
