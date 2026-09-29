@@ -7,11 +7,11 @@
 
 const WORDS = {
   starlit: {
-    recorded: (n) => (n === 1 ? 'one day recorded' : `${n} days recorded`),
-    emptyDay: 'nothing has happened here yet',
-    blank: 'unwritten',
-    wipe: 'Unwrite',
-    wipeConfirm: 'Unwrite?',
+    recorded: (n) => (n === 1 ? 'one day journeyed' : `${n} days journeyed`),
+    emptyDay: 'an untrodden road — nothing written here yet',
+    blank: 'untrodden',
+    wipe: 'Dispel',
+    wipeConfirm: 'Dispel it?',
   },
   scriptorium: {
     recorded: (n) => (n === 1 ? 'one leaf inscribed' : `${n} leaves inscribed`),

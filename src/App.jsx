@@ -11,6 +11,9 @@ import TermScene, { TermMonitor } from './scenes/TermScene.jsx'
 import { modeOf } from './scenes/terminal.js'
 import ScriptScene from './scenes/ScriptScene.jsx'
 import { Initial, HourOf } from './scenes/ScriptParts.jsx'
+import StarScene from './scenes/StarScene.jsx'
+import { MoonWords } from './scenes/StarParts.jsx'
+import { RANK_DAYS } from './scenes/starlit.js'
 import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
@@ -23,7 +26,7 @@ import {
   applyPaint, applyResize, removeBlock, setNote, setGame, setShow,
   newId, pasteAt, overlapCluster,
 } from './blocks.js'
-import { todayISO, formatDotted, minutesNow, MINUTES_PER_SLOT } from './time.js'
+import { todayISO, formatDotted, minutesNow, shiftDate, MINUTES_PER_SLOT } from './time.js'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
 
@@ -156,6 +159,14 @@ export default function App() {
     setAppearance(kept)
     saveAppearance(kept)
   }
+
+  // Starlit ranks each tag by its last month, so it needs that month read in
+  // even when the list only shows a few days of it.
+  useEffect(() => {
+    if (appearance.theme !== 'starlit') return
+    const today = todayISO()
+    ensure(shiftDate(today, -(RANK_DAYS - 1)), today)
+  }, [appearance.theme, ensure])
 
   // Asked again whenever the icon set changes: the server works out which
   // picture each tag wears, so a different set is a different list of tags.
@@ -446,6 +457,7 @@ export default function App() {
       </div>
       {/* A theme with more to it than colours brings its own scene. */}
       {appearance.theme === 'tidewater' && <TideScene days={daysDown(visible, todayISO())} />}
+      {appearance.theme === 'starlit' && <StarScene days={days} tags={tags} />}
       {appearance.theme === 'scriptorium' && <ScriptScene />}
       {appearance.theme === 'petalfall' && (
         <PetalScene branch={branch} onPick={(date) => { setView('day'); setJumpTo(date) }} />
@@ -466,6 +478,7 @@ export default function App() {
             <span className="subtitle">
               {wordsFor(appearance.theme).recorded(recorded)}
               {appearance.theme === 'scriptorium' && <HourOf />}
+              {appearance.theme === 'starlit' && <MoonWords />}
             </span>
           </div>
 

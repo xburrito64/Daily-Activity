@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   SLOTS_PER_DAY, MINUTES_PER_DAY, slotToTime, formatDuration, shiftDate, todayISO,
   daysBetween, formatDayHeading, formatShortDate, weekdayOf, dayOfWeek,
@@ -7,6 +7,8 @@ import {
 import { useMinute } from './useMinute.js'
 import { Initial, Chronicle } from './scenes/ScriptParts.jsx'
 import { illumination } from './scenes/manuscript.js'
+import { MagicCircle, Moonweed, RankSigil, rankTitle } from './scenes/StarParts.jsx'
+import { monthByTag, isComplete } from './scenes/starlit.js'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -1016,6 +1018,9 @@ export default function DayList({
   const covers = useContext(Covers)
   const { chipLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
   const scriptorium = theme === 'scriptorium'
+  const starlit = theme === 'starlit'
+  // Starlit ranks every tag by its hours this past month.
+  const month = useMemo(() => (starlit ? monthByTag(days, todayISO()) : null), [days, starlit])
   const words = wordsFor(theme)
   // With covers off, a named block is drawn as though none had ever been
   // found: its own cover set aside, and nothing borrowed.
@@ -1386,6 +1391,9 @@ ${b.note}` : ''}`}
                 })()}
                 <span className="dayweekday" data-dow={dayOfWeek(date)}>{weekdayOf(date)}</span>
                 {formatDayHeading(date)}
+                {starlit && !day?.malformed && isComplete(day?.blocks) && (
+                  <Moonweed title="Every hour of this day accounted for" />
+                )}
                 {isToday && <span className="todaymark">today</span>}
                 {blank && <span className="daysummary">{words.blank}</span>}
                 {scriptorium && !day?.malformed && (
@@ -1431,9 +1439,16 @@ ${b.note}` : ''}`}
                     style={{ '--chip': t.colour }}
                     disabled={day?.malformed}
                     onClick={() => onArm(date, t.id)}
+                    title={month ? rankTitle(t.name, month.get(t.id) ?? 0) : undefined}
                   >
+                    {/* Starlit: a picked-up tag is a spell being readied, a
+                        circle turning behind it. */}
+                    {starlit && armed?.date === date && armed?.tag === t.id && (
+                      <i className="chip-circle" aria-hidden="true"><MagicCircle size="100%" /></i>
+                    )}
                     <TagIcon tag={t} />
                     {t.name}
+                    {month && <RankSigil minutes={month.get(t.id) ?? 0} />}
                     {/* Hearthfire sets a picked-up tag alight: flames along
                         its top and an ember creeping round its edge. */}
                     {theme === 'hearthfire' && armed?.date === date && armed?.tag === t.id && (
