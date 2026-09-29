@@ -244,6 +244,9 @@ export default function StarScene({ days, tags }) {
       node.style.transform = `translate(${x - px / 2}px, ${y - px / 2}px)`
     }
     const hide = (node) => { if (node) node.style.display = 'none' }
+    // Small, so it marks the spot instead of covering the blocks round it:
+    // its bright heart is where the block will begin or end.
+    const castSize = (r) => Math.max(26, Math.min(38, r.height * 0.4))
 
     let casting = null // { x, y, colour, track } while the pointer is down
 
@@ -255,7 +258,7 @@ export default function StarScene({ days, tags }) {
         return
       }
       const r = (casting?.track ?? track).getBoundingClientRect()
-      const px = Math.max(52, Math.min(140, r.height * 1.35))
+      const px = castSize(r)
       const y = r.top + r.height / 2
       const x = Math.max(r.left, Math.min(r.right, e.clientX))
       const colour = casting?.colour ?? armedColour()
@@ -277,7 +280,7 @@ export default function StarScene({ days, tags }) {
       const track = e.target instanceof Element ? e.target.closest('.track') : null
       if (!track) return
       const r = track.getBoundingClientRect()
-      const px = Math.max(52, Math.min(140, r.height * 1.35))
+      const px = castSize(r)
       casting = { x: e.clientX, y: r.top + r.height / 2, colour: armedColour(), track }
       show(anchor.current, casting.x, casting.y, px, casting.colour)
       onMove(e)

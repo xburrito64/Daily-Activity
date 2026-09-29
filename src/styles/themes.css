@@ -2045,11 +2045,14 @@
 }
 
 /* --- the days ------------------------------------------------------------- */
-/* Each day opens on a small diamond; today's is lit with mana. */
+/* Each day opens on a small diamond; today's is lit with mana. Set in from
+   the edge: each day is drawn inside its own box, and a turned square (and
+   its glow) poking past the edge of it is cut off. */
 [data-theme="starlit"] .dayhead::before {
   content: "";
   flex: none;
   align-self: center;
+  margin-left: 6px;
   width: 7px;
   height: 7px;
   border: 1px solid rgb(var(--gilt-rgb) / 0.7);
@@ -2058,7 +2061,7 @@
 [data-theme="starlit"] .daysection.today .dayhead::before {
   background: var(--mana);
   border-color: #e2f3ff;
-  box-shadow: 0 0 8px rgb(var(--mana-rgb) / 0.8);
+  box-shadow: 0 0 5px rgb(var(--mana-rgb) / 0.8);
 }
 [data-theme="starlit"] .todaymark { color: var(--mana); }
 
@@ -2357,6 +2360,13 @@
 }
 .app > .star-cast.anchor { opacity: 0.7; }
 .star-cast .magic-circle { width: 100%; height: 100%; animation: cast-open 0.35s ease-out; }
+/* Drawn this small, fine lines vanish and runes turn to grit: bolder lines,
+   no writing, and a brighter heart to aim with. */
+.star-cast .magic-circle :is(circle, polygon, path) { stroke-width: 2.6; }
+.star-cast .magic-circle .mc-runes,
+.star-cast .magic-circle .mc-outer path { display: none; }
+.star-cast .magic-circle .mc-heart { r: 5.5; }
+.star-cast .magic-circle .mc-node { r: 4; }
 .star-cast.released .magic-circle { animation: cast-release 0.6s ease-out forwards; }
 @keyframes cast-open {
   from { transform: scale(0.3) rotate(-60deg); opacity: 0; }
