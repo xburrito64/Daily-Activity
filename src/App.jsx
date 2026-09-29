@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DayList, { ZOOM } from './DayList.jsx'
 import NotePanel from './NotePanel.jsx'
 import Totals from './Totals.jsx'
 import FindBar from './FindBar.jsx'
 import Settings from './Settings.jsx'
 import TideScene, { daysDown } from './scenes/TideScene.jsx'
+import PetalScene from './scenes/PetalScene.jsx'
+import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
 import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
@@ -116,6 +118,10 @@ export default function App() {
 
   // Covers found since their blocks were written. Kept the same object while
   // nothing changes, so a quiet check that finds nothing new redraws nothing.
+  // The last few weeks as Petalfall's branch: which days bloomed. Worked out
+  // whatever the theme, since it is cheap and the days are already here.
+  const branch = useMemo(() => branchDays(days, todayISO()), [days])
+
   const [covers, setCovers] = useState(() => new Map())
   const refreshCovers = useCallback(() => knownCovers()
     .then((next) => setCovers((was) => (sameCovers(was, next) ? was : next)))
@@ -435,6 +441,9 @@ export default function App() {
       </div>
       {/* A theme with more to it than colours brings its own scene. */}
       {appearance.theme === 'tidewater' && <TideScene days={daysDown(visible, todayISO())} />}
+      {appearance.theme === 'petalfall' && (
+        <PetalScene branch={branch} onPick={(date) => { setView('day'); setJumpTo(date) }} />
+      )}
 
       <header>
         <div className="titlerow">

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { depthWords, depthOf } from './tide.js'
+import { runLoop, stillness } from './loop.js'
 
 export { daysDown } from './tide.js'
 
@@ -13,13 +14,12 @@ export { daysDown } from './tide.js'
 // already lived brings you into the sunlit shallows.
 //
 // It is drawn on the graphics card, in one small shader, at half the
-// window's resolution and thirty frames a second — enough to move, not
-// enough to warm the laptop — and it stops entirely whenever the window is
-// out of sight. Anyone whose machine asks for less movement gets one still
-// frame at the right depth.
+// window's resolution, on the clock every scene shares (see loop.js) —
+// enough to move, not enough to warm the laptop. Anyone whose machine asks
+// for less movement gets one still frame, redrawn only when the depth
+// changes.
 
 const SCALE = 0.5
-const FRAME_MS = 1000 / 30
 
 const VERTEX = `#version 300 es
 in vec2 p;
@@ -153,10 +153,8 @@ export default function TideScene({ days }) {
     const uDepth = gl.getUniformLocation(program, 'uDepth')
     const uSink = gl.getUniformLocation(program, 'uSink')
 
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const still = stillness()
     let depth = target.current
-    let frame = 0
-    let last = 0
     const started = performance.now()
 
     const size = () => {
@@ -165,7 +163,6 @@ export default function TideScene({ days }) {
       gl.viewport(0, 0, el.width, el.height)
     }
     size()
-    window.addEventListener('resize', size)
 
     const draw = (now) => {
       // Eased toward where the screen is, so a jump of a month is a dive
@@ -178,29 +175,24 @@ export default function TideScene({ days }) {
       gl.drawArrays(gl.TRIANGLES, 0, 3)
     }
 
-    const loop = (now) => {
-      frame = requestAnimationFrame(loop)
-      if (document.hidden || now - last < FRAME_MS) return
-      last = now
-      draw(now)
+    let stop
+    if (still) {
+      // One frame, and another only when there is somewhere new to be.
+      draw(performance.now())
+      let drawnAt = depth
+      const timer = setInterval(() => {
+        if (target.current !== drawnAt) { drawnAt = target.current; draw(performance.now()) }
+      }, 300)
+      stop = () => clearInterval(timer)
+    } else {
+      stop = runLoop((now) => draw(now))
     }
 
-    if (still) {
-      draw(performance.now())
-      // Depth still follows the scroll, one frame per change.
-      const redraw = () => draw(performance.now())
-      const timer = setInterval(redraw, 400)
-      return () => {
-        clearInterval(timer)
-        window.removeEventListener('resize', size)
-        gl.deleteProgram(program)
-        gl.deleteBuffer(buffer)
-      }
-    }
-    frame = requestAnimationFrame(loop)
+    const onResize = () => { size(); if (still) draw(performance.now()) }
+    window.addEventListener('resize', onResize)
     return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('resize', size)
+      stop()
+      window.removeEventListener('resize', onResize)
       gl.deleteProgram(program)
       gl.deleteBuffer(buffer)
     }
@@ -210,7 +202,7 @@ export default function TideScene({ days }) {
   // page rather than inside the bar, so nothing here can get in the way of
   // what the press was for.
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
+    if (stillness()) return undefined
     const onDown = (e) => {
       const track = e.target instanceof Element ? e.target.closest('.track') : null
       if (!track || !ripples.current) return

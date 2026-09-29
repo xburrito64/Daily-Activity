@@ -1367,7 +1367,7 @@ ${b.note}` : ''}`}
               className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`}
             >
               <h2 className="dayhead">
-                <span className="dayweekday">{weekdayOf(date)}</span>
+                <span className="dayweekday" data-dow={dayOfWeek(date)}>{weekdayOf(date)}</span>
                 {formatDayHeading(date)}
                 {isToday && <span className="todaymark">today</span>}
                 {blank && <span className="daysummary">{words.blank}</span>}

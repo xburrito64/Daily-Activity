@@ -788,3 +788,153 @@
   [data-theme="tidewater"] .nowline::after,
   [data-theme="tidewater"] .chip.armed { animation: none; }
 }
+
+/* ----------------------------------------------------------------------
+   Petalfall, in full. The branch and the petals are drawn by
+   scenes/PetalScene.jsx; everything here is the room they fall through.
+   ---------------------------------------------------------------------- */
+
+/* The painted petals give way to the real ones. What stays is the evening:
+   a low moon, and hills folding away into the haze at the foot of the page. */
+[data-theme="petalfall"] .sky i { display: none; }
+[data-theme="petalfall"] .app > .sky {
+  background:
+    radial-gradient(circle at 96% 3%, rgba(255, 236, 244, 0.85) 0 34px, rgba(255, 214, 230, 0.2) 38px, transparent 150px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 300' preserveAspectRatio='none'><path d='M0 190 C 160 120 260 150 380 110 S 620 60 760 120 S 1000 180 1140 110 S 1400 70 1600 140 V300 H0Z' fill='%2345203f' fill-opacity='0.55'/><path d='M0 240 C 200 180 330 220 470 190 S 760 140 900 200 S 1180 250 1330 200 S 1520 180 1600 210 V300 H0Z' fill='%23321733' fill-opacity='0.8'/></svg>") bottom / 100% 34vh no-repeat,
+    radial-gradient(900px 500px at 84% 110%, rgba(244, 163, 195, 0.14), transparent 70%),
+    radial-gradient(1200px 520px at 18% -10%, var(--sky-wash), transparent 62%),
+    linear-gradient(180deg, #1c1024 0%, var(--c-bg) 50%, #2a1430 100%);
+}
+
+.app > .petal-branch {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+}
+.app > .petal-fall {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.petal-pointing,
+.petal-pointing * { cursor: pointer !important; }
+.app > .petal-tip {
+  position: fixed;
+  z-index: 45;
+  display: grid;
+  gap: 1px;
+  padding: 6px 10px 7px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  font-size: var(--f-sm);
+  white-space: nowrap;
+  color: var(--c-text);
+  background: rgba(38, 20, 42, 0.92);
+  border: 1px solid rgba(244, 163, 195, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.petal-tip strong { font-family: var(--font-display); font-size: var(--f-base); font-weight: 600; color: var(--c-text-bright); }
+.petal-tip span { font-family: var(--font-meta); font-style: italic; color: var(--c-accent); }
+
+/* A brush stroke under the title, laid on in one pass. */
+[data-theme="petalfall"] h1 { position: relative; padding-bottom: 4px; }
+[data-theme="petalfall"] h1::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: 18%;
+  bottom: -3px;
+  height: 9px;
+  background: linear-gradient(90deg, rgba(244, 163, 195, 0.85), rgba(244, 163, 195, 0.15));
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'><path d='M4 12 C 60 5 140 4 220 7 S 360 12 396 8 C 380 14 300 16 220 15 S 70 18 6 17 Z' fill='black'/></svg>") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'><path d='M4 12 C 60 5 140 4 220 7 S 360 12 396 8 C 380 14 300 16 220 15 S 70 18 6 17 Z' fill='black'/></svg>") center / 100% 100% no-repeat;
+}
+
+/* The day of the week as a hanko: a red seal pressed beside the date, with
+   the day's own character in it. */
+[data-theme="petalfall"] .dayweekday {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 0;
+  letter-spacing: 0;
+  background: #b8324f;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 220, 230, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+  transform: rotate(-4deg);
+}
+[data-theme="petalfall"] .dayweekday::after {
+  font-family: "Yu Gothic", "Meiryo", "MS Gothic", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
+  color: #fff3f6;
+}
+[data-theme="petalfall"] .dayweekday[data-dow="0"]::after { content: "日"; }
+[data-theme="petalfall"] .dayweekday[data-dow="1"]::after { content: "月"; }
+[data-theme="petalfall"] .dayweekday[data-dow="2"]::after { content: "火"; }
+[data-theme="petalfall"] .dayweekday[data-dow="3"]::after { content: "水"; }
+[data-theme="petalfall"] .dayweekday[data-dow="4"]::after { content: "木"; }
+[data-theme="petalfall"] .dayweekday[data-dow="5"]::after { content: "金"; }
+[data-theme="petalfall"] .dayweekday[data-dow="6"]::after { content: "土"; }
+/* Today's seal is freshly inked. */
+[data-theme="petalfall"] .daysection.today .dayweekday {
+  background: #d63c63;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 230, 238, 0.5), 0 0 12px rgba(244, 120, 160, 0.55);
+}
+
+/* The time now is a blossom opening on the line, turning slowly. */
+[data-theme="petalfall"] .nowline {
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(255, 220, 232, 0.95), rgba(244, 163, 195, 0.2));
+}
+[data-theme="petalfall"] .nowline::before {
+  top: 7px;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #ffd98a 0 18%, #fff0f6 22%, #f39bbd 70%);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'><g fill='black'><path id='p' d='M0 0 C -5 -3 -5 -8 -1.6 -8.6 L 0 -7 L 1.6 -8.6 C 5 -8 5 -3 0 0Z'/><use href='%23p' transform='rotate(72)'/><use href='%23p' transform='rotate(144)'/><use href='%23p' transform='rotate(216)'/><use href='%23p' transform='rotate(288)'/></g></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'><g fill='black'><path id='p' d='M0 0 C -5 -3 -5 -8 -1.6 -8.6 L 0 -7 L 1.6 -8.6 C 5 -8 5 -3 0 0Z'/><use href='%23p' transform='rotate(72)'/><use href='%23p' transform='rotate(144)'/><use href='%23p' transform='rotate(216)'/><use href='%23p' transform='rotate(288)'/></g></svg>") center / contain no-repeat;
+  animation: petal-turn 14s linear infinite;
+}
+@keyframes petal-turn {
+  from { transform: translate(-50%, -50%) rotate(0); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Tag boxes, Classic look: a small blossom pinned to one corner, which
+   opens a little further when the tag is picked up. */
+[data-theme="petalfall"] .chip[data-look="classic"] { position: relative; }
+[data-theme="petalfall"] .chip[data-look="classic"]::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  width: 13px;
+  height: 13px;
+  background: radial-gradient(circle, #ffd98a 0 16%, #fff0f6 20%, #f39bbd 72%);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'><g fill='black'><path id='p' d='M0 0 C -5 -3 -5 -8 -1.6 -8.6 L 0 -7 L 1.6 -8.6 C 5 -8 5 -3 0 0Z'/><use href='%23p' transform='rotate(72)'/><use href='%23p' transform='rotate(144)'/><use href='%23p' transform='rotate(216)'/><use href='%23p' transform='rotate(288)'/></g></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'><g fill='black'><path id='p' d='M0 0 C -5 -3 -5 -8 -1.6 -8.6 L 0 -7 L 1.6 -8.6 C 5 -8 5 -3 0 0Z'/><use href='%23p' transform='rotate(72)'/><use href='%23p' transform='rotate(144)'/><use href='%23p' transform='rotate(216)'/><use href='%23p' transform='rotate(288)'/></g></svg>") center / contain no-repeat;
+  opacity: 0;
+  transform: scale(0.6) rotate(-20deg);
+  transition: opacity 0.25s ease, transform 0.35s ease;
+}
+[data-theme="petalfall"] .chip[data-look="classic"]:hover::after { opacity: 0.9; transform: scale(1) rotate(0); }
+[data-theme="petalfall"] .chip[data-look="classic"].armed::after {
+  opacity: 1;
+  transform: scale(1.25) rotate(0);
+  filter: drop-shadow(0 0 4px rgba(255, 190, 215, 0.9));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="petalfall"] .nowline::before { animation: none; }
+}

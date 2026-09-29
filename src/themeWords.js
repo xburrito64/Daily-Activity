@@ -13,6 +13,13 @@ const WORDS = {
     wipe: 'Unwrite',
     wipeConfirm: 'Unwrite?',
   },
+  petalfall: {
+    recorded: (n) => (n === 1 ? 'one day in bloom' : `${n} days in bloom`),
+    emptyDay: 'still in bud — nothing here yet',
+    blank: 'in bud',
+    wipe: 'Let it fall',
+    wipeConfirm: 'Let it all fall?',
+  },
   tidewater: {
     recorded: (n) => (n === 1 ? 'one day charted' : `${n} days charted`),
     emptyDay: 'calm water — nothing charted here yet',
