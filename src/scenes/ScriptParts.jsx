@@ -42,15 +42,14 @@ function Ground({ colours }) {
 export function Initial({ letter, level, colours = [], size = 34, gleam = false, className = '' }) {
   const id = useId().replace(/:/g, '')
   const gold = `g${id}`
-  const shine = `s${id}`
   const diaper = `d${id}`
   const sketch = level === 'sketch'
   const gilded = level === 'gilded'
   const vine = gilded ? `url(#${gold})` : '#fffaf0'
 
-  return (
+  const picture = (
     <svg
-      className={`initial ${level} ${className}`}
+      className={`initial ${level}${gleam ? '' : ` ${className}`}`}
       viewBox="0 0 48 48"
       width={size}
       height={size}
@@ -64,14 +63,6 @@ export function Initial({ letter, level, colours = [], size = 34, gleam = false,
           <stop offset="0.7" stopColor="#fff0b3" />
           <stop offset="1" stopColor="#9c6a1c" />
         </linearGradient>
-        {gleam && (
-          <linearGradient id={shine} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0.4" stopColor="#fff" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#fff" stopOpacity="0.75" />
-            <stop offset="0.6" stopColor="#fff" stopOpacity="0" />
-            <animateTransform attributeName="gradientTransform" type="translate" values="-1 -1; 1 1; 1 1" keyTimes="0; 0.45; 1" dur="4.5s" repeatCount="indefinite" />
-          </linearGradient>
-        )}
         <pattern id={diaper} width="6" height="6" patternUnits="userSpaceOnUse">
           <path d="M3 0.8 5.2 3 3 5.2 0.8 3Z" fill="none" stroke="#fff" strokeOpacity="0.18" strokeWidth="0.6" />
         </pattern>
@@ -114,10 +105,18 @@ export function Initial({ letter, level, colours = [], size = 34, gleam = false,
           >
             {letter}
           </text>
-          {gleam && <rect x="2" y="2" width="44" height="44" fill={`url(#${shine})`} style={{ mixBlendMode: 'soft-light' }} />}
         </>
       )}
     </svg>
+  )
+  if (!gleam) return picture
+  // Burnished gold catching the light: a band of it sliding across, laid
+  // over the picture and moved as a whole, so nothing is redrawn to do it.
+  return (
+    <span className={`initial-wrap ${level} ${className}`}>
+      {picture}
+      <i className="initial-shine" aria-hidden="true" />
+    </span>
   )
 }
 

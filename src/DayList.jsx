@@ -1086,6 +1086,9 @@ export default function DayList({
       <div
         className={`scroller${armedTag ? ' armed' : ''}`}
         ref={scrollRef}
+        // Every row's height, for the days out of sight: the browser skips
+        // drawing those and holds their place at exactly this. See app.css.
+        style={{ '--row-total': `${rowTotal}px` }}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
       >
@@ -1358,7 +1361,8 @@ ${b.note}` : ''}`}
               <div
                 key={date}
                 ref={rowIndex === 0 ? firstRowRef : undefined}
-                className={`compactrow${isToday ? ' today' : ''}${dayOfWeek(date) === 0 ? ' weekedge' : ''}`}
+                className={`compactrow${isToday ? ' today' : ''}${dayOfWeek(date) === 0 ? ' weekedge' : ''}`
+                  + `${rowIndex === 0 ? ' measured' : ''}`}
               >
                 <div className="gutter">
                   <span className="gday">{weekdayOf(date)}</span>
@@ -1373,7 +1377,8 @@ ${b.note}` : ''}`}
             <section
               key={date}
               ref={rowIndex === 0 ? firstRowRef : undefined}
-              className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`}
+              className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`
+                + `${rowIndex === 0 ? ' measured' : ''}`}
             >
               <h2 className="dayhead">
                 {/* Scriptorium opens every day with an illuminated initial,
@@ -1430,20 +1435,27 @@ ${b.note}` : ''}`}
                 <div className="chipgroup">
                 {/* Hidden tags leave the row but not the bar: every day that
                     already has one still draws it by the full list. */}
-                {tags.filter((t) => !t.hidden).map((t) => (
+                {tags.filter((t) => !t.hidden).map((t) => {
+                  const isArmed = armed?.date === date && armed?.tag === t.id
+                  return (
                   <button
                     key={t.id}
                     type="button"
-                    className={`chip${armed?.date === date && armed?.tag === t.id ? ' armed' : ''}`}
+                    className={`chip${isArmed ? ' armed' : ''}`}
                     data-look={chipLook}
                     style={{ '--chip': t.colour }}
                     disabled={day?.malformed}
                     onClick={() => onArm(date, t.id)}
                     title={month ? rankTitle(t.name, month.get(t.id) ?? 0) : undefined}
                   >
+                    {/* The glow of a picked-up tag, as its own element so it
+                        can pulse by fading — which the graphics card does on
+                        its own — rather than by redrawing its shadow, which
+                        makes the page redraw every day in the list with it. */}
+                    {isArmed && <i className="chip-aura" aria-hidden="true" />}
                     {/* Starlit: a picked-up tag is a spell being readied, a
                         circle turning behind it. */}
-                    {starlit && armed?.date === date && armed?.tag === t.id && (
+                    {starlit && isArmed && (
                       <i className="chip-circle" aria-hidden="true"><MagicCircle size="100%" /></i>
                     )}
                     {month && <RankGem minutes={month.get(t.id) ?? 0} />}
@@ -1451,11 +1463,12 @@ ${b.note}` : ''}`}
                     {t.name}
                     {/* Hearthfire sets a picked-up tag alight: flames along
                         its top and an ember creeping round its edge. */}
-                    {theme === 'hearthfire' && armed?.date === date && armed?.tag === t.id && (
-                      <i className="chip-fire" aria-hidden="true" />
+                    {theme === 'hearthfire' && isArmed && (
+                      <i className="chip-fire" aria-hidden="true"><i className="fuse"><i /></i></i>
                     )}
                   </button>
-                ))}
+                  )
+                })}
                 </div>
 
                 <button

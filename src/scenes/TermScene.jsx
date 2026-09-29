@@ -20,13 +20,13 @@ import { todayISO, formatDotted } from '../time.js'
 // clock.
 //
 // It boots when it comes on — a second of BIOS text, which any key or click
-// skips. The glass curves at the edges, a faint refresh band rolls down it,
+// skips. The glass curves at the edges, the cursors blink together,
 // and the pointer leaves a phosphor trail that fades like a real tube's.
 // Painting a stretch writes it: a scan sweeps across the new block with the
 // data flickering behind it.
 //
 // Everything that moves runs on the shared clock (loop.js), and nothing does
-// when less movement is asked for — no boot, no trail, no roll.
+// when less movement is asked for — no boot, no trail, no blinking.
 
 const METER_WIDTH = 18
 
@@ -147,6 +147,15 @@ export default function TermScene({ days, tags, mode, recorded }) {
   // --- the phosphor trail and the writes ------------------------------------
   const trailCanvas = useRef(null)
   const writes = useRef(null)
+
+  // Every cursor on the screen blinks on this one clock, together, by a
+  // switch on the page (themes.css). Held lit when less movement is asked for.
+  useEffect(() => {
+    const page = document.documentElement
+    if (stillness()) return undefined
+    const timer = setInterval(() => page.classList.toggle('cursor-off'), 550)
+    return () => { clearInterval(timer); page.classList.remove('cursor-off') }
+  }, [])
   useEffect(() => {
     if (stillness()) return undefined
     const el = trailCanvas.current
@@ -244,7 +253,6 @@ export default function TermScene({ days, tags, mode, recorded }) {
 
   return (
     <>
-      <div className="term-roll" aria-hidden="true" />
       <div className="term-glass" aria-hidden="true" />
       <canvas ref={trailCanvas} className="term-trail" aria-hidden="true" />
       <div ref={writes} className="term-writes" aria-hidden="true" />

@@ -439,6 +439,23 @@ h1 {
   padding-top: var(--daysep-after);
   padding-bottom: var(--daysep-before);
 }
+/* Days out of sight are not drawn at all. There can be hundreds of them
+   loaded, and without this every frame anything on screen moves — a glow,
+   the time line, a theme's scene — the browser walks all of them again.
+
+   A skipped day still has to take up exactly the room it would, or every
+   position worked out from the row height lands on the wrong day. So its
+   stand-in height is the row height the list already keeps (--row-total,
+   set by DayList), less the day's own padding. Deliberately not "auto": a
+   remembered size would go stale the moment the rows are zoomed. */
+.daysection {
+  content-visibility: auto;
+  contain-intrinsic-block-size: calc(var(--row-total, 300px) - var(--daysep-after) - var(--daysep-before));
+}
+/* Except the row the height is measured from, which must be real — or the
+   height would be measured from the stand-in made out of it. */
+.daysection.measured,
+.compactrow.measured { content-visibility: visible; }
 
 .dayhead {
   height: var(--dayhead-height);
@@ -584,19 +601,32 @@ h1 {
 .chip:disabled { opacity: 0.35; cursor: default; }
 /* Armed means loaded and waiting for a drag, which is a state you are in
    rather than a thing that happened — so it keeps glowing until you use it
-   or press escape. */
+   or press escape.
+
+   The glow is steady on the chip, and the pulse over it is the aura
+   (DayList) fading in and out. Only fading and moving are left to the
+   graphics card; an animated shadow would have the page redraw every day in
+   the list on every frame for as long as a tag was picked up. */
+.chip { position: relative; isolation: isolate; }
 .chip.armed {
   background: var(--chip);
   color: var(--c-text-on-block);
   border-color: rgb(var(--glow-rgb) / 0.9);
-  animation: armGlow 2.1s ease-in-out infinite;
+  box-shadow: var(--glow-armed);
 }
-@keyframes armGlow {
-  0%, 100% { box-shadow: var(--glow-armed); }
-  50% {
-    box-shadow: 0 0 0 1px var(--c-focus-ring),
-                0 0 34px 8px rgb(var(--glow-rgb) / 0.6);
-  }
+.chip-aura {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--c-focus-ring), 0 0 34px 8px rgb(var(--glow-rgb) / 0.6);
+  opacity: 0;
+  animation: auraPulse 2.1s steps(32) infinite;
+}
+@keyframes auraPulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 /* One size whether it is an emoji or an image, so replacing one does not
    move anything around it. */
@@ -632,6 +662,8 @@ h1 {
   align-items: stretch;
   gap: var(--gutter-gap);
   padding: var(--s-1) 0;
+  content-visibility: auto;
+  contain-intrinsic-block-size: calc(var(--row-total, 30px) - 2 * var(--s-1));
 }
 /* Inset shadow rather than a border, for the same equal-height reason. */
 .compactrow.weekedge { box-shadow: inset 0 -1px 0 var(--c-line-soft); }
@@ -1592,12 +1624,28 @@ h1 {
    Every animation in this file is decoration: the sky twinkling, a block
    wiping in, an armed chip breathing. None of it carries information that
    is not also in the colours and the shapes, so all of it can go. */
+/* A note on the animations in these stylesheets: the ones that keep going
+   for as long as the app is open are all stepped, about thirty steps a
+   second, rather than smooth. A smooth one is redrawn at the screen's full
+   rate — a hundred and more times a second on a fast screen — where the
+   drawn scenes only ever ask for thirty, and at that rate even a glint the
+   size of a letter cost the graphics card more than a whole scene. Thirty
+   steps a second looks the same. */
+
+/* While another window is in front, every animation here holds still where
+   it is and carries on when the app comes back (scenes/loop.js). The app is
+   something left open all day; nobody is watching it glow meanwhile. */
+.resting *,
+.resting *::before,
+.resting *::after { animation-play-state: paused !important; }
+
 @media (prefers-reduced-motion: reduce) {
   /* A still sky rather than no sky. Each layer holds at its own brightness,
      so the big stars still read as the bright ones. */
   .sky i { animation: none; opacity: var(--peak); }
   .block { animation: none; }
   .chip.armed { animation: none; box-shadow: var(--glow-armed); }
+  .chip-aura { animation: none; opacity: 0.5; }
 }
 
 /* ============ Settings ============ */

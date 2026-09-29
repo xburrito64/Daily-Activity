@@ -38,41 +38,50 @@ const NODES = Array.from({ length: 6 }, (_, i) => {
  * A magic circle: runes round the rim, a hexagram, a star at the heart, each
  * ring turning its own way. Drawn in currentColor, so it takes the colour of
  * whatever spell it is casting.
+ *
+ * Each ring is a picture of its own in a plain box of its own, stacked on
+ * the others, and it is the box that turns: that is the graphics card
+ * rotating a finished image. Turning the drawing itself has the page redraw
+ * it every frame the circle is showing.
  */
 export function MagicCircle({ size = 100, className = '', style }) {
   const ring = `r${useId().replace(/:/g, '')}`
+  const layer = (name, children) => (
+    <span className={name}>
+      <svg viewBox="-50 -50 100 100" aria-hidden="true">{children}</svg>
+    </span>
+  )
   return (
-    <svg
-      className={`magic-circle ${className}`}
-      viewBox="-50 -50 100 100"
-      width={size}
-      height={size}
-      style={style}
-      aria-hidden="true"
-    >
-      <defs>
-        <path id={ring} d="M0,-42.6a42.6,42.6 0 1,1 0,85.2a42.6,42.6 0 1,1 0,-85.2" />
-      </defs>
-      <g className="mc-outer">
-        <circle r="48.5" />
-        <circle r="39.6" />
-        <path d={TICKS} />
-        <text className="mc-runes">
-          <textPath href={`#${ring}`} textLength="266" lengthAdjust="spacing">{RUNES}{RUNES.slice(0, 8)}</textPath>
-        </text>
-      </g>
-      <g className="mc-mid">
-        <polygon points={triangle(34, -Math.PI / 2)} />
-        <polygon points={triangle(34, Math.PI / 2)} />
-        <circle r="24" />
-        {NODES.map(([x, y], i) => <circle key={i} className="mc-node" cx={x} cy={y} r="2.4" />)}
-      </g>
-      <g className="mc-inner">
-        <circle r="17" strokeDasharray="1.6 2.4" />
-        <polygon points={star(8, 14, 5.5)} />
-        <circle className="mc-heart" r="2.6" />
-      </g>
-    </svg>
+    <span className={`magic-circle ${className}`} style={{ width: size, height: size, ...style }} aria-hidden="true">
+      {layer('mc-outer', (
+        <>
+          <defs>
+            <path id={ring} d="M0,-42.6a42.6,42.6 0 1,1 0,85.2a42.6,42.6 0 1,1 0,-85.2" />
+          </defs>
+          <circle r="48.5" />
+          <circle r="39.6" />
+          <path d={TICKS} />
+          <text className="mc-runes">
+            <textPath href={`#${ring}`} textLength="266" lengthAdjust="spacing">{RUNES}{RUNES.slice(0, 8)}</textPath>
+          </text>
+        </>
+      ))}
+      {layer('mc-mid', (
+        <>
+          <polygon points={triangle(34, -Math.PI / 2)} />
+          <polygon points={triangle(34, Math.PI / 2)} />
+          <circle r="24" />
+          {NODES.map(([x, y], i) => <circle key={i} className="mc-node" cx={x} cy={y} r="2.4" />)}
+        </>
+      ))}
+      {layer('mc-inner', (
+        <>
+          <circle r="17" strokeDasharray="1.6 2.4" />
+          <polygon points={star(8, 14, 5.5)} />
+          <circle className="mc-heart" r="2.6" />
+        </>
+      ))}
+    </span>
   )
 }
 
@@ -160,11 +169,16 @@ const starPolygon = (n, step, r, turn = -Math.PI / 2) => {
   return path
 }
 
+/**
+ * One ring of the seal: the drawing in a plain box, which is what turns.
+ * The fade toward the edge is on the box too — being round, it looks the
+ * same however far the ring has turned, and so it is drawn once with it.
+ */
 function Ring({ className, children }) {
   return (
-    <svg className={`seal-ring ${className}`} viewBox="-100 -100 200 200" aria-hidden="true">
-      {children}
-    </svg>
+    <div className={`seal-ring ${className}`}>
+      <svg viewBox="-100 -100 200 200" aria-hidden="true">{children}</svg>
+    </div>
   )
 }
 

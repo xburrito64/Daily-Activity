@@ -44,3 +44,23 @@ export function runLoop(frame) {
     cancelAnimationFrame(handle)
   }
 }
+
+/**
+ * Put the page to rest while another window has the focus: every animation
+ * the stylesheet runs holds where it is (app.css, `.resting`) until the app
+ * is back in front. Whatever is drawn on the clock above already slows down
+ * on its own. Returns a function that stops watching.
+ */
+export function restWhenAway() {
+  const page = document.documentElement
+  const away = () => page.classList.add('resting')
+  const back = () => page.classList.remove('resting')
+  if (!document.hasFocus()) away()
+  window.addEventListener('blur', away)
+  window.addEventListener('focus', back)
+  return () => {
+    window.removeEventListener('blur', away)
+    window.removeEventListener('focus', back)
+    back()
+  }
+}

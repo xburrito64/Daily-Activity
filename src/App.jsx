@@ -14,6 +14,7 @@ import { Initial, HourOf } from './scenes/ScriptParts.jsx'
 import StarScene from './scenes/StarScene.jsx'
 import { MoonWords } from './scenes/StarParts.jsx'
 import { RANK_DAYS } from './scenes/starlit.js'
+import { restWhenAway } from './scenes/loop.js'
 import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
@@ -159,6 +160,9 @@ export default function App() {
     setAppearance(kept)
     saveAppearance(kept)
   }
+
+  // The page's animations hold still while another window is in front.
+  useEffect(() => restWhenAway(), [])
 
   // Starlit ranks each tag by its last month, so it needs that month read in
   // even when the list only shows a few days of it.

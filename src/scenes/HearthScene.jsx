@@ -24,6 +24,7 @@ import { todayISO } from '../time.js'
 
 const SCALE = 0.5
 const MAX_SPARKS = 90
+const EMBERS = 44
 
 const VERTEX = `#version 300 es
 in vec2 p;
@@ -177,6 +178,7 @@ function sparkSprite(core, edge) {
 export default function HearthScene({ days, onToday }) {
   const fireCanvas = useRef(null)
   const sparkCanvas = useRef(null)
+  const emberCanvas = useRef(null)
   const light = useRef(null)
   const minute = useMinute()
   const fire = useMemo(() => fireOf(days, todayISO(), minute), [days, minute])
@@ -272,6 +274,66 @@ export default function HearthScene({ days, onToday }) {
       gl.deleteProgram(program)
       gl.deleteBuffer(buffer)
     }
+  }, [])
+
+  // --- the embers ---------------------------------------------------------
+  // Embers rising through the room behind the days, more of them the higher
+  // the fire burns. Drawn here, on the shared clock, rather than as layers
+  // of the page sliding upward: those ran at the screen's full rate and cost
+  // the graphics card more than the fire itself.
+  useEffect(() => {
+    const el = emberCanvas.current
+    const g = el.getContext('2d')
+    const colours = ['255, 174, 92', '255, 138, 58', '255, 208, 138', '255, 122, 42', '255, 184, 112']
+    let w = 0
+    let h = 0
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    size()
+    window.addEventListener('resize', size)
+    const ember = (anywhere) => ({
+      x: Math.random(),
+      y: anywhere ? Math.random() : 1.02,
+      rise: 0.018 + Math.random() * 0.05,
+      r: 0.6 + Math.random() * 1.2,
+      seed: Math.random() * 100,
+      colour: colours[Math.floor(Math.random() * colours.length)],
+    })
+    const embers = Array.from({ length: EMBERS }, () => ember(true))
+    const draw = (t) => {
+      g.clearRect(0, 0, w, h)
+      // How many are alight follows the fire: a dozen when it is cold.
+      const alight = Math.round(EMBERS * (0.3 + 0.7 * Math.min(1, heatTarget.current + flare.current)))
+      for (let i = 0; i < alight; i++) {
+        const e = embers[i]
+        const flicker = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * (2 + (e.seed % 3)) + e.seed))
+        // They fade as they climb, gone before the top of the room.
+        const fade = Math.min(1, Math.max(0, (e.y - 0.08) / 0.55))
+        const x = e.x * w + Math.sin(t * 0.7 + e.seed) * 9
+        g.fillStyle = `rgba(${e.colour}, ${(flicker * fade * 0.9).toFixed(3)})`
+        g.beginPath()
+        g.arc(x, e.y * h, e.r, 0, Math.PI * 2)
+        g.fill()
+      }
+    }
+    if (stillness()) {
+      draw(0)
+      return () => window.removeEventListener('resize', size)
+    }
+    const stop = runLoop((now, dt) => {
+      for (const e of embers) {
+        e.y -= e.rise * dt
+        if (e.y < 0.05) Object.assign(e, ember(false))
+      }
+      draw(now / 1000)
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
   }, [])
 
   // --- the sparks ---------------------------------------------------------
@@ -413,6 +475,7 @@ export default function HearthScene({ days, onToday }) {
   return (
     <>
       <div ref={light} className="hearth-light" aria-hidden="true" />
+      <canvas ref={emberCanvas} className="hearth-embers" aria-hidden="true" />
       <canvas ref={fireCanvas} className="hearth-fire" aria-hidden="true" />
       <canvas ref={sparkCanvas} className="hearth-sparks" aria-hidden="true" />
       {/* The hearth's own strip along the bottom, and what it says about

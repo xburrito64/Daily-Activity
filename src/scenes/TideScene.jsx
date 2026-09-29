@@ -19,7 +19,9 @@ export { daysDown } from './tide.js'
 // for less movement gets one still frame, redrawn only when the depth
 // changes.
 
-const SCALE = 0.5
+// A little over a third of the window's resolution: the water is soft by
+// nature, and every pixel of it is drawn thirty times a second.
+const SCALE = 0.38
 
 const VERTEX = `#version 300 es
 in vec2 p;
@@ -234,17 +236,6 @@ export default function TideScene({ days }) {
   return (
     <>
       <canvas ref={canvas} className="tide-water" aria-hidden="true" />
-
-      {/* The title seen through the surface: a slow ripple across it. */}
-      <svg className="tide-defs" width="0" height="0" aria-hidden="true">
-        <filter id="tide-waver" x="-5%" y="-30%" width="110%" height="160%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.011 0.045" numOctaves="2" seed="4">
-            <animate attributeName="baseFrequency" dur="16s" repeatCount="indefinite"
-              values="0.011 0.045;0.016 0.06;0.011 0.045" />
-          </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" scale="3.5" />
-        </filter>
-      </svg>
 
       <div ref={ripples} className="tide-ripples" aria-hidden="true" />
 
