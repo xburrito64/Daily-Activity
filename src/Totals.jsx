@@ -3,6 +3,10 @@ import { formatDuration, formatShortDate, daysBetween, shiftDate } from './time.
 import { coverUrl } from './api.js'
 import { COVER_ASPECT, Covers, coverFor } from './face.js'
 import TagIcon from './TagIcon.jsx'
+import { Appearance } from './appearance.js'
+import { Grimoire } from './scenes/StarParts.jsx'
+import { monthByTag } from './scenes/starlit.js'
+import { todayISO } from './time.js'
 
 /**
  * How the days currently on screen were spent. Blocks are allowed to overlap,
@@ -11,6 +15,7 @@ import TagIcon from './TagIcon.jsx'
  */
 export default function Totals({ days, tags, range }) {
   const covers = useContext(Covers)
+  const { theme } = useContext(Appearance)
   if (!range) return null
 
   const span = daysBetween(range.from, range.to) + 1
@@ -103,6 +108,10 @@ export default function Totals({ days, tags, range }) {
           again, broken into what it was actually spent on. */}
       <Shelf title="What you played" rows={games} blank="🎮" />
       <Shelf title="What you watched" rows={shows} blank="🌸" />
+
+      {/* Starlit keeps a grimoire: every tag's rank over the last month,
+          whatever range is in view. */}
+      {theme === 'starlit' && <Grimoire month={monthByTag(days, todayISO())} tags={tags} />}
     </aside>
   )
 }

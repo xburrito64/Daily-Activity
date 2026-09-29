@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { moonPhase, moonName, rankOf } from './starlit.js'
+import { moonPhase, moonName, moonPath, rankOf, rankProgress, RANKS, RANK_DAYS } from './starlit.js'
 import { useMinute } from '../useMinute.js'
 
 // The pieces of Starlit that live in the page: the magic circle every spell
@@ -99,25 +99,143 @@ export function Moonweed({ title }) {
   )
 }
 
-const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
-
-/** A tag's rank, as a small sigil on its box: I for Beginner up to VII for God. */
-export function RankSigil({ minutes }) {
-  const rank = rankOf(minutes)
-  return <i className="rank-sigil" data-rank={rank.index}>{NUMERALS[rank.index]}</i>
+/**
+ * A tag's rank as a gem: an empty setting for a Beginner, then bronze,
+ * silver, gold, ruby, amethyst, and a clear stone that holds every colour
+ * for a God. Cut the same way at every rank, so it reads as one thing that
+ * gets finer rather than seven different badges.
+ */
+export function RankGem({ minutes }) {
+  return <i className="rank-gem" data-rank={rankOf(minutes).index} aria-hidden="true" />
 }
 
 /** What a tag's box says of its rank when the pointer rests on it. */
 export function rankTitle(name, minutes) {
   const rank = rankOf(minutes)
   const hours = Math.floor(minutes / 60)
-  const next = rank.toNext > 0 ? ` · ${Math.ceil(rank.toNext)}h to the next` : ''
-  return `${name} · ${rank.name} rank · ${hours}h this month${next}`
+  const next = rank.toNext > 0 ? ` · ${Math.ceil(rank.toNext)}h to ${RANKS[rank.index + 1].name}` : ''
+  return `${name} · ${rank.name} · ${hours}h this month${next}`
+}
+
+/** The moon in its real phase: the dark disc, and the lit part over it. */
+export function Moon({ size = 40, phase }) {
+  const at = phase ?? moonPhase(new Date())
+  return (
+    <svg className="moon" viewBox="-12 -12 24 24" width={size} height={size} aria-hidden="true">
+      <circle r="10" className="moon-dark" />
+      <path d={moonPath(at, 10)} className="moon-lit" />
+      <circle cx="-3" cy="-2.5" r="1.8" className="moon-mare" />
+      <circle cx="2.6" cy="3" r="2.4" className="moon-mare" />
+      <circle cx="3.4" cy="-4.2" r="1.1" className="moon-mare" />
+    </svg>
+  )
 }
 
 /** "· waning gibbous", for beside the count of days. */
 export function MoonWords() {
   useMinute() // enough to turn over at midnight; the moon is in no hurry
-  const phase = moonPhase(new Date())
-  return <span className="star-moon"> · {moonName(phase)}</span>
+  return <span className="star-moon"> · {moonName(moonPhase(new Date()))}</span>
+}
+
+// --- the seal ---------------------------------------------------------------
+// A great arcane seal, each ring of it its own picture so that turning it
+// is the graphics card moving a finished image rather than the page
+// redrawing lines every frame. Every stroke is one screen pixel whatever the
+// size, so it stays as sharp as the text.
+
+const polar = (r, a) => [Math.cos(a) * r, Math.sin(a) * r]
+const fmt = (n) => n.toFixed(2)
+const ticks = (count, r0, r1, every, r2) => Array.from({ length: count }, (_, i) => {
+  const a = (i / count) * Math.PI * 2
+  const [x0, y0] = polar(i % every === 0 ? r2 : r0, a)
+  const [x1, y1] = polar(r1, a)
+  return `M${fmt(x0)} ${fmt(y0)}L${fmt(x1)} ${fmt(y1)}`
+}).join('')
+const starPolygon = (n, step, r, turn = -Math.PI / 2) => {
+  let path = ''
+  for (let i = 0; i <= n; i++) {
+    const [x, y] = polar(r, turn + ((i * step) % n) * ((Math.PI * 2) / n))
+    path += `${i === 0 ? 'M' : 'L'}${fmt(x)} ${fmt(y)}`
+  }
+  return path
+}
+
+function Ring({ className, children }) {
+  return (
+    <svg className={`seal-ring ${className}`} viewBox="-100 -100 200 200" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+export function Seal() {
+  const band = `b${useId().replace(/:/g, '')}`
+  return (
+    <div className="seal" aria-hidden="true">
+      <Ring className="seal-outer">
+        <defs>
+          <path id={band} d="M0,-86a86,86 0 1,1 0,172a86,86 0 1,1 0,-172" />
+        </defs>
+        <circle r="98.5" />
+        <circle r="94" />
+        <circle r="79" />
+        <path d={ticks(120, 94, 97, 10, 91.5)} />
+        <text className="seal-runes">
+          <textPath href={`#${band}`} textLength="536" lengthAdjust="spacing">
+            {`${RUNES} ✦ ${RUNES} ✦ `}
+          </textPath>
+        </text>
+      </Ring>
+      <Ring className="seal-middle">
+        <path d={starPolygon(12, 5, 76)} />
+        <circle r="62" />
+        {Array.from({ length: 12 }, (_, i) => {
+          const [x, y] = polar(70, -Math.PI / 2 + (i * Math.PI) / 6)
+          return <circle key={i} cx={fmt(x)} cy={fmt(y)} r={i % 3 === 0 ? 3.2 : 1.8} />
+        })}
+      </Ring>
+      <Ring className="seal-inner">
+        <path d={starPolygon(6, 2, 56)} />
+        <path d={starPolygon(6, 2, 56, Math.PI / 2)} />
+        <circle r="41" />
+        <circle r="31" className="seal-dashed" />
+        <path d={ticks(24, 41, 44, 6, 38)} />
+      </Ring>
+      <div className="seal-moon"><Moon size="100%" /></div>
+    </div>
+  )
+}
+
+/**
+ * The Grimoire: every school of magic you have practised this past month,
+ * its rank, and how far it is toward the next. Shown with the ledger in the
+ * Overview.
+ */
+export function Grimoire({ month, tags }) {
+  const rows = tags
+    .filter((t) => (month.get(t.id) ?? 0) > 0)
+    .map((t) => ({ tag: t, minutes: month.get(t.id) }))
+    .sort((a, b) => b.minutes - a.minutes)
+  if (rows.length === 0) return null
+  return (
+    <div className="grimoire">
+      <span className="eyebrow">Grimoire · the last {RANK_DAYS} days</span>
+      <ul className="grimoire-list">
+        {rows.map(({ tag, minutes }) => {
+          const rank = rankOf(minutes)
+          return (
+            <li key={tag.id} className="grimoire-row" title={rankTitle(tag.name, minutes)}>
+              <RankGem minutes={minutes} />
+              <span className="grimoire-name">{tag.name}</span>
+              <span className="grimoire-rank" data-rank={rank.index}>{rank.name}</span>
+              <span className="grimoire-bar">
+                <span className="grimoire-fill" style={{ width: `${rankProgress(minutes) * 100}%` }} />
+              </span>
+              <span className="grimoire-hours">{Math.floor(minutes / 60)}h</span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }

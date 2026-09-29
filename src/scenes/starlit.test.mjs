@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict'
 import {
   moonPhase, moonName, rankOf, monthByTag, rankUps, isComplete, completeDays, RANKS,
+  rankProgress, moonPath, starField,
 } from './starlit.js'
 
 let passed = 0
@@ -84,6 +85,33 @@ t('a day is complete when every ten minutes of it holds something', () => {
     c: { malformed: true, blocks: [block('x', 0, 144)] },
   }
   assert.deepEqual([...completeDays(days)], ['a'])
+})
+
+t('progress through a rank runs from its start to the next', () => {
+  assert.equal(rankProgress(0), 0)
+  assert.equal(rankProgress(10 * 60), 0.5) // Intermediate is 5–15h
+  assert.equal(rankProgress(15 * 60), 0)
+  assert.equal(rankProgress(999 * 60), 1)
+})
+
+t('the moon is lit on the right while it waxes and the left while it wanes', () => {
+  // First quarter: the right half, a straight edge down the middle.
+  assert.equal(moonPath(0.25, 10), 'M0 -10A10 10 0 0 1 0 10A0 10 0 0 0 0 -10Z')
+  // A waxing crescent's dark edge bows to the right; a gibbous one's to the left.
+  assert.match(moonPath(0.1, 10), /0 0 1 0 10A[\d.]+ 10 0 0 0 0 -10Z$/)
+  assert.match(moonPath(0.4, 10), /0 0 1 0 10A[\d.]+ 10 0 0 1 0 -10Z$/)
+  // Waning, the lit limb is the left one.
+  assert.match(moonPath(0.6, 10), /^M0 -10A10 10 0 0 0 0 10/)
+  // Full: round the left limb and back round the right.
+  assert.equal(moonPath(0.5, 10), 'M0 -10A10 10 0 0 0 0 10A10 10 0 0 0 0 -10Z')
+})
+
+t('the stars are the same every time, gathered overhead', () => {
+  assert.deepEqual(starField(50), starField(50))
+  const field = starField(400)
+  assert.equal(field.length, 400)
+  const high = field.filter((s) => s.y < 0.5).length
+  assert.ok(high > 400 * 0.6, `${high} of 400 in the upper half`)
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

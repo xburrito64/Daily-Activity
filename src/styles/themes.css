@@ -1894,14 +1894,30 @@
 }
 
 /* ----------------------------------------------------------------------
-   Starlit, in full. The sky, the casting and the mana are
-   scenes/StarScene.jsx; the circle, the moonweed and the sigils are
-   scenes/StarParts.jsx. Everything here is how they are worn.
-   ---------------------------------------------------------------------- */
+   Starlit, in full: a grimoire, open at night. The stars, the seal, the
+   casting and the announcements are scenes/StarScene.jsx; the circle, the
+   gems, the moon and the grimoire are scenes/StarParts.jsx.
 
-/* The living sky covers the painted one, which stays underneath in case
-   the graphics card can't draw it. */
-.app > .star-sky {
+   Two colours carry everything: antique gold for what is written and
+   ruled, and the pale blue of mana for what is alive — a spell being cast,
+   today, the time now. Every line is one pixel and sharp.
+   ---------------------------------------------------------------------- */
+[data-theme="starlit"] {
+  --mana: #9fd8ff;
+  --mana-rgb: 159 216 255;
+  --gilt: #c9a86a;
+  --gilt-rgb: 201 168 106;
+}
+
+/* --- the room --------------------------------------------------------- */
+[data-theme="starlit"] .sky i { display: none; }
+[data-theme="starlit"] .app > .sky {
+  background:
+    radial-gradient(1100px 620px at 62% -8%, rgba(70, 92, 150, 0.2), transparent 70%),
+    radial-gradient(1300px 700px at 0% 110%, rgba(52, 38, 84, 0.22), transparent 70%),
+    linear-gradient(180deg, #0c0f19 0%, #090b13 55%, #07080e 100%);
+}
+.app > .star-field {
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -1909,13 +1925,368 @@
   height: 100%;
   pointer-events: none;
 }
-.app > .star-motes {
+
+/* The seal crowning the page, its rings turning at their own slow paces,
+   the moon at its heart. Placed by StarScene over the open stretch of the
+   header. */
+.app > .seal {
+  --seal: min(84vh, 920px);
   position: fixed;
+  top: calc(var(--seal-y, 48px) - var(--seal) / 2);
+  left: calc(var(--seal-x, 62vw) - var(--seal) / 2);
+  z-index: 0;
+  width: var(--seal);
+  height: var(--seal);
+  pointer-events: none;
+  -webkit-mask: radial-gradient(closest-side, #000 55%, rgba(0, 0, 0, 0.55) 80%, transparent 100%);
+  mask: radial-gradient(closest-side, #000 55%, rgba(0, 0, 0, 0.55) 80%, transparent 100%);
+}
+.seal-ring {
+  position: absolute;
   inset: 0;
-  z-index: 25;
   width: 100%;
   height: 100%;
+  overflow: visible;
+  will-change: transform;
+}
+.seal-ring circle,
+.seal-ring path {
+  fill: none;
+  stroke: rgb(var(--gilt-rgb) / 0.3);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.seal-middle path,
+.seal-middle circle { stroke: rgb(var(--mana-rgb) / 0.2); }
+.seal-middle circle[r="3.2"] { fill: rgb(var(--mana-rgb) / 0.3); }
+.seal-inner circle,
+.seal-inner path { stroke: rgb(var(--gilt-rgb) / 0.24); }
+.seal-ring .seal-dashed { stroke-dasharray: 2 7; }
+.seal-runes {
+  fill: rgb(var(--gilt-rgb) / 0.4);
+  stroke: none;
+  font-family: "Segoe UI Historic", "Segoe UI Symbol", serif;
+  font-size: 7.6px;
+}
+.seal-outer { animation: seal-turn 480s linear infinite; }
+.seal-middle { animation: seal-turn 320s linear infinite reverse; }
+.seal-inner { animation: seal-turn 220s linear infinite; }
+@keyframes seal-turn { to { transform: rotate(360deg); } }
+.seal-moon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9.5%;
+  height: 9.5%;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 22px rgba(215, 232, 255, 0.4));
+}
+.moon { display: block; overflow: visible; }
+.moon-dark { fill: #161c2b; stroke: rgba(215, 232, 255, 0.28); stroke-width: 0.35; }
+.moon-lit { fill: #eceae2; }
+.moon-mare { fill: rgba(70, 80, 100, 0.22); }
+
+/* A fine gold rule round the whole window, a diamond at each corner: the
+   page of the book. */
+.app > .grimoire-frame {
+  position: fixed;
+  inset: 9px;
+  z-index: 24;
   pointer-events: none;
+  border: 1px solid rgb(var(--gilt-rgb) / 0.22);
+}
+.grimoire-frame::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgb(var(--gilt-rgb) / 0.08);
+}
+.grimoire-frame i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: #0a0c14;
+  border: 1px solid rgb(var(--gilt-rgb) / 0.6);
+  transform: rotate(45deg);
+}
+.grimoire-frame i:nth-child(1) { top: -5px; left: -5px; }
+.grimoire-frame i:nth-child(2) { top: -5px; right: -5px; }
+.grimoire-frame i:nth-child(3) { bottom: -5px; left: -5px; }
+.grimoire-frame i:nth-child(4) { bottom: -5px; right: -5px; }
+
+/* --- the header ---------------------------------------------------------- */
+[data-theme="starlit"] h1 {
+  color: transparent;
+  background: linear-gradient(180deg, #f6ead0 0%, #e0c184 48%, #b08a44 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 14px rgb(var(--gilt-rgb) / 0.18));
+}
+.star-moon { font-style: italic; }
+/* The rule under the header, with its clasp in the middle. */
+[data-theme="starlit"] .goldrule {
+  height: 14px;
+  margin-top: calc(var(--s-6) - 6px);
+  margin-bottom: calc(var(--s-5) - 6px);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 14'><path d='M28 1.5 33.5 7 28 12.5 22.5 7Z' fill='%230b0e17' stroke='%23c9a86a' stroke-width='0.9'/><path d='M28 4.2 29.1 7 28 9.8 26.9 7Z' fill='%239fd8ff'/><path d='M14 7h6M36 7h6' stroke='%23c9a86a' stroke-width='0.9'/><circle cx='11' cy='7' r='1.4' fill='%23c9a86a'/><circle cx='45' cy='7' r='1.4' fill='%23c9a86a'/></svg>") center / 56px 14px no-repeat,
+    linear-gradient(90deg, transparent, rgb(var(--gilt-rgb) / 0.5) 22%, rgb(var(--gilt-rgb) / 0.5) calc(50% - 36px), transparent calc(50% - 30px), transparent calc(50% + 30px), rgb(var(--gilt-rgb) / 0.5) calc(50% + 36px), rgb(var(--gilt-rgb) / 0.5) 78%, transparent) center / 100% 1px no-repeat;
+}
+
+/* --- the days ------------------------------------------------------------- */
+/* Each day opens on a small diamond; today's is lit with mana. */
+[data-theme="starlit"] .dayhead::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgb(var(--gilt-rgb) / 0.7);
+  transform: rotate(45deg);
+}
+[data-theme="starlit"] .daysection.today .dayhead::before {
+  background: var(--mana);
+  border-color: #e2f3ff;
+  box-shadow: 0 0 8px rgb(var(--mana-rgb) / 0.8);
+}
+[data-theme="starlit"] .todaymark { color: var(--mana); }
+
+/* The bars are set like tablets: a gold edge and a fine second rule inside. */
+[data-theme="starlit"] .track {
+  border-color: rgb(var(--gilt-rgb) / 0.26);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 0 0 3px rgb(var(--gilt-rgb) / 0.08);
+}
+[data-theme="starlit"] .daysection.today .track {
+  border-color: rgb(var(--mana-rgb) / 0.42);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 0 0 3px rgb(var(--mana-rgb) / 0.08),
+    0 0 22px -6px rgb(var(--mana-rgb) / 0.4);
+}
+/* An untrodden day: the road not yet walked, a faint line of it down the middle. */
+[data-theme="starlit"] .track.empty {
+  border-style: solid;
+  border-color: rgb(var(--gilt-rgb) / 0.12);
+  background:
+    linear-gradient(90deg, rgb(var(--gilt-rgb) / 0.16) 50%, transparent 0) 0 50% / 14px 1px repeat-x,
+    rgba(12, 15, 24, 0.7);
+}
+[data-theme="starlit"] .emptyday { color: rgb(var(--gilt-rgb) / 0.4); }
+
+/* The time now: a thread of mana, a crystal at its head. */
+[data-theme="starlit"] .nowline {
+  width: 1px;
+  background: linear-gradient(to bottom, #e2f3ff, rgb(var(--mana-rgb) / 0.3));
+  box-shadow: 0 0 6px 1px rgb(var(--mana-rgb) / 0.45);
+}
+[data-theme="starlit"] .nowline::before {
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: linear-gradient(135deg, #ffffff, var(--mana) 55%, #4b77c0);
+  box-shadow: 0 0 8px 2px rgb(var(--mana-rgb) / 0.65);
+  animation: crystal-breathe 3.4s ease-in-out infinite;
+}
+@keyframes crystal-breathe {
+  50% { transform: translate(-50%, -50%) rotate(45deg) scale(0.78); box-shadow: 0 0 4px 1px rgb(var(--mana-rgb) / 0.4); }
+}
+
+/* Blue moonweed beside a day with every hour accounted for. */
+.moonweed {
+  flex: none;
+  align-self: center;
+  margin: -4px 0;
+  filter: drop-shadow(0 0 4px rgba(140, 200, 255, 0.8));
+  animation: moonweed-bloom 1s cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
+}
+@keyframes moonweed-bloom {
+  from { transform: scale(0) rotate(-120deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* --- tag boxes, Classic look: sigil plates -------------------------------- */
+/* Each tag is a plate with pointed ends, edged in its colour gone to gold,
+   a gem set in its left point for its rank. The edge and the face are drawn
+   by the plate's two layers, so what is picked up can spill out past them. */
+@property --shine {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 130%;
+}
+@property --orbit {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+[data-theme="starlit"] .chip { position: relative; isolation: isolate; }
+[data-theme="starlit"] .chip[data-look="classic"] {
+  --notch: 12px;
+  --edge: color-mix(in oklab, var(--chip) 45%, var(--gilt));
+  padding: 0 calc(var(--s-5) + 5px) 0 calc(var(--s-5) + 8px);
+  color: var(--c-text-bright);
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: transform 0.25s ease, --shine 0.7s ease;
+}
+[data-theme="starlit"] .chip[data-look="classic"]::before,
+[data-theme="starlit"] .chip[data-look="classic"]::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+/* The edge. */
+[data-theme="starlit"] .chip[data-look="classic"]::before {
+  inset: 0;
+  z-index: -3;
+  clip-path: polygon(var(--notch) 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, var(--notch) 100%, 0 50%);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--edge) 80%, #fff4dc), var(--edge) 45%, color-mix(in oklab, var(--edge) 55%, #000));
+}
+/* The face, with a light that crosses it under the pointer. */
+[data-theme="starlit"] .chip[data-look="classic"]::after {
+  inset: 1px;
+  z-index: -2;
+  clip-path: polygon(calc(var(--notch) - 0.5px) 0, calc(100% - var(--notch) + 0.5px) 0, 100% 50%, calc(100% - var(--notch) + 0.5px) 100%, calc(var(--notch) - 0.5px) 100%, 0 50%);
+  background:
+    linear-gradient(105deg, transparent calc(var(--shine) - 14%), rgba(255, 248, 230, 0.16) var(--shine), transparent calc(var(--shine) + 14%)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 42%),
+    radial-gradient(120% 150% at 50% 125%, color-mix(in oklab, var(--chip) 38%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in oklab, var(--chip) 30%, #151a28), color-mix(in oklab, var(--chip) 17%, #0b0d15));
+}
+[data-theme="starlit"] .chip[data-look="classic"]:hover:not(:disabled) {
+  --shine: -30%;
+  background: none;
+  transform: translateY(-1px);
+}
+[data-theme="starlit"] .chip[data-look="classic"]:hover:not(:disabled)::before {
+  background: linear-gradient(180deg, #fbf0d4, color-mix(in oklab, var(--edge) 70%, #f0d9a0) 45%, color-mix(in oklab, var(--edge) 70%, #000));
+}
+/* Picked up, it is a spell readied: it lifts, a light runs round its edge,
+   its face fills with its own colour, and a circle turns behind it. */
+[data-theme="starlit"] .chip[data-look="classic"].armed {
+  color: #ffffff;
+  background: none;
+  border: none;
+  transform: translateY(-2px);
+  filter: drop-shadow(0 0 7px color-mix(in oklab, var(--chip) 45%, var(--mana)));
+  animation: none;
+}
+[data-theme="starlit"] .chip[data-look="classic"].armed::before {
+  background: conic-gradient(from var(--orbit),
+    var(--edge) 0 58%,
+    color-mix(in oklab, var(--edge) 40%, #e2f3ff) 70%,
+    #ffffff 78%,
+    color-mix(in oklab, var(--edge) 40%, #e2f3ff) 86%,
+    var(--edge) 96%);
+  animation: plate-orbit 2.2s linear infinite;
+}
+@keyframes plate-orbit { to { --orbit: 360deg; } }
+[data-theme="starlit"] .chip[data-look="classic"].armed::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 45%),
+    radial-gradient(90% 150% at 26% 50%, color-mix(in oklab, var(--chip) 75%, transparent), transparent 75%),
+    linear-gradient(180deg, color-mix(in oklab, var(--chip) 48%, #1a2032), color-mix(in oklab, var(--chip) 32%, #0e1119));
+}
+
+/* The circle behind a picked-up tag. */
+.chip-circle {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--s-5) + 8px + var(--tagicon-size-chip) / 2);
+  z-index: -1;
+  width: calc(var(--chip-height) * 1.5);
+  height: calc(var(--chip-height) * 1.5);
+  color: color-mix(in oklab, var(--chip) 45%, #e2f3ff);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.chip-circle .magic-circle { width: 100%; height: 100%; animation: cast-open 0.4s ease-out; }
+
+/* --- the gems of rank ---------------------------------------------------- */
+.rank-gem {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  border: 1px solid rgb(var(--gilt-rgb) / 0.55);
+  pointer-events: none;
+}
+.chip .rank-gem {
+  position: absolute;
+  top: 50%;
+  left: 3.5px;
+  margin-top: -3.5px;
+}
+.chip:not([data-look="classic"]) .rank-gem { display: none; }
+.rank-gem[data-rank="1"] { border-color: #6b4524; background: linear-gradient(135deg, #f2c796, #9a6232); }
+.rank-gem[data-rank="2"] { border-color: #5d6474; background: linear-gradient(135deg, #ffffff, #97a1b4); }
+.rank-gem[data-rank="3"] { border-color: #7a5a1e; background: linear-gradient(135deg, #fff2c4, #cf9c34); box-shadow: 0 0 4px rgba(240, 200, 110, 0.6); }
+.rank-gem[data-rank="4"] { border-color: #6a0f22; background: linear-gradient(135deg, #ffc2c9, #c3203e 60%, #7a0c24); box-shadow: 0 0 5px rgba(255, 90, 120, 0.7); }
+.rank-gem[data-rank="5"] { border-color: #3c1f78; background: linear-gradient(135deg, #eedcff, #8a52e0 60%, #4b2296); box-shadow: 0 0 6px rgba(180, 140, 255, 0.8); }
+.rank-gem[data-rank="6"] {
+  border-color: #ffffff;
+  background: linear-gradient(135deg, #ffffff, #bfe6ff, #e6d4ff, #fff1c4, #ffffff) 0 0 / 300% 300%;
+  box-shadow: 0 0 7px rgba(220, 240, 255, 0.95);
+  animation: god-gem 5s linear infinite;
+}
+@keyframes god-gem { to { background-position: 300% 300%; } }
+
+/* --- the grimoire, with the ledger in the Overview ------------------------ */
+.grimoire { margin-top: var(--s-8); }
+.grimoire-list {
+  display: grid;
+  gap: 9px;
+  margin: var(--s-5) 0 0;
+  padding: 0 var(--s-4) 0 0;
+  list-style: none;
+}
+.grimoire-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  grid-template-areas: "gem name rank" "gem bar hours";
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: center;
+}
+.grimoire-row .rank-gem { grid-area: gem; justify-self: center; }
+.grimoire-name { grid-area: name; font-size: var(--f-md); color: var(--c-text); }
+.grimoire-rank {
+  grid-area: rank;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+.grimoire-rank[data-rank="0"] { color: var(--c-text-faint); }
+.grimoire-rank[data-rank="4"] { color: #ff9fb0; }
+.grimoire-rank[data-rank="5"] { color: #c9a8ff; }
+.grimoire-rank[data-rank="6"] { color: #bfe6ff; text-shadow: 0 0 8px rgba(190, 230, 255, 0.6); }
+.grimoire-bar {
+  grid-area: bar;
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  background: rgb(var(--gilt-rgb) / 0.14);
+}
+.grimoire-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #8a6a30, #e8cf92);
+}
+.grimoire-hours {
+  grid-area: hours;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-dim);
 }
 
 /* --- the magic circle ----------------------------------------------------- */
@@ -1947,9 +2318,14 @@
 @keyframes mc-spin { to { transform: rotate(360deg); } }
 
 /* --- casting --------------------------------------------------------------- */
-/* The circle under the pointer while a spell is readied, and the one that
-   anchors where the stretch began. Placed by StarScene, in the spell's own
-   colour lifted toward starlight so even the darkest tag glows. */
+.app > .star-motes {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .app > .star-cast {
   position: fixed;
   top: 0;
@@ -1958,7 +2334,7 @@
   display: none;
   pointer-events: none;
   opacity: 0.9;
-  filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 1px rgba(255, 250, 230, 0.9));
+  filter: drop-shadow(0 0 4px currentColor);
 }
 .app > .star-cast.anchor { opacity: 0.7; }
 .star-cast .magic-circle { width: 100%; height: 100%; animation: cast-open 0.35s ease-out; }
@@ -1969,10 +2345,9 @@
 }
 @keyframes cast-release {
   0% { transform: scale(1); opacity: 1; filter: brightness(1); }
-  30% { transform: scale(1.35); opacity: 1; filter: brightness(2.2); }
-  100% { transform: scale(1.8) rotate(40deg); opacity: 0; filter: brightness(2.5); }
+  30% { transform: scale(1.3); opacity: 1; filter: brightness(2.2); }
+  100% { transform: scale(1.75) rotate(40deg); opacity: 0; filter: brightness(2.5); }
 }
-/* The line of runes running between the two circles while you drag. */
 .app > .star-beam {
   position: fixed;
   z-index: 26;
@@ -1993,226 +2368,88 @@
 .star-beam span {
   display: inline-block;
   padding: 0 2px;
-  background: var(--c-bg);
+  background: #0b0e17;
   animation: rune-run 6s linear infinite;
 }
 @keyframes rune-run { to { transform: translateX(-50%); } }
 
-/* --- what the sky announces ------------------------------------------------ */
+/* --- what the sky announces -------------------------------------------------- */
+/* A card set like a plate in the book: gold rule, a second rule outside it,
+   the spell's circle turning round its gem. */
 .app > .star-notices {
   position: fixed;
-  top: 16%;
+  top: 96px;
   left: 50%;
   z-index: 50;
   display: grid;
   justify-items: center;
-  gap: 14px;
+  gap: 12px;
   transform: translateX(-50%);
   pointer-events: none;
 }
 .star-notice {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 30px 14px 18px;
+  background: linear-gradient(180deg, rgba(21, 25, 38, 0.97), rgba(12, 14, 22, 0.97));
+  border: 1px solid rgb(var(--gilt-rgb) / 0.5);
+  box-shadow:
+    0 0 0 4px rgba(10, 12, 20, 0.92),
+    0 0 0 5px rgb(var(--gilt-rgb) / 0.16),
+    0 18px 44px -10px rgba(0, 0, 0, 0.75),
+    0 0 36px -8px color-mix(in oklab, var(--spell) 45%, transparent);
+  animation: notice-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), notice-out 0.7s ease-in 3.7s forwards;
+}
+.notice-mark {
   position: relative;
-  isolation: isolate;
   display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 22px 56px;
-  text-align: center;
-  background: radial-gradient(closest-side, rgba(8, 11, 24, 0.88), rgba(8, 11, 24, 0.6) 65%, transparent);
-  animation: notice-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), notice-out 0.8s ease-in 3.4s forwards;
+  place-items: center;
+  width: 58px;
+  height: 58px;
 }
-.star-notice .notice-circle {
+.notice-mark .notice-circle {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: -1;
-  width: 170px;
-  height: 170px;
-  color: color-mix(in oklab, var(--spell) 55%, #fff1cc);
-  opacity: 0.55;
-  transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 6px currentColor);
+  inset: 0;
+  color: color-mix(in oklab, var(--spell) 45%, #e2f3ff);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 4px currentColor);
 }
-.star-notice b {
+.notice-mark .rank-gem { width: 13px; height: 13px; }
+.notice-words { display: grid; gap: 1px; }
+.notice-eyebrow {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(var(--gilt-rgb) / 0.9);
+}
+.notice-title {
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  color: transparent;
-  background: linear-gradient(180deg, #fff6dc, #e0c184 60%, #b98d3a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 0 8px rgba(224, 193, 132, 0.5));
+  letter-spacing: 0.06em;
+  color: #f2e6c9;
 }
-.star-notice span {
+.notice-line {
   font-family: var(--font-meta);
-  font-size: 17px;
+  font-size: 15px;
   font-style: italic;
-  color: var(--c-text);
+  color: var(--c-text-dim);
 }
-.star-notice em { font-style: normal; font-weight: 600; letter-spacing: 0.06em; color: var(--c-accent); }
-.star-notice.complete b { background: linear-gradient(180deg, #f2fbff, #9fd4ff 60%, #5c8fe0); -webkit-background-clip: text; background-clip: text; }
+.notice-line em { font-style: normal; font-weight: 600; letter-spacing: 0.05em; color: var(--mana); }
 @keyframes notice-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.94); filter: blur(4px); }
+  from { opacity: 0; transform: translateY(-10px); filter: blur(3px); }
   to { opacity: 1; transform: none; filter: none; }
 }
-@keyframes notice-out { to { opacity: 0; transform: translateY(-8px); filter: blur(3px); } }
-
-/* --- the title and the moon -------------------------------------------------- */
-/* Gold leaf, with the light moving slowly across it. */
-[data-theme="starlit"] h1 {
-  position: relative;
-  color: transparent;
-  background: linear-gradient(100deg, #b98d3a 0%, #f0d9a2 20%, #c9a14e 38%, #fff4d6 50%, #c9a14e 62%, #e6cb8a 80%, #b98d3a 100%) 0 0 / 260% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  text-shadow: none;
-  filter: drop-shadow(0 0 10px rgb(var(--glow-rgb) / 0.25));
-  animation: star-gild 11s ease-in-out infinite;
-}
-@keyframes star-gild {
-  0%, 100% { background-position: 100% 0; }
-  50% { background-position: 0 0; }
-}
-/* A glint on the gold now and then. */
-[data-theme="starlit"] h1::after {
-  content: "";
-  position: absolute;
-  top: -6px;
-  right: -14px;
-  width: 16px;
-  height: 16px;
-  background: radial-gradient(circle, #fffdf2 0 12%, rgba(255, 238, 190, 0.9) 22%, transparent 60%);
-  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
-  animation: star-glint 5.5s ease-in-out infinite;
-}
-@keyframes star-glint {
-  0%, 70%, 100% { transform: scale(0) rotate(0); opacity: 0; }
-  78% { transform: scale(1.2) rotate(45deg); opacity: 1; }
-  88% { transform: scale(0.6) rotate(90deg); opacity: 0.6; }
-}
-.star-moon { font-style: italic; }
-
-/* --- days --------------------------------------------------------------------- */
-/* Blue moonweed beside a day with every hour of it accounted for, opening
-   the first time it is seen. */
-.moonweed {
-  flex: none;
-  align-self: center;
-  margin: -4px 0;
-  filter: drop-shadow(0 0 4px rgba(140, 200, 255, 0.85));
-  animation: moonweed-bloom 1s cubic-bezier(0.2, 0.8, 0.2, 1.2) both, moonweed-breathe 4s ease-in-out 1s infinite;
-}
-@keyframes moonweed-bloom {
-  from { transform: scale(0) rotate(-120deg); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-@keyframes moonweed-breathe {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.75; }
-}
-
-/* The time now is a thread of starlight with a star turning at its head. */
-[data-theme="starlit"] .nowline {
-  width: 1px;
-  background: linear-gradient(to bottom, #fff6dc, rgba(216, 178, 96, 0.4));
-  box-shadow: 0 0 8px 1px rgba(255, 236, 190, 0.55);
-}
-[data-theme="starlit"] .nowline::before {
-  top: 1px;
-  width: 17px;
-  height: 17px;
-  transform: translate(-50%, -25%);
-  background: radial-gradient(circle, #fffdf2 0 14%, #f3dca0 30%, rgba(216, 178, 96, 0.6) 55%, transparent 72%);
-  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
-  animation: star-turn 7s linear infinite;
-}
-@keyframes star-turn {
-  0% { transform: translate(-50%, -25%) rotate(0) scale(1); }
-  50% { transform: translate(-50%, -25%) rotate(180deg) scale(0.8); }
-  100% { transform: translate(-50%, -25%) rotate(360deg) scale(1); }
-}
-
-/* --- tag boxes: spells ----------------------------------------------------------- */
-[data-theme="starlit"] .chip { position: relative; isolation: isolate; }
-/* A faint ring drawn round the icon under the pointer: the spell stirring. */
-[data-theme="starlit"] .chip[data-look="classic"]::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: calc(var(--s-5) + var(--tagicon-size-chip) / 2);
-  z-index: -1;
-  width: calc(var(--chip-height) * 1.3);
-  height: calc(var(--chip-height) * 1.3);
-  border: 1px dashed rgb(var(--glow-rgb) / 0.6);
-  border-radius: 50%;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.6);
-  transition: opacity 0.3s ease, transform 0.4s ease;
-  pointer-events: none;
-}
-[data-theme="starlit"] .chip[data-look="classic"]:hover:not(:disabled):not(.armed)::after {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1) rotate(45deg);
-}
-/* Picked up, a full circle turns behind it. */
-.chip-circle {
-  position: absolute;
-  top: 50%;
-  left: calc(var(--s-5) + var(--tagicon-size-chip) / 2);
-  z-index: -1;
-  width: calc(var(--chip-height) * 1.8);
-  height: calc(var(--chip-height) * 1.8);
-  color: color-mix(in oklab, var(--chip) 50%, #fff1cc);
-  transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 3px currentColor);
-  pointer-events: none;
-}
-.chip-circle .magic-circle { width: 100%; height: 100%; animation: cast-open 0.4s ease-out; }
-
-/* A tag's rank, on the corner of its box: a small shield with the numeral,
-   bronze, then silver, then gold, then the colours of the higher ranks. The
-   first rank goes unmarked — every spell starts there. */
-.rank-sigil {
-  position: absolute;
-  top: -8px;
-  right: -5px;
-  min-width: 15px;
-  height: 18px;
-  padding: 0 3px 3px;
-  font-family: var(--font-display);
-  font-size: 8.5px;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 15px;
-  letter-spacing: 0;
-  text-align: center;
-  color: #1a1408;
-  text-shadow: none;
-  background: #b08450;
-  clip-path: polygon(0 0, 100% 0, 100% 68%, 50% 100%, 0 68%);
-  pointer-events: none;
-}
-.rank-sigil[data-rank="0"] { display: none; }
-.rank-sigil[data-rank="1"] { background: linear-gradient(#d6a870, #9a6a36); }
-.rank-sigil[data-rank="2"] { background: linear-gradient(#f2f4f8, #9ba4b4); }
-.rank-sigil[data-rank="3"] { background: linear-gradient(#fff0bf, #d3a948); }
-.rank-sigil[data-rank="4"] { background: linear-gradient(#fff6d8, #e0b44e 55%, #a8741e); filter: drop-shadow(0 0 3px rgba(240, 200, 110, 0.9)); }
-.rank-sigil[data-rank="5"] { color: #fff; background: linear-gradient(#d9c6ff, #7a52d6); filter: drop-shadow(0 0 4px rgba(170, 140, 255, 0.9)); }
-.rank-sigil[data-rank="6"] {
-  color: #2a1a00;
-  background: linear-gradient(110deg, #fff4d6, #9fd4ff, #d9c6ff, #ffe39a, #fff4d6) 0 0 / 300% 100%;
-  filter: drop-shadow(0 0 5px rgba(255, 240, 200, 0.95));
-  animation: god-rank 4s linear infinite;
-}
-@keyframes god-rank { to { background-position: 300% 0; } }
+@keyframes notice-out { to { opacity: 0; transform: translateY(-6px); } }
 
 @media (prefers-reduced-motion: reduce) {
+  .seal-outer, .seal-middle, .seal-inner,
   .mc-outer, .mc-mid, .mc-inner,
   .star-beam span,
-  .rank-sigil,
+  .rank-gem,
   .moonweed,
-  [data-theme="starlit"] h1,
-  [data-theme="starlit"] h1::after,
-  [data-theme="starlit"] .nowline::before { animation: none; }
+  [data-theme="starlit"] .nowline::before,
+  [data-theme="starlit"] .chip.armed::before { animation: none; }
 }

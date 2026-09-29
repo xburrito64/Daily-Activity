@@ -99,3 +99,66 @@ export function completeDays(days) {
   }
   return done
 }
+
+/** How far a tag has come through its rank toward the next, 0–1; the last rank is full. */
+export function rankProgress(minutes) {
+  const rank = rankOf(minutes)
+  const next = RANKS[rank.index + 1]
+  if (!next) return 1
+  const from = RANKS[rank.index].hours * 60
+  return Math.min(1, Math.max(0, (minutes - from) / (next.hours * 60 - from)))
+}
+
+/**
+ * The lit part of the moon as an SVG path, for a disc of radius r centred on
+ * the origin. Waxing, the light is on the right; waning, on the left. The
+ * edge between light and dark is half an ellipse, bulging toward the dark
+ * side while the moon is a crescent and toward the light once it is gibbous.
+ */
+export function moonPath(phase, r) {
+  const p = ((phase % 1) + 1) % 1
+  const waxing = p < 0.5
+  const k = Math.cos(p * Math.PI * 2)
+  const rx = Math.abs(k) * r
+  const fmt = (n) => Number(n.toFixed(3))
+  // The lit limb, from the top to the bottom, round the lit side.
+  const limb = `M0 ${fmt(-r)}A${fmt(r)} ${fmt(r)} 0 0 ${waxing ? 1 : 0} 0 ${fmt(r)}`
+  // Back up the terminator. A crescent's bulges toward the light (the dark
+  // takes the middle); a gibbous moon's bulges away from it.
+  const crescent = k > 0
+  const sweep = waxing ? (crescent ? 0 : 1) : (crescent ? 1 : 0)
+  return `${limb}A${fmt(rx)} ${fmt(r)} 0 0 ${sweep} 0 ${fmt(-r)}Z`
+}
+
+/**
+ * A field of stars that is the same every time, as fractions of the screen:
+ * most of them faint, a few bright, thinning out toward the foot of the page.
+ */
+export function starField(count, seed = 11) {
+  let a = seed >>> 0
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  const stars = []
+  while (stars.length < count) {
+    const x = rand()
+    const y = rand()
+    // Fewer the lower down, so the sky gathers overhead.
+    if (rand() > 1 - y * 0.75) continue
+    const bright = rand()
+    stars.push({
+      x,
+      y,
+      r: bright > 0.93 ? 1.5 : bright > 0.7 ? 1.0 : 0.65,
+      glow: bright > 0.93,
+      twinkle: rand() < 0.18,
+      phase: rand() * Math.PI * 2,
+      warm: rand() < 0.3,
+    })
+  }
+  return stars
+}

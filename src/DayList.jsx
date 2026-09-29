@@ -7,7 +7,7 @@ import {
 import { useMinute } from './useMinute.js'
 import { Initial, Chronicle } from './scenes/ScriptParts.jsx'
 import { illumination } from './scenes/manuscript.js'
-import { MagicCircle, Moonweed, RankSigil, rankTitle } from './scenes/StarParts.jsx'
+import { MagicCircle, Moonweed, RankGem, rankTitle } from './scenes/StarParts.jsx'
 import { monthByTag, isComplete } from './scenes/starlit.js'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
 import { blockFace, Covers } from './face.js'
@@ -1446,9 +1446,9 @@ ${b.note}` : ''}`}
                     {starlit && armed?.date === date && armed?.tag === t.id && (
                       <i className="chip-circle" aria-hidden="true"><MagicCircle size="100%" /></i>
                     )}
+                    {month && <RankGem minutes={month.get(t.id) ?? 0} />}
                     <TagIcon tag={t} />
                     {t.name}
-                    {month && <RankSigil minutes={month.get(t.id) ?? 0} />}
                     {/* Hearthfire sets a picked-up tag alight: flames along
                         its top and an ember creeping round its edge. */}
                     {theme === 'hearthfire' && armed?.date === date && armed?.tag === t.id && (
