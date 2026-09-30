@@ -2525,8 +2525,12 @@
   width: 25px;
   height: 25px;
   margin: -7px 0 -4px;
-  filter: drop-shadow(0 0 5px rgba(170, 215, 255, 0.3));
+  --mark-glow: drop-shadow(0 0 5px rgba(170, 215, 255, 0.3));
 }
+/* The glow goes on the drawing, not the box round it: a glow on the box
+   takes in the sparkle animated over it, and is painted again every frame
+   the sparkle moves, a third of a processor. */
+:is(.gift, .wreath, .jar, .hourglass, .lantern) > svg { filter: var(--mark-glow); }
 .gift svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .gift-box { fill: #16203c; stroke: #c9a86a; stroke-width: 0.8; }
 .gift-lid { fill: #202c4f; stroke: #d8b775; stroke-width: 0.8; }
@@ -2653,7 +2657,7 @@
 .star-notice[data-festival="christmas-eve"] .notice-eyebrow { color: #cfe6fb; }
 .star-notice.festival :is(.gift, .lantern, .egg) { width: 30px; height: 30px; margin: 0; }
 .star-notice.festival .wreath { width: 38px; height: 29px; margin: 0; }
-.star-notice.festival :is(.meteor-mark, .moon-mark, .jar) { width: 30px; height: 30px; margin: 0; }
+.star-notice.festival :is(.meteor-mark, .moon-mark, .jar, .hourglass, .fresh-page) { width: 30px; height: 30px; margin: 0; }
 
 /* --- The Sundays of Advent --------------------------------------------------
    Warm where Christmas Eve is cold: candlelight, fir and holly red. On the
@@ -2703,7 +2707,7 @@
   width: 34px;
   height: 26px;
   margin: -7px 0 -4px;
-  filter: drop-shadow(0 0 5px rgba(255, 190, 100, 0.35));
+  --mark-glow: drop-shadow(0 0 5px rgba(255, 190, 100, 0.35));
 }
 .wreath svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
 .wreath-fir { fill: none; stroke: #2c5a3a; stroke-width: 3.6; stroke-linecap: round; }
@@ -2988,7 +2992,7 @@
 .moon-mark { filter: drop-shadow(0 0 5px rgba(190, 180, 255, 0.55)); }
 .moon-mark-crescent { fill: #e9e5ff; }
 .moon-mark-star { fill: #ffffff; }
-.jar { filter: drop-shadow(0 0 5px rgba(200, 255, 120, 0.4)); }
+.jar { --mark-glow: drop-shadow(0 0 5px rgba(200, 255, 120, 0.4)); }
 .jar-lid { fill: #8a6a3a; }
 .jar-glass { fill: rgba(180, 220, 255, 0.12); stroke: rgba(220, 235, 255, 0.7); stroke-width: 0.7; }
 .jar-fly { fill: #eaff8e; }
@@ -3157,6 +3161,222 @@
 .star-notice[data-festival="midsummer"] { border-color: rgba(220, 255, 150, 0.5); }
 .star-notice[data-festival="midsummer"] .notice-eyebrow { color: #dff59c; }
 
+/* --- The turn of the year ------------------------------------------------------
+   New Year's Eve: fireworks, more and more as midnight nears, and the last
+   ten seconds counted down. New Year's Day: a fresh page. See
+   scenes/Festive.jsx. */
+
+[data-theme="starlit"] .daysection[data-festival="new-years-eve"] .dayhead::before {
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #fffaf0, #f0d596);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='2.6'/><path d='M12 2v5M12 17v5M2 12h5M17 12h5M4.9 4.9l3.5 3.5M15.6 15.6l3.5 3.5M4.9 19.1l3.5-3.5M15.6 8.4l3.5-3.5' stroke='%23000' stroke-width='2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='2.6'/><path d='M12 2v5M12 17v5M2 12h5M17 12h5M4.9 4.9l3.5 3.5M15.6 15.6l3.5 3.5M4.9 19.1l3.5-3.5M15.6 8.4l3.5-3.5' stroke='%23000' stroke-width='2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="new-years-eve"] .dayhead::before { background: linear-gradient(135deg, #ffffff, #ffe6a6); }
+[data-theme="starlit"] .daysection[data-festival="new-year"] .dayhead::before {
+  width: 14px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #ffffff, #efe2c4);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M21 2C14.5 3.4 8.6 9.2 6.4 18l1.8.6C10.6 11 15.2 5.6 21 2Z'/><path d='M20.4 2.6 4 21.5' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M21 2C14.5 3.4 8.6 9.2 6.4 18l1.8.6C10.6 11 15.2 5.6 21 2Z'/><path d='M20.4 2.6 4 21.5' stroke='%23000' stroke-width='1.6' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="new-year"] .dayhead::before { background: linear-gradient(135deg, #ffffff, #fff2cf); }
+[data-festival="new-years-eve"] .festdate {
+  background: linear-gradient(180deg, #fffdf6 0%, #f8e7b8 42%, #d9bd7a 78%, #bfa76e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 220, 150, 0.4));
+}
+[data-festival="new-years-eve"] .festname { color: #f6dfa6; text-shadow: 0 0 10px rgba(255, 210, 130, 0.45); }
+.compactrow[data-festival="new-years-eve"] .gdate { color: #f6dfa6; text-shadow: 0 0 8px rgba(255, 210, 130, 0.45); }
+[data-festival="new-year"] .festdate {
+  background: linear-gradient(180deg, #ffffff 0%, #fff6e2 45%, #e8d4a8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 240, 210, 0.35));
+}
+[data-festival="new-year"] .festname { color: #fff0cc; text-shadow: 0 0 10px rgba(255, 230, 180, 0.4); }
+.compactrow[data-festival="new-year"] .gdate { color: #fff0cc; text-shadow: 0 0 8px rgba(255, 230, 180, 0.4); }
+
+/* An hourglass nearly run out; a quill over a fresh page. */
+:is(.hourglass, .fresh-page) {
+  position: relative;
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  margin: -7px 0 -4px;
+}
+:is(.hourglass, .fresh-page) svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
+.hourglass { --mark-glow: drop-shadow(0 0 5px rgba(255, 214, 130, 0.45)); }
+.hourglass-glass { fill: rgba(200, 220, 255, 0.1); stroke: rgba(230, 240, 255, 0.65); stroke-width: 0.6; }
+.hourglass-sand { fill: #f1d48a; }
+.hourglass-stream { fill: none; stroke: #f1d48a; stroke-width: 0.7; }
+.hourglass-frame { fill: #c9a86a; }
+.hourglass-post { fill: none; stroke: #a8874f; stroke-width: 0.9; }
+.hourglass.lit::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+  opacity: 0;
+  animation: gift-glint 2.8s steps(42) infinite;
+}
+.fresh-page { filter: drop-shadow(0 0 5px rgba(255, 240, 210, 0.4)); }
+.page-leaf { fill: #f4ecd8; stroke: #c9a86a; stroke-width: 0.6; }
+.page-fold { fill: #e0d2b0; stroke: #c9a86a; stroke-width: 0.5; }
+.page-rule { fill: none; stroke: rgba(150, 130, 100, 0.5); stroke-width: 0.6; }
+.page-quill { fill: #ffffff; stroke: rgba(180, 170, 150, 0.8); stroke-width: 0.4; }
+.page-shaft { fill: none; stroke: #b89a62; stroke-width: 0.6; }
+
+/* Fireworks over the ends of New Year's Eve's bar. */
+[data-theme="starlit"] [data-festival="new-years-eve"] .track {
+  border-color: rgba(255, 225, 160, 0.4);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(255, 200, 120, 0.2),
+    0 0 20px -6px rgba(255, 210, 140, 0.3);
+}
+[data-theme="starlit"] [data-festival="new-years-eve"] .track::before,
+[data-theme="starlit"] [data-festival="new-years-eve"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--burst-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="new-years-eve"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="new-years-eve"] .track::after { right: 0; transform: scaleX(-1); }
+
+/* A ribbon marking the first page of the year. */
+[data-theme="starlit"] [data-festival="new-year"] .track {
+  border-color: rgba(255, 236, 190, 0.4);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(255, 236, 190, 0.12),
+    0 0 20px -6px rgba(255, 230, 180, 0.25);
+}
+[data-theme="starlit"] [data-festival="new-year"] .track::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 2.4%;
+  z-index: 2;
+  width: 12px;
+  height: 64%;
+  border-inline: 1px solid #e0bf78;
+  background: linear-gradient(90deg, #6e1020, #b8283d 45%, #d44356 55%, #8e1a2c);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  pointer-events: none;
+}
+
+/* A spell cast at the turn of the year is a firework. */
+.mc-burst { display: none; animation: mc-spin 30s linear infinite; }
+.star-cast:is([data-festival="new-years-eve"], [data-festival="new-year"]) :is(.mc-mid, .mc-inner polygon, .mc-inner circle:not(.mc-heart)) { display: none; }
+.star-cast:is([data-festival="new-years-eve"], [data-festival="new-year"]) .mc-burst { display: block; }
+
+/* --- the nights themselves --- */
+[data-theme="starlit"][data-festival="new-years-eve"] .app > .sky {
+  background:
+    radial-gradient(1800px 420px at 50% 118%, rgba(255, 200, 120, 0.16), transparent 70%),
+    radial-gradient(1100px 620px at 62% -8%, rgba(70, 92, 150, 0.2), transparent 70%),
+    linear-gradient(180deg, #0b0e18 0%, #090b13 55%, #07080e 100%);
+}
+[data-theme="starlit"][data-festival="new-year"] .app > .sky {
+  background:
+    radial-gradient(1400px 600px at 50% -10%, rgba(255, 228, 180, 0.12), transparent 70%),
+    linear-gradient(180deg, #0d101b 0%, #0a0c14 55%, #08090f 100%);
+}
+.app > .fireworks {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+/* The last ten seconds, and the year itself, written large across the sky. */
+.app > :is(.countdown, .year-mark) {
+  position: fixed;
+  top: 34vh;
+  left: 50%;
+  z-index: 45;
+  transform: translateX(-50%);
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1;
+}
+.countdown span,
+.year-mark span {
+  display: block;
+  color: transparent;
+  background: linear-gradient(180deg, #fffaf0 0%, #f8e2a4 50%, #c9a059 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 24px rgba(255, 210, 130, 0.55));
+}
+.countdown span {
+  font-size: 150px;
+  animation: count-beat 0.95s ease-out forwards;
+}
+@keyframes count-beat {
+  from { opacity: 0; transform: scale(1.6); }
+  18% { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
+}
+.year-mark span {
+  font-size: 160px;
+  letter-spacing: 0.15em;
+  animation: year-in 12s ease-out forwards;
+}
+@keyframes year-in {
+  from { opacity: 0; transform: scale(0.8); letter-spacing: 0.6em; }
+  12% { opacity: 1; transform: none; letter-spacing: 0.15em; }
+  80% { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+/* The grimoire turns to a fresh page as it opens: a sheen of the leaf
+   sweeping across the window, its shadow after it. */
+.app > .page-turn {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 24;
+  width: 70vw;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 238, 205, 0.08) 38%, rgba(255, 246, 225, 0.26) 49%, rgba(0, 0, 0, 0.3) 51%, rgba(0, 0, 0, 0) 64%, transparent 100%);
+  transform: translateX(100vw);
+  animation: page-turn 2s cubic-bezier(0.55, 0, 0.3, 1) 0.6s forwards;
+}
+@keyframes page-turn {
+  to { transform: translateX(-75vw); visibility: hidden; }
+}
+.star-notice[data-festival="new-years-eve"] { border-color: rgba(255, 225, 160, 0.55); }
+.star-notice[data-festival="new-years-eve"] .notice-eyebrow { color: #f6dfa6; }
+.star-notice[data-festival="new-year"] { border-color: rgba(255, 236, 190, 0.55); }
+.star-notice[data-festival="new-year"] .notice-eyebrow { color: #fff0cc; }
+
 /* --- Halloween ---------------------------------------------------------------
    All Hallows' Eve: the day strung with cobwebs and lit by a carved lantern;
    on the night itself an orange moon over a violet mist, great webs in the
@@ -3204,7 +3424,7 @@
   width: 25px;
   height: 25px;
   margin: -7px 0 -4px;
-  filter: drop-shadow(0 0 6px rgba(255, 150, 60, 0.5));
+  --mark-glow: drop-shadow(0 0 6px rgba(255, 150, 60, 0.5));
 }
 .lantern svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
 .lantern-stem { fill: #56612f; stroke: #2c2a14; stroke-width: 0.4; }
@@ -3582,7 +3802,8 @@
   .hallow-mist, .hallow-mist i, .web-pane, .app > .web-spider,
   .app > .dawn, .app > .meadow, .egg.wobble, .mc-bloom,
   .candle .flame, .bauble, .app > .advent-pane, .wreath.lit::after, .mc-advent,
-  .jar.lit::after, .mc-radiant, .mc-phases, .mc-sun { animation: none; }
+  .jar.lit::after, .mc-radiant, .mc-phases, .mc-sun,
+  .hourglass.lit::after, .mc-burst, .countdown span, .year-mark span, .app > .page-turn { animation: none; }
   .seal-outer, .seal-middle, .seal-inner,
   .mc-outer, .mc-mid, .mc-inner,
   .star-beam span,

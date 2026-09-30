@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import {
-  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice,
+  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice, fireworksEvery,
 } from './festivals.js'
 
 let passed = 0
@@ -193,6 +193,26 @@ t('two festivals on one day: the first leads, the other comes along', () => {
   assert.deepEqual(festivalsOn('2026-12-06').map((f) => f.id), ['advent', 'st-nicholas'])
   // A day with only one has nothing along with it.
   assert.equal(festivalOf('2026-10-31').also, undefined)
+})
+
+t('the turn of the year: New Year\'s Eve, then New Year\'s Day', () => {
+  assert.equal(festivalOf('2026-12-31')?.id, 'new-years-eve')
+  assert.equal(festivalOf('2027-01-01')?.id, 'new-year')
+  assert.equal(festivalOf('2027-01-02'), null)
+})
+
+t('fireworks go up more and more often toward midnight, then die away', () => {
+  const at = (h, m, s = 0) => new Date(2026, 11, 31, h, m, s)
+  const eve = (h, m, s) => fireworksEvery('new-years-eve', at(h, m, s))
+  const day = (h, m) => fireworksEvery('new-year', new Date(2027, 0, 1, h, m))
+  assert.ok(eve(15, 0) > eve(20, 0), 'the afternoon is quieter than the evening')
+  assert.ok(eve(20, 0) > eve(23, 0))
+  assert.ok(eve(23, 0) > eve(23, 55))
+  assert.ok(eve(23, 59, 50) > 0.4 && eve(23, 59, 50) < 0.7, 'a flurry at the end, but never none')
+  assert.ok(day(0, 1) < eve(23, 59, 50), 'a barrage at midnight')
+  assert.ok(day(0, 30) < day(1, 30))
+  assert.equal(day(3, 0), null, 'and quiet by the small hours')
+  assert.equal(fireworksEvery('halloween', at(23, 0)), null)
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { frostFerns, cobweb, blossomBranch, meadow, firBough } from './festivals.js'
+import { frostFerns, cobweb, blossomBranch, meadow, firBough, fireworksEvery, minuteOfDay } from './festivals.js'
 import { runLoop, stillness } from './loop.js'
 
 // The festival nights of Starlit.
@@ -47,6 +47,13 @@ import { runLoop, stillness } from './loop.js'
 // the Milky Way across it. Midsummer: a jar of fireflies, grass at the foot
 // of its bar, and on the night a sky that never goes fully dark, fireflies
 // drifting low about the page and toward the pointer.
+//
+// The turn of the year. New Year's Eve: an hourglass nearly run out beside
+// the date, fireworks over its bar, and on the night fireworks going up
+// more and more often as midnight nears, the last ten seconds counted down
+// across the sky. New Year's Day: a quill and a fresh page beside the date,
+// a ribbon marking its bar; the grimoire turns a new page as it opens, and
+// the fireworks go on for the first hour or two.
 //
 // All of it is drawn once and then only shown, apart from what moves (the
 // snow, the wisps, the bats, the petals, the butterflies, the embers, the
@@ -211,8 +218,42 @@ export function FireflyJar({ lit = false }) {
   )
 }
 
-/** What sits by the date on a festival: gift, wreath, lantern, egg, falling star, moon or jar. */
+/** An hourglass with its sand nearly run out, for New Year's Eve. */
+export function Hourglass({ lit = false }) {
+  return (
+    <span className={`hourglass${lit ? ' lit' : ''}`} aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="hourglass-glass" d="M8 5.5h10c0 4-4 5.5-4 7.5s4 3.5 4 7.5H8c0-4 4-5.5 4-7.5S8 9.5 8 5.5Z" />
+        <path className="hourglass-sand" d="M11.4 10.6h3.2L13 12.5Z" />
+        <path className="hourglass-stream" d="M13 12.6v4" />
+        <path className="hourglass-sand" d="M8.6 20.2c.4-2.6 2.6-4.2 4.4-4.5 1.8.3 4 1.9 4.4 4.5Z" />
+        <rect className="hourglass-frame" x="5.6" y="3" width="14.8" height="2.4" rx="0.6" />
+        <rect className="hourglass-frame" x="5.6" y="20.6" width="14.8" height="2.4" rx="0.6" />
+        <path className="hourglass-post" d="M6.6 5.4v15.2M19.4 5.4v15.2" />
+      </svg>
+    </span>
+  )
+}
+
+/** A quill over a fresh page, for New Year's Day. */
+export function FreshPage() {
+  return (
+    <span className="fresh-page" aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="page-leaf" d="M5.5 5h10l4.5 4.5V23h-14.5Z" />
+        <path className="page-fold" d="M15.5 5v4.5H20" />
+        <path className="page-rule" d="M8.2 13h8.6M8.2 16h8.6M8.2 19h5.4" />
+        <path className="page-quill" d="M22.6 1.8C17.4 3 12.9 7.6 11.2 14.6l1.3.4C14.3 9.8 18.2 5.2 22.6 1.8Z" />
+        <path className="page-shaft" d="M22 2.4 10.2 17.6" />
+      </svg>
+    </span>
+  )
+}
+
+/** What sits by the date on a festival. */
 export function FestiveMark({ id, lit = false, nth = 1 }) {
+  if (id === 'new-years-eve') return <Hourglass lit={lit} />
+  if (id === 'new-year') return <FreshPage />
   if (id === 'perseids') return <ShootingStar tone="gold" />
   if (id === 'geminids') return <ShootingStar tone="blue" />
   if (id === 'longest-night') return <MoonMark />
@@ -234,6 +275,8 @@ export const FESTIVE_TINTS = {
   geminids: '#aee8ff',
   'longest-night': '#d6d0ff',
   midsummer: '#e4ff9c',
+  'new-years-eve': '#ffe6a6',
+  'new-year': '#fff2cf',
 }
 
 /** What the sky says as the app opens on a festival night. */
@@ -242,6 +285,13 @@ export const FESTIVE_LINES = {
   geminids: { eyebrow: 'A night of falling stars', line: 'the Geminids fall, slow and many-coloured', spell: '#aee8ff' },
   'longest-night': { eyebrow: 'The turning of the year', line: 'the longest night; from here the days grow', spell: '#d6d0ff' },
   midsummer: { eyebrow: 'The turning of the year', line: 'the shortest night; the sky never quite goes dark', spell: '#e4ff9c' },
+  'new-years-eve': { eyebrow: 'The last night of the year', line: 'the old year runs out at midnight', spell: '#ffe6a6' },
+  'new-year': {
+    eyebrow: 'A new year',
+    line: 'a fresh page in the grimoire',
+    spell: '#fff2cf',
+    title: () => String(new Date().getFullYear()),
+  },
   'christmas-eve': { line: 'snow falls over the grimoire', spell: '#cfeaff' },
   halloween: { line: 'the veil is thin tonight', spell: '#ffb866' },
   easter: { line: 'five eggs are hidden about the grimoire', spell: '#ffc4dc', eyebrow: 'A festival morning' },
@@ -739,13 +789,48 @@ export function makeSkyRims() {
       g.fillRect(x - 9, y - 9, 18, 18)
     }
   }
+  // Two fireworks bursting over the corner, and sparks drifting down from them.
+  const bursts = (g, w, h, rand) => {
+    g.globalCompositeOperation = 'lighter'
+    for (const [cx, cy, r, rgb] of [[64, 50, 42, '255, 214, 120'], [160, 30, 28, '255, 140, 200'], [236, 64, 20, '150, 220, 255']]) {
+      const n = Math.round(r * 0.8)
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + rand() * 0.1
+        const reach = r * (0.75 + rand() * 0.25)
+        const x0 = cx + Math.cos(a) * reach * 0.35
+        const y0 = cy + Math.sin(a) * reach * 0.35
+        const x1 = cx + Math.cos(a) * reach
+        const y1 = cy + Math.sin(a) * reach + reach * 0.12
+        const line = g.createLinearGradient(x0, y0, x1, y1)
+        line.addColorStop(0, `rgba(${rgb}, 0)`)
+        line.addColorStop(1, `rgba(${rgb}, 0.8)`)
+        g.strokeStyle = line
+        g.lineWidth = 0.9
+        g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke()
+        g.fillStyle = 'rgba(255, 250, 235, 0.9)'
+        g.beginPath(); g.arc(x1, y1, 0.9, 0, Math.PI * 2); g.fill()
+      }
+    }
+    for (let i = 0; i < 30; i++) {
+      g.fillStyle = `rgba(255, 226, 160, ${(0.3 + rand() * 0.6).toFixed(2)})`
+      g.fillRect(20 + rand() * 220, 60 + rand() * 60, 1, 1)
+    }
+    g.globalCompositeOperation = 'destination-in'
+    const fade = g.createLinearGradient(w * 0.55, 0, w * 0.9, 0)
+    fade.addColorStop(0, 'rgba(0, 0, 0, 1)')
+    fade.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    g.fillStyle = fade
+    g.fillRect(0, 0, w, h)
+  }
   skyRimsMade = Promise.all([
     picture(streaks('255, 226, 150')),
     picture(streaks('170, 226, 255')),
     picture(dust),
     picture(grass),
-  ]).then(([gold, blue, stars, meadowRim]) => {
+    picture(bursts),
+  ]).then(([gold, blue, stars, meadowRim, fireworks]) => {
     const root = document.documentElement.style
+    if (fireworks) root.setProperty('--burst-rim', `url(${fireworks})`)
     if (gold) root.setProperty('--meteor-rim-gold', `url(${gold})`)
     if (blue) root.setProperty('--meteor-rim-blue', `url(${blue})`)
     if (stars) root.setProperty('--dust-rim', `url(${stars})`)
@@ -1955,4 +2040,169 @@ export function Fireflies() {
     return () => { stop(); window.removeEventListener('resize', size); window.removeEventListener('pointermove', onMove) }
   }, [])
   return <canvas ref={ref} className="fireflies" aria-hidden="true" />
+}
+
+// --- the turn of the year --------------------------------------------------------
+const FIREWORK_TONES = ['255, 214, 120', '255, 140, 200', '150, 220, 255', '170, 255, 170', '255, 255, 240', '210, 170, 255']
+
+/**
+ * Fireworks: rockets going up from the foot of the page and bursting — some
+ * in a round of stars, some in a ring like a magic circle, some in a
+ * weeping willow of gold, some breaking again into smaller bursts.
+ */
+export function Fireworks({ festival }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    let w = 0
+    let h = 0
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    size()
+    window.addEventListener('resize', size)
+    const rockets = []
+    const sparks = []
+    const flashes = []
+    const GRAVITY = 300
+    const pick = (list) => list[Math.floor(Math.random() * list.length)]
+    const launch = () => {
+      const x = w * (0.08 + Math.random() * 0.84)
+      const top = h * (0.1 + Math.random() * 0.35)
+      const y = h + 10
+      rockets.push({
+        x, y, vx: (Math.random() - 0.5) * 40, vy: -Math.sqrt(2 * GRAVITY * (y - top)),
+        tone: pick(FIREWORK_TONES), kind: pick(['peony', 'peony', 'ring', 'willow', 'crossette']),
+      })
+    }
+    const spark = (x, y, a, speed, tone, extra = {}) => sparks.push({
+      x, y, px: x, py: y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+      age: 0, life: 1.1 + Math.random() * 0.7, tone, drag: 1.3, size: 1.4, ...extra,
+    })
+    const burst = (x, y, tone, kind) => {
+      flashes.push({ x, y, age: 0, tone })
+      if (kind === 'ring') {
+        for (let i = 0; i < 40; i++) spark(x, y, (i / 40) * Math.PI * 2, 190, tone, { life: 1.3 })
+        for (let i = 0; i < 14; i++) spark(x, y, (i / 14) * Math.PI * 2 + 0.2, 90, '255, 250, 235', { life: 1.1 })
+      } else if (kind === 'willow') {
+        for (let i = 0; i < 56; i++) spark(x, y, Math.random() * Math.PI * 2, 60 + Math.random() * 120, '255, 206, 120', { life: 2.6 + Math.random() * 0.8, drag: 2.2, size: 1.2 })
+      } else if (kind === 'crossette') {
+        for (let i = 0; i < 8; i++) spark(x, y, (i / 8) * Math.PI * 2, 150, tone, { life: 0.55, split: true, size: 1.8 })
+      } else {
+        for (let i = 0; i < 64; i++) spark(x, y, Math.random() * Math.PI * 2, 60 + Math.random() * 170, tone)
+      }
+    }
+    let next = performance.now() + 600
+    const stop = runLoop((now, dt) => {
+      const every = fireworksEvery(festival, new Date())
+      if (every != null && now > next) {
+        launch()
+        next = now + every * 1000 * (0.5 + Math.random())
+      }
+      g.clearRect(0, 0, w, h)
+      g.globalCompositeOperation = 'lighter'
+      for (let i = flashes.length - 1; i >= 0; i--) {
+        const f = flashes[i]
+        f.age += dt
+        if (f.age > 0.25) { flashes.splice(i, 1); continue }
+        const r = 70
+        const glow = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, r)
+        glow.addColorStop(0, `rgba(${f.tone}, ${(0.35 * (1 - f.age / 0.25)).toFixed(3)})`)
+        glow.addColorStop(1, `rgba(${f.tone}, 0)`)
+        g.fillStyle = glow
+        g.fillRect(f.x - r, f.y - r, r * 2, r * 2)
+      }
+      g.lineCap = 'round'
+      for (let i = rockets.length - 1; i >= 0; i--) {
+        const r = rockets[i]
+        const px = r.x
+        const py = r.y
+        r.vy += GRAVITY * dt
+        r.x += r.vx * dt
+        r.y += r.vy * dt
+        g.strokeStyle = 'rgba(255, 226, 170, 0.8)'
+        g.lineWidth = 1.6
+        g.beginPath(); g.moveTo(px, py + 14); g.lineTo(r.x, r.y); g.stroke()
+        if (r.vy > -30) {
+          burst(r.x, r.y, r.tone, r.kind)
+          rockets.splice(i, 1)
+        }
+      }
+      // Sparks are drawn in batches of one colour, strength and width: at
+      // midnight there are hundreds of them, and a stroke each was a third
+      // of a processor.
+      const batches = new Map()
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const p = sparks[i]
+        p.age += dt
+        if (p.age > p.life) {
+          if (p.split) for (let k = 0; k < 4; k++) spark(p.x, p.y, (k / 4) * Math.PI * 2 + 0.4, 80, '255, 250, 235', { life: 0.7, size: 1.1 })
+          sparks.splice(i, 1)
+          continue
+        }
+        p.px = p.x
+        p.py = p.y
+        const drag = Math.exp(-dt * p.drag)
+        p.vx *= drag
+        p.vy = p.vy * drag + 70 * dt
+        p.x += p.vx * dt
+        p.y += p.vy * dt
+        const k = p.age / p.life
+        let alpha = (1 - k) ** 1.3
+        if (k > 0.7) alpha *= 0.5 + 0.5 * Math.random()
+        const key = `${p.tone}|${Math.ceil(alpha * 6) / 6}|${p.size}`
+        if (!batches.has(key)) batches.set(key, [])
+        batches.get(key).push(p)
+      }
+      for (const [key, list] of batches) {
+        const [tone, alpha, width] = key.split('|')
+        g.strokeStyle = `rgba(${tone}, ${Number(alpha).toFixed(3)})`
+        g.lineWidth = Number(width)
+        g.beginPath()
+        for (const p of list) { g.moveTo(p.px - (p.x - p.px) * 2, p.py - (p.y - p.py) * 2); g.lineTo(p.x, p.y) }
+        g.stroke()
+      }
+      g.globalCompositeOperation = 'source-over'
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
+  }, [festival])
+  return <canvas ref={ref} className="fireworks" aria-hidden="true" />
+}
+
+/** The last ten seconds of the year, counted down across the sky. */
+export function Countdown() {
+  const [left, setLeft] = useState(null)
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date()
+      const s = Math.ceil(24 * 3600 - (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000))
+      setLeft(s <= 10 && s > 0 ? s : null)
+    }
+    tick()
+    const timer = setInterval(tick, 200)
+    return () => clearInterval(timer)
+  }, [])
+  if (left == null) return null
+  return <div className="countdown" aria-live="polite"><span key={left}>{left}</span></div>
+}
+
+/**
+ * New Year's Day: the grimoire turns to a fresh page as the app opens, and
+ * in the first minutes of the year the year itself is written across the sky.
+ */
+export function NewYearPage() {
+  const [early] = useState(() => minuteOfDay(new Date()) < 3)
+  return (
+    <>
+      <div className="page-turn" aria-hidden="true" />
+      {early && <div className="year-mark" aria-hidden="true"><span>{new Date().getFullYear()}</span></div>}
+    </>
+  )
 }

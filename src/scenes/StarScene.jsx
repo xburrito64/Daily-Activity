@@ -8,6 +8,7 @@ import {
   Dawn, Meadow, SpringDay, EggHunt, petalSprite, drawButterfly, BUTTERFLY_TONES,
   AdventWreath, AdventPane, AdventNight, starSprite,
   FESTIVE_TINTS, MeteorShower, MilkyWay, Fireflies, fireflySprite,
+  Fireworks, Countdown, NewYearPage,
 } from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
@@ -353,6 +354,21 @@ export default function StarScene({ days, tags }) {
       const meteors = festival === 'perseids' || festival === 'geminids'
       const solstice = festival === 'longest-night'
       const summer = festival === 'midsummer'
+      const turn = festival === 'new-years-eve' || festival === 'new-year'
+      // At the turn of the year the spell goes off like a firework.
+      if (turn) {
+        const tones = ['255, 214, 120', '255, 140, 200', '150, 220, 255', '170, 255, 170']
+        const cx = (x0 + x1) / 2
+        for (let i = 0; i < 18; i++) {
+          const a = (i / 18) * Math.PI * 2 + Math.random() * 0.2
+          const speed = 240 + Math.random() * 200
+          motes.current.push({
+            streak: true, x: cx, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+            age: 0, life: 0.45 + Math.random() * 0.25, size: 26 + Math.random() * 24,
+            tone: tones[i % tones.length],
+          })
+        }
+      }
       // On a night of falling stars, the spell throws out falling stars of
       // its own, every which way.
       if (meteors) {
@@ -617,6 +633,10 @@ export default function StarScene({ days, tags }) {
       {has('perseids') && <MeteorShower radiant={[0.14, 0.02]} speed={[1000, 1600]} tones={['255, 240, 200', '255, 226, 150', '200, 255, 214']} />}
       {has('geminids') && <MeteorShower radiant={[0.82, 0.06]} speed={[600, 1000]} tones={['255, 255, 255', '255, 236, 160', '170, 228, 255', '190, 255, 214']} />}
       {has('midsummer') && <Fireflies />}
+      {has('new-years-eve') && <Fireworks festival="new-years-eve" />}
+      {has('new-years-eve') && <Countdown />}
+      {has('new-year') && <Fireworks festival="new-year" />}
+      {has('new-year') && <NewYearPage />}
       {has('easter') && <Meadow />}
       {has('easter') && <SpringDay />}
       {has('easter') && (
@@ -665,7 +685,7 @@ function StarNotices({ notices, tags }) {
               </span>
               <span className="notice-words">
                 <span className="notice-eyebrow">{n.eyebrow ?? words?.eyebrow ?? 'A festival night'}</span>
-                <b className="notice-title">{n.name}</b>
+                <b className="notice-title">{words?.title && !n.eyebrow ? words.title() : n.name}</b>
                 <span className="notice-line">
                   {n.line ?? (typeof words?.line === 'function' ? words.line(n.nth) : words?.line)}
                 </span>

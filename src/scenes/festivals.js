@@ -445,3 +445,28 @@ export function firBough(w, h, seed = 3, { reach = 0.8, side = false, stars = 1 
     .map((t) => ({ x: t.x, y: t.y + 1, drop: 10 + rand() * 8 }))
   return { wood, needles, berries, stars: hanging }
 }
+
+/** Minutes since this machine's midnight, with the seconds as a fraction. */
+export const minuteOfDay = (d) => d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60
+
+/**
+ * About how many seconds between fireworks going up, at this moment, on
+ * New Year's Eve or New Year's Day; null for none. A few in the afternoon of
+ * the Eve, more as the evening goes on, a flurry in the last ten minutes;
+ * a barrage at midnight, dying away over the first two hours of the year.
+ */
+export function fireworksEvery(festival, now) {
+  const m = minuteOfDay(now)
+  if (festival === 'new-years-eve') {
+    if (m < 18 * 60) return 35
+    if (m < 22 * 60) return 10
+    if (m < 23 * 60 + 50) return 4.5
+    return 1.4 - ((m - (23 * 60 + 50)) / 10) * 0.9
+  }
+  if (festival === 'new-year') {
+    if (m < 10) return 0.3
+    if (m < 60) return 1.2
+    if (m < 120) return 5
+  }
+  return null
+}

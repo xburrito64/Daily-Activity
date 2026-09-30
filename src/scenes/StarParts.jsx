@@ -86,7 +86,7 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           on Christmas Eve, a jack-o'-lantern's face on Halloween, a blossom
           at Easter, the many-pointed star of Advent, a radiant on a night of
           falling stars, the moon's phases on the Longest Night, the sun at
-          Midsummer. */}
+          Midsummer, a firework at the turn of the year. */}
       {festive && layer('mc-flake', (
         <>
           {[0, 60, 120, 180, 240, 300].map((a) => <path key={a} d={FLAKE_ARM} transform={`rotate(${a})`} />)}
@@ -99,6 +99,16 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           <path className="mc-carved" d="M-20-5-12-21-5-5Z" />
           <path className="mc-carved" d="M5-5 12-21 20-5Z" />
           <path className="mc-carved" d={GRIN} />
+        </>
+      ))}
+      {festive && layer('mc-burst', (
+        <>
+          <circle r="11" />
+          {Array.from({ length: 16 }, (_, i) => {
+            const a = (i / 16) * Math.PI * 2
+            const reach = i % 2 === 0 ? 31 : 25
+            return <path key={i} d={`M${(Math.cos(a) * 15).toFixed(2)} ${(Math.sin(a) * 15).toFixed(2)}L${(Math.cos(a) * reach).toFixed(2)} ${(Math.sin(a) * reach).toFixed(2)}`} />
+          })}
         </>
       ))}
       {festive && layer('mc-radiant', (
