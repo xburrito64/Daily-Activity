@@ -451,6 +451,20 @@ function DayList({
     if (!row || !track) return
     const value = row.getBoundingClientRect().height - track.getBoundingClientRect().height
     if (value > 0 && (!chromeReady || Math.abs(value - chrome.value) > 0.5)) {
+      // The rows are changing height under whatever is on screen: the tag
+      // boxes arriving just after the first measure, say, or wrapping onto
+      // another line as the window narrows. Every row above the one at the
+      // top grows with it, so without this the list opened about ten days
+      // before today. Hold the day at the top where it is instead.
+      const el = scrollRef.current
+      if (chromeReady && el && didInitialScroll.current && !pendingAnchor.current) {
+        const was = rowTotal
+        const index = Math.max(0, Math.floor(el.scrollTop / was))
+        const date = datesRef.current[index]
+        if (date) {
+          pendingAnchor.current = { date, offset: ((el.scrollTop - index * was) / was) * (barHeight + value) }
+        }
+      }
       setChrome({ mode, value, measured: true })
     }
   })

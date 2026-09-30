@@ -315,6 +315,10 @@ h1 {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
+  /* The list keeps its own place (a date held at the top, see DayList).
+     The browser's own way of doing it nudged the list as rows changed
+     height, on top of that, and the two together overshot. */
+  overflow-anchor: none;
   /* Scrolled by the graphics card, not the page. The list is see-through,
      for the theme behind it, and the browser will otherwise scroll a
      see-through list itself — to keep its text a shade crisper — which
