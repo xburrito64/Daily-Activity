@@ -30,6 +30,8 @@ export const saveVault = (dir) => request('/api/setup/vault', json('POST', { dir
 /** Look for every missing game cover now; answers with the games that got one. */
 export const refillCovers = () => request('/api/games/refill', json('POST', {}))
 export const getDay = (date) => request(`/api/day/${date}`)
+/** The first day anything was logged, as { date }; date is null before there is one. */
+export const getFirstDay = () => request('/api/first-day')
 
 export const putDay = (date, entries) =>
   request(`/api/day/${date}`, {

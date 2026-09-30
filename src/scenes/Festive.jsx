@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { frostFerns, cobweb, blossomBranch, meadow, firBough, fireworksEvery, minuteOfDay } from './festivals.js'
 import { runLoop, stillness } from './loop.js'
+import { formatDayHeading } from '../time.js'
 
 // The festival nights of Starlit.
 //
@@ -63,6 +64,10 @@ import { runLoop, stillness } from './loop.js'
 // a spell cast on it goes up in hearts. Carnival: a mask by the date, a
 // harlequin diamond, streamers and confetti over its bar, and on the day
 // confetti tumbling down the page; a spell cast on it bursts into confetti.
+//
+// And the anniversary of the first day logged: a gold medal with the years
+// on it by the date, gold dust over its bar, and on the day the seal gilded
+// and gold stars falling from the moon.
 //
 // All of it is drawn once and then only shown, apart from what moves (the
 // snow, the wisps, the bats, the petals, the butterflies, the embers, the
@@ -309,8 +314,24 @@ export function Mask() {
   )
 }
 
+/** A gold medal on a ribbon, the years journeyed struck on it. */
+export function Medal({ years = 1 }) {
+  return (
+    <span className="medal" aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="medal-tail left" d="M9.2 14.5 6.6 24l3.4-1.8 2 2.8 1.4-9.6Z" />
+        <path className="medal-tail right" d="M16.8 14.5 19.4 24 16 22.2 14 25l-1.4-9.6Z" />
+        <circle className="medal-face" cx="13" cy="10" r="7.6" />
+        <circle className="medal-rim" cx="13" cy="10" r="5.9" />
+        <text className="medal-years" x="13" y="10" textAnchor="middle" dominantBaseline="central" fontSize={years > 9 ? 6 : 8}>{years}</text>
+      </svg>
+    </span>
+  )
+}
+
 /** What sits by the date on a festival. */
 export function FestiveMark({ id, lit = false, nth = 1 }) {
+  if (id === 'anniversary') return <Medal years={nth} />
   if (id === 'st-nicholas') return <Boot />
   if (id === 'valentines') return <Rose />
   if (id === 'carnival') return <Mask />
@@ -342,6 +363,7 @@ export const FESTIVE_TINTS = {
   'st-nicholas': '#ffcf9a',
   valentines: '#ff9ab8',
   carnival: '#ffd34f',
+  anniversary: '#ffe29a',
 }
 
 /** What the sky says as the app opens on a festival night. */
@@ -354,6 +376,11 @@ export const FESTIVE_LINES = {
   'st-nicholas': { eyebrow: 'A festival day', line: 'the boots were filled in the night', spell: '#ffcf9a' },
   valentines: { eyebrow: 'A festival day', line: 'lanterns rise for everyone you love', spell: '#ff9ab8' },
   carnival: { eyebrow: 'A festival day', line: 'masks on; the whole grimoire is dancing', spell: '#ffd34f' },
+  anniversary: {
+    eyebrow: 'Your journey',
+    spell: '#ffe29a',
+    line: ({ since }) => `every day written since ${formatDayHeading(since)}`,
+  },
   'new-year': {
     eyebrow: 'A new year',
     line: 'a fresh page in the grimoire',
@@ -366,7 +393,7 @@ export const FESTIVE_LINES = {
   advent: {
     eyebrow: 'A Sunday in Advent',
     spell: '#ffd98a',
-    line: (nth) => [
+    line: ({ nth }) => [
       'the first candle is lit',
       'two candles burn in the wreath',
       'three candles burn, and one still waits',
@@ -811,10 +838,10 @@ export function makeSkyRims() {
       g.fillRect(rand() * w * 0.7, rand() * h, 1, 1)
     }
   }
-  const dust = (g, w, h, rand) => {
+  const dust = (g, w, h, rand, gold = false) => {
     const haze = g.createRadialGradient(0, 0, 0, 0, 0, w * 0.6)
-    haze.addColorStop(0, 'rgba(150, 140, 230, 0.16)')
-    haze.addColorStop(1, 'rgba(150, 140, 230, 0)')
+    haze.addColorStop(0, gold ? 'rgba(255, 210, 130, 0.16)' : 'rgba(150, 140, 230, 0.16)')
+    haze.addColorStop(1, gold ? 'rgba(255, 210, 130, 0)' : 'rgba(150, 140, 230, 0)')
     g.fillStyle = haze
     g.fillRect(0, 0, w, h)
     for (let i = 0; i < 520; i++) {
@@ -822,7 +849,8 @@ export function makeSkyRims() {
       const x = d * w * 0.8 * (0.3 + rand() * 0.7) / 0.65
       const y = rand() * h * (1 - d * 0.4)
       const r = rand() < 0.06 ? 1.1 : 0.35 + rand() * 0.45
-      g.fillStyle = `rgba(${rand() < 0.3 ? '255, 240, 220' : '225, 230, 255'}, ${((0.9 - d * 0.7) * (0.4 + rand() * 0.6)).toFixed(2)})`
+      const tone = gold ? (rand() < 0.4 ? '255, 246, 220' : '255, 214, 130') : (rand() < 0.3 ? '255, 240, 220' : '225, 230, 255')
+      g.fillStyle = `rgba(${tone}, ${((0.9 - d * 0.7) * (0.4 + rand() * 0.6)).toFixed(2)})`
       g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill()
     }
     // Thinning away from the corner, so the dust has no edge of its own.
@@ -896,8 +924,10 @@ export function makeSkyRims() {
     picture(dust),
     picture(grass),
     picture(bursts),
-  ]).then(([gold, blue, stars, meadowRim, fireworks]) => {
+    picture((g, w, h, rand) => dust(g, w, h, rand, true)),
+  ]).then(([gold, blue, stars, meadowRim, fireworks, goldDust]) => {
     const root = document.documentElement.style
+    if (goldDust) root.setProperty('--gold-rim', `url(${goldDust})`)
     if (fireworks) root.setProperty('--burst-rim', `url(${fireworks})`)
     if (gold) root.setProperty('--meteor-rim-gold', `url(${gold})`)
     if (blue) root.setProperty('--meteor-rim-blue', `url(${blue})`)

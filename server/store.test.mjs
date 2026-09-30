@@ -168,6 +168,25 @@ await t('a show and its cover survive being written and read back', async () => 
   assert.deepStrictEqual(back.entries[0].cover, 'frieren-154587.jpg')
 })
 
+await t('the first day logged passes over notes with nothing logged, and touches none of them', async () => {
+  const vault = await fs.mkdtemp(path.join(os.tmpdir(), 'daily-first-'))
+  const notes = {
+    '2019-04-02': '# A diary entry from before the app\n\nJust words.\n',
+    '2020-01-01': 'Words.\n\n```daily-log\n\n```\n',
+    '2021-06-30': 'Hand-edited into nonsense.\n\n```daily-log\n[{"tag": \n```\n',
+    '2023-03-03': 'The first real day.\n\n```daily-log\n[{"tag":"sleep","start":"00:00","end":"07:00"}]\n```\n',
+    '2024-01-01': '```daily-log\n[{"tag":"walk","start":"10:00","end":"11:00"}]\n```\n',
+  }
+  for (const [date, text] of Object.entries(notes)) await fs.writeFile(path.join(vault, `${date}.md`), text, 'utf8')
+  const first = await createStore(vault).firstLogged()
+  assert.strictEqual(first, '2023-03-03')
+  for (const [date, text] of Object.entries(notes)) {
+    assert.strictEqual(await fs.readFile(path.join(vault, `${date}.md`), 'utf8'), text, `${date} must be untouched`)
+  }
+  assert.strictEqual(await createStore(path.join(vault, 'nowhere')).firstLogged(), null)
+  await fs.rm(vault, { recursive: true, force: true })
+})
+
 await fs.rm(dir, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

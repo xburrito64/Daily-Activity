@@ -64,7 +64,10 @@ export function createApp({
   })
   const played = createTotals(store, games, 'game')
   const watched = createTotals(store, anime, 'show')
-  const forget = () => { played.forget(); watched.forget() }
+  // The first day anything was logged, found once and kept until a day is
+  // written (which could be an earlier one).
+  let firstLogged = null
+  const forget = () => { played.forget(); watched.forget(); firstLogged = null }
 
   // Covers that were not there when their games were picked, looked for again
   // in the background. Nobody has to press anything or open anything; the
@@ -262,6 +265,12 @@ export function createApp({
 
   app.get('/api/days', wrap(async (_req, res) => {
     res.json(await store.listDates())
+  }))
+
+  /** The first day anything was logged, for the anniversary of it. Reads only. */
+  app.get('/api/first-day', wrap(async (_req, res) => {
+    firstLogged ??= store.firstLogged().catch((err) => { firstLogged = null; throw err })
+    res.json({ date: await firstLogged })
   }))
 
   /**

@@ -14,6 +14,7 @@ import {
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
 import { useMinute } from '../useMinute.js'
+import { useFirstDay } from '../useFirstDay.js'
 
 // Starlit: a grimoire, open at night.
 //
@@ -82,7 +83,8 @@ export default function StarScene({ days, tags }) {
   // Read again as the minute turns, so the festival sky comes and goes at
   // midnight with the app left open.
   useMinute()
-  const tonight = festivalOf(todayISO())
+  const firstDay = useFirstDay()
+  const tonight = festivalOf(todayISO(), firstDay)
 
   const lastCast = useRef(-Infinity)
   // Set by the casting below: a burst of petals and butterflies where an
@@ -221,7 +223,7 @@ export default function StarScene({ days, tags }) {
     page.dataset.festival = festivals[0].id
     const timers = festivals.map((f, i) => setTimeout(() => {
       setNotices((was) => [...was, {
-        kind: 'festival', festival: f.id, name: f.name, nth: f.nth, id: `festival-${f.id}-${Date.now()}`,
+        kind: 'festival', festival: f.id, name: f.name, nth: f.nth, since: f.since, id: `festival-${f.id}-${Date.now()}`,
       }].slice(-3))
     }, 1400 + i * 2600))
     return () => { timers.forEach(clearTimeout); delete page.dataset.festival }
@@ -359,6 +361,7 @@ export default function StarScene({ days, tags }) {
       const summer = festival === 'midsummer'
       const turn = festival === 'new-years-eve' || festival === 'new-year'
       const love = festival === 'valentines'
+      const journey = festival === 'anniversary'
       // St. Nicholas rains chocolate coins; Carnival bursts into confetti.
       // Both are thrown up and fall back, turning over as they go.
       if (festival === 'st-nicholas' || festival === 'carnival') {
@@ -471,6 +474,7 @@ export default function StarScene({ days, tags }) {
                 : advent ? (i % 3 === 0 ? goldStar : gold)
                   : solstice ? (i % 3 === 0 ? silverStar : pale)
                     : love ? (i % 2 === 0 ? heart : sprite)
+                      : journey ? (i % 2 === 0 ? goldStar : gold)
                     : summer ? firefly
                       : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
         })
@@ -690,6 +694,7 @@ export default function StarScene({ days, tags }) {
       {has('st-nicholas') && <BootsRow />}
       {has('valentines') && <SkyLanterns />}
       {has('carnival') && <ConfettiFall />}
+      {has('anniversary') && <MeteorShower radiant={[0.55, 0.02]} speed={[420, 700]} tones={['255, 220, 140', '255, 240, 200', '255, 206, 120']} />}
       {has('easter') && <Meadow />}
       {has('easter') && <SpringDay />}
       {has('easter') && (
@@ -740,7 +745,7 @@ function StarNotices({ notices, tags }) {
                 <span className="notice-eyebrow">{n.eyebrow ?? words?.eyebrow ?? 'A festival night'}</span>
                 <b className="notice-title">{words?.title && !n.eyebrow ? words.title() : n.name}</b>
                 <span className="notice-line">
-                  {n.line ?? (typeof words?.line === 'function' ? words.line(n.nth) : words?.line)}
+                  {n.line ?? (typeof words?.line === 'function' ? words.line(n) : words?.line)}
                 </span>
               </span>
             </div>

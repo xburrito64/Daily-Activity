@@ -124,11 +124,35 @@ export const FESTIVALS = [
   { id: 'valentines', name: "Valentine's Day", month: 2, day: 14 },
 ]
 
+const YEAR_WORDS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+
+/**
+ * The anniversary of the first day anything was logged (`firstDay`), on
+ * the same day each year after it, or null. Someone who started on the
+ * 29th of February has theirs on the 28th in the years without one.
+ */
+export function anniversaryOn(date, firstDay) {
+  const m = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const f = String(firstDay ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m || !f) return null
+  const years = Number(m[1]) - Number(f[1])
+  if (years < 1) return null
+  let month = Number(f[2])
+  let day = Number(f[3])
+  const year = Number(m[1])
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+  if (month === 2 && day === 29 && !leap) day = 28
+  if (Number(m[2]) !== month || Number(m[3]) !== day) return null
+  const count = years <= 10 ? YEAR_WORDS[years - 1] : String(years)
+  return { id: 'anniversary', name: `${count} ${years === 1 ? 'year' : 'years'} journeyed`, nth: years, since: firstDay }
+}
+
 /**
  * The festivals falling on this date (YYYY-MM-DD), the one that leads
- * first. Empty for an ordinary day, or anything that is not a date.
+ * first. Empty for an ordinary day, or anything that is not a date. With
+ * `firstDay`, the anniversary of it comes along too, last.
  */
-export function festivalsOn(date) {
+export function festivalsOn(date, firstDay = null) {
   const m = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!m) return []
   const year = Number(m[1])
@@ -144,6 +168,8 @@ export function festivalsOn(date) {
     const at = f.on ? f.on(year) : f
     if (at.month === month && at.day === day) found.push(f)
   }
+  const anniversary = anniversaryOn(date, firstDay)
+  if (anniversary) found.push(anniversary)
   return found
 }
 
@@ -151,8 +177,8 @@ export function festivalsOn(date) {
  * The festival leading on this date, or null; any others falling on the
  * same day are in its `also`.
  */
-export function festivalOf(date) {
-  const [lead, ...also] = festivalsOn(date)
+export function festivalOf(date, firstDay = null) {
+  const [lead, ...also] = festivalsOn(date, firstDay)
   if (!lead) return null
   return also.length ? { ...lead, also } : lead
 }

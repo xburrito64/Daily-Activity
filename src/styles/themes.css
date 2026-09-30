@@ -2657,7 +2657,7 @@
 .star-notice[data-festival="christmas-eve"] .notice-eyebrow { color: #cfe6fb; }
 .star-notice.festival :is(.gift, .lantern, .egg) { width: 30px; height: 30px; margin: 0; }
 .star-notice.festival .wreath { width: 38px; height: 29px; margin: 0; }
-.star-notice.festival :is(.meteor-mark, .moon-mark, .jar, .boot, .rose, .carnival-mask, .hourglass, .fresh-page) { width: 30px; height: 30px; margin: 0; }
+.star-notice.festival :is(.meteor-mark, .moon-mark, .jar, .medal, .boot, .rose, .carnival-mask, .hourglass, .fresh-page) { width: 30px; height: 30px; margin: 0; }
 
 /* --- The Sundays of Advent --------------------------------------------------
    Warm where Christmas Eve is cold: candlelight, fir and holly red. On the
@@ -3592,6 +3592,87 @@
 .star-notice[data-festival="carnival"] { border-color: rgba(255, 211, 79, 0.55); }
 .star-notice[data-festival="carnival"] .notice-eyebrow { color: #ffd34f; }
 
+/* --- The anniversary of the journey -------------------------------------------
+   The same day each year as the first day anything was logged. */
+
+[data-theme="starlit"] .daysection[data-festival="anniversary"] .dayhead::before {
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(160deg, #fff4d0, #d9a94e);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='2 2 20 20'><path d='m12 2.5 2.8 6.1 6.7.7-5 4.5 1.4 6.6L12 17l-5.9 3.4 1.4-6.6-5-4.5 6.7-.7Z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='2 2 20 20'><path d='m12 2.5 2.8 6.1 6.7.7-5 4.5 1.4 6.6L12 17l-5.9 3.4 1.4-6.6-5-4.5 6.7-.7Z'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="anniversary"] .dayhead::before { background: linear-gradient(160deg, #ffffff, #ffd87a); }
+[data-festival="anniversary"] .festdate {
+  background: linear-gradient(180deg, #f6ead0 0%, #e0c184 48%, #b08a44 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 210, 130, 0.4));
+}
+[data-festival="anniversary"] .festname { color: #f0cf86; text-shadow: 0 0 10px rgba(255, 200, 110, 0.45); }
+.compactrow[data-festival="anniversary"] .gdate { color: #f0cf86; text-shadow: 0 0 8px rgba(255, 200, 110, 0.45); }
+
+/* A gold medal on a ribbon, the years struck on it. */
+.medal {
+  position: relative;
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  margin: -7px 0 -4px;
+}
+.medal svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 5px rgba(255, 210, 130, 0.5)); }
+.medal-tail.left { fill: #8e2236; }
+.medal-tail.right { fill: #243f86; }
+.medal-face { fill: #e8c46a; stroke: #8a6424; stroke-width: 0.6; }
+.medal-rim { fill: #f3d98e; stroke: #b08a44; stroke-width: 0.6; }
+.medal-years { fill: #5a3d0e; font-family: var(--font-display); font-weight: 700; }
+
+[data-theme="starlit"] [data-festival="anniversary"] .track {
+  border-color: rgba(233, 200, 130, 0.5);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(255, 200, 110, 0.2),
+    0 0 20px -6px rgba(255, 210, 130, 0.35);
+}
+[data-theme="starlit"] [data-festival="anniversary"] .track::before,
+[data-theme="starlit"] [data-festival="anniversary"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--gold-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="anniversary"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="anniversary"] .track::after { right: 0; transform: scaleX(-1); }
+
+/* A spell cast on it is a gold star. */
+.mc-journey { display: none; animation: mc-spin 30s linear infinite; }
+.star-cast[data-festival="anniversary"] :is(.mc-mid, .mc-inner polygon, .mc-inner circle:not(.mc-heart)) { display: none; }
+.star-cast[data-festival="anniversary"] .mc-journey { display: block; }
+
+/* --- the day itself: the seal gilded, gold stars falling from the moon --- */
+[data-theme="starlit"][data-festival="anniversary"] .app > .sky {
+  background:
+    radial-gradient(1100px 620px at 56% -8%, rgba(255, 210, 130, 0.14), transparent 70%),
+    radial-gradient(1300px 700px at 0% 110%, rgba(52, 38, 84, 0.2), transparent 70%),
+    linear-gradient(180deg, #0d0f19 0%, #0a0b13 55%, #07080e 100%);
+}
+[data-festival="anniversary"] .seal-ring :is(circle, path) { stroke: rgb(var(--gilt-rgb) / 0.5); }
+[data-festival="anniversary"] .seal-runes { fill: rgb(var(--gilt-rgb) / 0.7); }
+[data-festival="anniversary"] .seal-moon { filter: drop-shadow(0 0 26px rgba(255, 214, 140, 0.55)); }
+.star-notice[data-festival="anniversary"] { border-color: rgba(233, 200, 130, 0.6); }
+.star-notice[data-festival="anniversary"] .notice-eyebrow { color: #f0cf86; }
+
 /* --- Halloween ---------------------------------------------------------------
    All Hallows' Eve: the day strung with cobwebs and lit by a carved lantern;
    on the night itself an orange moon over a violet mist, great webs in the
@@ -4018,6 +4099,7 @@
   .app > .dawn, .app > .meadow, .egg.wobble, .mc-bloom,
   .candle .flame, .bauble, .app > .advent-pane, .wreath.lit::after, .mc-advent,
   .jar.lit::after, .mc-radiant, .mc-phases, .mc-sun,
+  .mc-journey,
   .mc-coin, .mc-jester, .boot.standing,
   .hourglass.lit::after, .mc-burst, .countdown span, .year-mark span, .app > .page-turn { animation: none; }
   .seal-outer, .seal-middle, .seal-inner,

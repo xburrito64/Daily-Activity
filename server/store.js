@@ -164,6 +164,20 @@ export function createStore(dailyDir) {
     },
 
     /** Dates that already have a note file, for the review view. */
+    /**
+     * The first day anything was logged: the earliest note whose block
+     * holds at least one entry. Notes from before the app (no block, an
+     * empty one) and blocks that cannot be read are passed over. Only reads,
+     * and only as far as it has to; null if nothing has been logged yet.
+     */
+    async firstLogged() {
+      for (const date of await this.listDates()) {
+        const day = await this.readDay(date)
+        if (!day.malformed && day.entries.length > 0) return date
+      }
+      return null
+    },
+
     async listDates() {
       try {
         const names = await fs.readdir(dailyDir)

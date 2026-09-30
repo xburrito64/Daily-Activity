@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import {
-  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice, fireworksEvery, shroveTuesday,
+  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice, fireworksEvery, shroveTuesday, anniversaryOn,
 } from './festivals.js'
 
 let passed = 0
@@ -225,6 +225,38 @@ t('the folk days: St. Nicholas, Valentine\'s Day, and Carnival moving with Easte
     assert.equal(`${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`, day, year)
     assert.equal(festivalOf(`${year}-${day}`)?.id, 'carnival', year)
   }
+})
+
+t('the anniversary of the first day logged, each year after it', () => {
+  const first = '2026-07-22'
+  assert.equal(anniversaryOn('2026-07-22', first), null, 'not on the first day itself')
+  assert.equal(anniversaryOn('2027-07-21', first), null)
+  const one = anniversaryOn('2027-07-22', first)
+  assert.equal(one.id, 'anniversary')
+  assert.equal(one.name, 'One year journeyed')
+  assert.equal(one.nth, 1)
+  assert.equal(one.since, first)
+  assert.equal(anniversaryOn('2029-07-22', first).name, 'Three years journeyed')
+  assert.equal(anniversaryOn('2038-07-22', first).name, '12 years journeyed')
+  // Nothing logged yet, or nothing known: no anniversary.
+  assert.equal(anniversaryOn('2027-07-22', null), null)
+  assert.equal(festivalOf('2027-07-22'), null)
+  assert.equal(festivalOf('2027-07-22', first)?.id, 'anniversary')
+})
+
+t('a journey begun on the 29th of February is kept on the 28th in other years', () => {
+  const first = '2028-02-29'
+  assert.equal(anniversaryOn('2029-02-28', first)?.nth, 1)
+  assert.equal(anniversaryOn('2029-03-01', first), null)
+  assert.equal(anniversaryOn('2032-02-29', first)?.nth, 4)
+  assert.equal(anniversaryOn('2032-02-28', first), null)
+})
+
+t('an anniversary on a festival comes along with it', () => {
+  // Someone who started on Halloween.
+  const f = festivalOf('2027-10-31', '2026-10-31')
+  assert.equal(f.id, 'halloween')
+  assert.deepEqual(f.also.map((x) => x.id), ['anniversary'])
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

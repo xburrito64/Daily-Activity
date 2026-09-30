@@ -5,6 +5,7 @@ import {
   paintSpans,
 } from './time.js'
 import { useMinute } from './useMinute.js'
+import { useFirstDay } from './useFirstDay.js'
 import { Initial, Chronicle } from './scenes/ScriptParts.jsx'
 import { illumination } from './scenes/manuscript.js'
 import { MagicCircle, Moonweed, RankGem, rankTitle } from './scenes/StarParts.jsx'
@@ -1060,6 +1061,7 @@ function DayList({
   const { chipLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
   const scriptorium = theme === 'scriptorium'
   const starlit = theme === 'starlit'
+  const firstDay = useFirstDay()
   // Starlit ranks every tag by its hours this past month.
   const month = useMemo(() => (starlit ? monthByTag(days, todayISO()) : null), [days, starlit])
   const words = wordsFor(theme)
@@ -1139,7 +1141,7 @@ function DayList({
           // Christmas Eve, the Sundays of Advent, Halloween, Easter, and
           // whatever festivals follow them.
           // Starlit only, so far.
-          const festival = starlit ? festivalOf(date) : null
+          const festival = starlit ? festivalOf(date, firstDay) : null
           let blocks = resizing?.date === date
             ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
             : day?.blocks ?? []
