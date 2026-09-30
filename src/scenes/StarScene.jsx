@@ -9,6 +9,7 @@ import {
   AdventWreath, AdventPane, AdventNight, starSprite,
   FESTIVE_TINTS, MeteorShower, MilkyWay, Fireflies, fireflySprite,
   Fireworks, Countdown, NewYearPage,
+  BootsRow, SkyLanterns, ConfettiFall, coinSprite, heartSprite, CONFETTI,
 } from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
@@ -265,6 +266,8 @@ export default function StarScene({ days, tags }) {
     const goldStar = starSprite()
     const silverStar = starSprite('#eeeaff', '220, 214, 255')
     const firefly = fireflySprite()
+    const coin = coinSprite()
+    const heart = heartSprite()
     let tinted = new Map()
     const spriteFor = (colour) => {
       if (!tinted.has(colour)) {
@@ -355,6 +358,30 @@ export default function StarScene({ days, tags }) {
       const solstice = festival === 'longest-night'
       const summer = festival === 'midsummer'
       const turn = festival === 'new-years-eve' || festival === 'new-year'
+      const love = festival === 'valentines'
+      // St. Nicholas rains chocolate coins; Carnival bursts into confetti.
+      // Both are thrown up and fall back, turning over as they go.
+      if (festival === 'st-nicholas' || festival === 'carnival') {
+        const coins = festival === 'st-nicholas'
+        for (let i = 0; i < (coins ? 14 : 34); i++) {
+          motes.current.push({
+            tumble: true,
+            x: x0 + Math.random() * Math.max(1, x1 - x0),
+            y,
+            vx: (Math.random() - 0.5) * (coins ? 160 : 260),
+            vy: -(140 + Math.random() * 180),
+            age: 0,
+            life: 1.6 + Math.random() * 0.8,
+            size: coins ? 10 + Math.random() * 4 : 5 + Math.random() * 3,
+            turn: Math.random() * Math.PI,
+            spin: (Math.random() - 0.5) * 8,
+            flip: Math.random() * Math.PI,
+            flipRate: 6 + Math.random() * 6,
+            sprite: coins ? coin : null,
+            colour: CONFETTI[Math.floor(Math.random() * CONFETTI.length)],
+          })
+        }
+      }
       // At the turn of the year the spell goes off like a firework.
       if (turn) {
         const tones = ['255, 214, 120', '255, 140, 200', '150, 220, 255', '170, 255, 170']
@@ -443,6 +470,7 @@ export default function StarScene({ days, tags }) {
                 // Advent: embers, and little gold stars among them.
                 : advent ? (i % 3 === 0 ? goldStar : gold)
                   : solstice ? (i % 3 === 0 ? silverStar : pale)
+                    : love ? (i % 2 === 0 ? heart : sprite)
                     : summer ? firefly
                       : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
         })
@@ -507,7 +535,7 @@ export default function StarScene({ days, tags }) {
         const m = list[i]
         m.age += dt
         if (m.age >= m.life) { list.splice(i, 1); continue }
-        if (m.bat || m.fly || m.streak) continue // drawn below
+        if (m.bat || m.fly || m.streak || m.tumble) continue // drawn below
         m.vx *= Math.exp(-dt * 1.2)
         m.vy += 12 * dt
         m.x += (m.vx + Math.sin(t * 2.2 + m.seed) * 16) * dt
@@ -562,6 +590,28 @@ export default function StarScene({ days, tags }) {
         g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke()
       }
       g.globalCompositeOperation = 'source-over'
+      for (const m of list) {
+        if (!m.tumble) continue
+        m.vy += 420 * dt
+        m.vx *= Math.exp(-dt * 0.8)
+        m.x += m.vx * dt
+        m.y += m.vy * dt
+        m.turn += m.spin * dt
+        m.flip += m.flipRate * dt
+        const k = m.age / m.life
+        g.globalAlpha = k > 0.75 ? (1 - k) / 0.25 : 1
+        g.save()
+        g.translate(m.x, m.y)
+        g.rotate(m.turn)
+        g.scale(Math.cos(m.flip), 1)
+        if (m.sprite) {
+          g.drawImage(m.sprite, -m.size / 2, -m.size / 2, m.size, m.size)
+        } else {
+          g.fillStyle = `rgba(${m.colour}, 0.9)`
+          g.fillRect(-m.size / 2, -m.size, m.size, m.size * 2)
+        }
+        g.restore()
+      }
       g.globalAlpha = 1
       dirty = true
     })
@@ -637,6 +687,9 @@ export default function StarScene({ days, tags }) {
       {has('new-years-eve') && <Countdown />}
       {has('new-year') && <Fireworks festival="new-year" />}
       {has('new-year') && <NewYearPage />}
+      {has('st-nicholas') && <BootsRow />}
+      {has('valentines') && <SkyLanterns />}
+      {has('carnival') && <ConfettiFall />}
       {has('easter') && <Meadow />}
       {has('easter') && <SpringDay />}
       {has('easter') && (

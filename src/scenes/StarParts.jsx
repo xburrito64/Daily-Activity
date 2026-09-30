@@ -86,7 +86,8 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           on Christmas Eve, a jack-o'-lantern's face on Halloween, a blossom
           at Easter, the many-pointed star of Advent, a radiant on a night of
           falling stars, the moon's phases on the Longest Night, the sun at
-          Midsummer, a firework at the turn of the year. */}
+          Midsummer, a firework at the turn of the year, a coin for St.
+          Nicholas, a heart on Valentine's Day, a harlequin for Carnival. */}
       {festive && layer('mc-flake', (
         <>
           {[0, 60, 120, 180, 240, 300].map((a) => <path key={a} d={FLAKE_ARM} transform={`rotate(${a})`} />)}
@@ -99,6 +100,26 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           <path className="mc-carved" d="M-20-5-12-21-5-5Z" />
           <path className="mc-carved" d="M5-5 12-21 20-5Z" />
           <path className="mc-carved" d={GRIN} />
+        </>
+      ))}
+      {festive && layer('mc-coin', (
+        <>
+          <circle r="27" />
+          <circle r="20" />
+          <polygon points={star(5, 12, 5)} />
+        </>
+      ))}
+      {festive && layer('mc-love', (
+        <>
+          <circle r="31" />
+          <path d="M0 21C-15 11-19 0-13-7-8-12-2-10 0-5 2-10 8-12 13-7 19 0 15 11 0 21Z" />
+        </>
+      ))}
+      {festive && layer('mc-jester', (
+        <>
+          <circle r="31" />
+          {[0, 90, 180, 270].map((a) => <path key={a} d="M0-6 7-17 0-28-7-17Z" transform={`rotate(${a + 45})`} />)}
+          {[0, 90, 180, 270].map((a) => <path key={`c${a}`} className="mc-carved" d="M0-6 4.4-12.6 0-19.2-4.4-12.6Z" transform={`rotate(${a})`} />)}
         </>
       ))}
       {festive && layer('mc-burst', (

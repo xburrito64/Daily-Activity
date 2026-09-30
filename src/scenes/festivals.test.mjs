@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import {
-  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice, fireworksEvery,
+  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice, fireworksEvery, shroveTuesday,
 } from './festivals.js'
 
 let passed = 0
@@ -213,6 +213,18 @@ t('fireworks go up more and more often toward midnight, then die away', () => {
   assert.ok(day(0, 30) < day(1, 30))
   assert.equal(day(3, 0), null, 'and quiet by the small hours')
   assert.equal(fireworksEvery('halloween', at(23, 0)), null)
+})
+
+t('the folk days: St. Nicholas, Valentine\'s Day, and Carnival moving with Easter', () => {
+  assert.equal(festivalOf('2027-12-06')?.id, 'st-nicholas')
+  assert.equal(festivalOf('2027-02-14')?.id, 'valentines')
+  // Shrove Tuesday, 47 days before Easter Sunday.
+  const known = { 2024: '02-13', 2025: '03-04', 2026: '02-17', 2027: '02-09', 2028: '02-29' }
+  for (const [year, day] of Object.entries(known)) {
+    const { month, day: d } = shroveTuesday(Number(year))
+    assert.equal(`${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`, day, year)
+    assert.equal(festivalOf(`${year}-${day}`)?.id, 'carnival', year)
+  }
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

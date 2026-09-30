@@ -55,6 +55,15 @@ import { runLoop, stillness } from './loop.js'
 // a ribbon marking its bar; the grimoire turns a new page as it opens, and
 // the fireworks go on for the first hour or two.
 //
+// The folk days. St. Nicholas: a boot stuffed with treats by the date,
+// walnuts and gold coins at the ends of its bar, and on the day boots
+// standing at the foot of the window, filled in the night; a spell cast on
+// it rains chocolate coins. Valentine's Day: a rose by the date, wild roses
+// climbing over its bar, and on the day sky lanterns rising up the window;
+// a spell cast on it goes up in hearts. Carnival: a mask by the date, a
+// harlequin diamond, streamers and confetti over its bar, and on the day
+// confetti tumbling down the page; a spell cast on it bursts into confetti.
+//
 // All of it is drawn once and then only shown, apart from what moves (the
 // snow, the wisps, the bats, the petals, the butterflies, the embers, the
 // falling stars and the fireflies), which runs on the shared clock
@@ -250,8 +259,61 @@ export function FreshPage() {
   )
 }
 
+/** A boot put out for St. Nicholas, stuffed with an orange, a candy cane and a coin. */
+export function Boot({ className = '' }) {
+  return (
+    <span className={`boot ${className}`} aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="boot-cane" d="M15.2 9V2.9c0-1.5 2.8-1.5 2.8 0" />
+        <path className="boot-stripe" d="M15.2 9V2.9c0-1.5 2.8-1.5 2.8 0" />
+        <circle className="boot-orange" cx="10.4" cy="5.6" r="2.7" />
+        <circle className="boot-coin" cx="13.2" cy="4.6" r="1.8" />
+        <path className="boot-leather" d="M7.6 7.4h9v9.2c2.7.4 5.6 1.6 6.1 3.8.2.9-.4 1.7-1.4 1.7H7c-.8 0-1.3-.5-1.3-1.3Z" />
+        <rect className="boot-cuff" x="7" y="7" width="10.2" height="2.4" rx="0.8" />
+        <path className="boot-sole" d="M6 21.8h16.4" />
+        <path className="boot-shine" d="M9.4 11v7" />
+      </svg>
+    </span>
+  )
+}
+
+/** A red rose, for Valentine's Day. */
+export function Rose() {
+  return (
+    <span className="rose" aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="rose-stem" d="M13 12.6c-.4 4 .8 7.5 2.4 11" />
+        <path className="rose-leaf" d="M13.8 17.6c2.6-2.4 5.6-2.4 6.6-1.6-1.4 2.2-4.2 3-6.6 1.6Z" />
+        <path className="rose-leaf" d="M13.2 20.4c-2.4-1.6-5-1.4-5.8-.6 1.4 1.8 3.8 2.2 5.8.6Z" />
+        <path className="rose-petal back" d="M6.5 7.8c0-3.6 3-5.8 6.5-5.8s6.5 2.2 6.5 5.8c0 3.4-2.8 5.6-6.5 5.6s-6.5-2.2-6.5-5.6Z" />
+        <path className="rose-petal" d="M8.2 8.4c.6-2.4 2.6-3.6 4.8-3.6s4.2 1.2 4.8 3.6c-.6 2.4-2.4 4-4.8 4s-4.2-1.6-4.8-4Z" />
+        <path className="rose-curl" d="M10.8 7.8c.4-1.3 1.5-2 2.6-1.8 1.3.2 1.9 1.3 1.5 2.3-.4 1.1-1.7 1.3-2.3.6" />
+      </svg>
+    </span>
+  )
+}
+
+/** A carnival mask with a feather in it. */
+export function Mask() {
+  return (
+    <span className="carnival-mask" aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="mask-feather teal" d="M20.2 9.4c1-3.8 3.4-6.6 4.2-7.2-.2 2.8-1.2 5.8-3.2 7.9Z" />
+        <path className="mask-feather pink" d="M18.8 9c.2-3.4 1.6-6.2 2.2-6.8.2 2.6-.4 5.4-1.4 7.2Z" />
+        <path className="mask-face" d="M2.5 10.8c2-2.6 6-3 10.5-.8 4.5-2.2 8.5-1.8 10.5.8-.4 4-2.8 6.6-6 6.6-2.2 0-3.4-1.4-4.5-2.8-1.1 1.4-2.3 2.8-4.5 2.8-3.2 0-5.6-2.6-6-6.6Z" />
+        <path className="mask-eye" d="M6 12c1.4-1.2 3.4-1.2 4.6.2-1.2 1.4-3.2 1.4-4.6-.2Z" />
+        <path className="mask-eye" d="M15.4 12.2c1.2-1.4 3.2-1.4 4.6-.2-1.4 1.4-3.4 1.4-4.6.2Z" />
+        <circle className="mask-gem" cx="13" cy="10.6" r="0.95" />
+      </svg>
+    </span>
+  )
+}
+
 /** What sits by the date on a festival. */
 export function FestiveMark({ id, lit = false, nth = 1 }) {
+  if (id === 'st-nicholas') return <Boot />
+  if (id === 'valentines') return <Rose />
+  if (id === 'carnival') return <Mask />
   if (id === 'new-years-eve') return <Hourglass lit={lit} />
   if (id === 'new-year') return <FreshPage />
   if (id === 'perseids') return <ShootingStar tone="gold" />
@@ -277,6 +339,9 @@ export const FESTIVE_TINTS = {
   midsummer: '#e4ff9c',
   'new-years-eve': '#ffe6a6',
   'new-year': '#fff2cf',
+  'st-nicholas': '#ffcf9a',
+  valentines: '#ff9ab8',
+  carnival: '#ffd34f',
 }
 
 /** What the sky says as the app opens on a festival night. */
@@ -286,6 +351,9 @@ export const FESTIVE_LINES = {
   'longest-night': { eyebrow: 'The turning of the year', line: 'the longest night; from here the days grow', spell: '#d6d0ff' },
   midsummer: { eyebrow: 'The turning of the year', line: 'the shortest night; the sky never quite goes dark', spell: '#e4ff9c' },
   'new-years-eve': { eyebrow: 'The last night of the year', line: 'the old year runs out at midnight', spell: '#ffe6a6' },
+  'st-nicholas': { eyebrow: 'A festival day', line: 'the boots were filled in the night', spell: '#ffcf9a' },
+  valentines: { eyebrow: 'A festival day', line: 'lanterns rise for everyone you love', spell: '#ff9ab8' },
+  carnival: { eyebrow: 'A festival day', line: 'masks on; the whole grimoire is dancing', spell: '#ffd34f' },
   'new-year': {
     eyebrow: 'A new year',
     line: 'a fresh page in the grimoire',
@@ -839,9 +907,145 @@ export function makeSkyRims() {
   return skyRimsMade
 }
 
+// --- the folk days: what lies over their bars ----------------------------------
+const ROSE_TONES = ['214, 46, 76', '240, 120, 150', '255, 190, 205', '176, 26, 58']
+export const CONFETTI = ['255, 79, 163', '255, 211, 79', '63, 214, 194', '138, 92, 255', '255, 255, 255', '110, 200, 255']
+
+let folkRimsMade = null
+export function makeFolkRims() {
+  if (folkRimsMade) return folkRimsMade
+  const picture = (draw) => new Promise((resolve) => {
+    const w = 360
+    const h = 120
+    const c = document.createElement('canvas')
+    c.width = w * 2
+    c.height = h * 2
+    const g = c.getContext('2d')
+    g.scale(2, 2)
+    let a = 31
+    const rand = () => { a = (a * 16807) % 2147483647; return a / 2147483647 }
+    draw(g, w, h, rand)
+    c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
+  })
+  const fadeRight = (g, w, h, from = 0.55) => {
+    g.globalCompositeOperation = 'destination-in'
+    const fade = g.createLinearGradient(w * from, 0, w * 0.9, 0)
+    fade.addColorStop(0, 'rgba(0, 0, 0, 1)')
+    fade.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    g.fillStyle = fade
+    g.fillRect(0, 0, w, h)
+    g.globalCompositeOperation = 'source-over'
+  }
+  // St. Nicholas: walnuts, gold coins and an orange along the foot of the bar.
+  const treats = (g, w, h, rand) => {
+    const coin = (x, y, r) => {
+      const fill = g.createLinearGradient(x - r, y - r, x + r, y + r)
+      fill.addColorStop(0, '#fff0b0')
+      fill.addColorStop(0.5, '#e8b64a')
+      fill.addColorStop(1, '#9a6a1c')
+      g.fillStyle = fill
+      g.beginPath(); g.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); g.fill()
+      g.strokeStyle = 'rgba(120, 80, 20, 0.8)'
+      g.lineWidth = 0.7
+      g.beginPath(); g.ellipse(x, y, r * 0.7, r * 0.55, 0, 0, Math.PI * 2); g.stroke()
+    }
+    const walnut = (x, y, r) => {
+      const fill = g.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r)
+      fill.addColorStop(0, '#c8955e')
+      fill.addColorStop(1, '#6b4523')
+      g.fillStyle = fill
+      g.beginPath(); g.ellipse(x, y, r, r * 0.85, 0.3, 0, Math.PI * 2); g.fill()
+      g.strokeStyle = 'rgba(60, 35, 15, 0.8)'
+      g.lineWidth = 0.8
+      g.beginPath(); g.moveTo(x - r * 0.8, y - r * 0.2); g.quadraticCurveTo(x, y + r * 0.2, x + r * 0.8, y + r * 0.1); g.stroke()
+    }
+    const orange = (x, y, r) => {
+      const fill = g.createRadialGradient(x - r * 0.35, y - r * 0.35, 0, x, y, r)
+      fill.addColorStop(0, '#ffc266')
+      fill.addColorStop(1, '#d9661a')
+      g.fillStyle = fill
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill()
+      g.fillStyle = '#4f8a3a'
+      g.beginPath(); g.ellipse(x + 2, y - r, 4, 1.8, -0.5, 0, Math.PI * 2); g.fill()
+    }
+    orange(30, h - 16, 13)
+    walnut(58, h - 9, 8)
+    coin(78, h - 8, 8)
+    walnut(98, h - 10, 7.5)
+    coin(116, h - 7, 6.5)
+    coin(62, h - 20, 6)
+    walnut(140, h - 8, 7)
+    coin(160, h - 7, 6)
+    for (let i = 0; i < 18; i++) {
+      g.fillStyle = `rgba(255, 226, 150, ${(0.3 + rand() * 0.5).toFixed(2)})`
+      g.fillRect(10 + rand() * 170, h - 60 + rand() * 40, 1, 1)
+    }
+    fadeRight(g, w, h)
+  }
+  // Valentine's Day: a branch of wild roses.
+  const roses = (g, w, h) => {
+    const { wood, blossoms, leaves } = blossomBranch(w, h, 21)
+    g.lineCap = 'round'
+    for (const l of wood) {
+      g.strokeStyle = '#2f4a2a'
+      g.lineWidth = Math.max(0.8, l.width * 0.7)
+      g.beginPath(); g.moveTo(l.x0, l.y0); g.lineTo(l.x1, l.y1); g.stroke()
+    }
+    for (const f of leaves) {
+      g.save()
+      g.translate(f.x, f.y)
+      g.rotate(f.angle)
+      g.fillStyle = 'rgba(70, 140, 80, 0.9)'
+      g.beginPath(); g.ellipse(f.length / 2, 0, f.length / 1.6, f.length / 3.6, 0, 0, Math.PI * 2); g.fill()
+      g.restore()
+    }
+    for (const b of blossoms) drawBloom(g, b.x, b.y, b.r * 1.35, ROSE_TONES[b.tone], b.turn, 0.25)
+    g.globalCompositeOperation = 'destination-in'
+    for (const fade of [g.createLinearGradient(w * 0.6, 0, w, 0), g.createLinearGradient(0, h * 0.6, 0, h)]) {
+      fade.addColorStop(0, 'rgba(0, 0, 0, 1)')
+      fade.addColorStop(1, 'rgba(0, 0, 0, 0)')
+      g.fillStyle = fade
+      g.fillRect(0, 0, w, h)
+    }
+  }
+  // Carnival: streamers curling down from the corner, and confetti.
+  const streamers = (g, w, h, rand) => {
+    g.lineCap = 'round'
+    for (const [x0, rgb, len] of [[14, CONFETTI[0], 110], [46, CONFETTI[2], 90], [82, CONFETTI[1], 120], [120, CONFETTI[3], 80]]) {
+      g.strokeStyle = `rgba(${rgb}, 0.9)`
+      g.lineWidth = 2.2
+      g.beginPath()
+      for (let t = 0; t <= 1; t += 0.02) {
+        const y = t * len
+        const x = x0 + Math.sin(t * 14 + x0) * 7 * (0.4 + t) + t * 30
+        if (t === 0) g.moveTo(x, y); else g.lineTo(x, y)
+      }
+      g.stroke()
+    }
+    for (let i = 0; i < 60; i++) {
+      const x = rand() * w * 0.7
+      const y = rand() * h
+      g.save()
+      g.translate(x, y)
+      g.rotate(rand() * Math.PI)
+      g.fillStyle = `rgba(${CONFETTI[Math.floor(rand() * CONFETTI.length)]}, 0.9)`
+      g.fillRect(-2, -3.5, 4 * (0.3 + rand() * 0.7), 7)
+      g.restore()
+    }
+    fadeRight(g, w, h, 0.5)
+  }
+  folkRimsMade = Promise.all([picture(treats), picture(roses), picture(streamers)]).then(([t, r, c]) => {
+    const root = document.documentElement.style
+    if (t) root.setProperty('--treats-rim', `url(${t})`)
+    if (r) root.setProperty('--rose-rim', `url(${r})`)
+    if (c) root.setProperty('--confetti-rim', `url(${c})`)
+  })
+  return folkRimsMade
+}
+
 /** Every festival's pictures, made once, whichever festival is in view. */
 export function makePictures() {
-  return Promise.all([makeFrost(), makeWebs(), makeBlooms(), makeFirs(), makeSkyRims()])
+  return Promise.all([makeFrost(), makeWebs(), makeBlooms(), makeFirs(), makeSkyRims(), makeFolkRims()])
 }
 
 /**
@@ -2205,4 +2409,183 @@ export function NewYearPage() {
       {early && <div className="year-mark" aria-hidden="true"><span>{new Date().getFullYear()}</span></div>}
     </>
   )
+}
+
+// --- the folk days: boots, lanterns, confetti -----------------------------------
+/** The boots put out for St. Nicholas, standing at the foot of the window. */
+export function BootsRow() {
+  return (
+    <div className="boots-row" aria-hidden="true">
+      {['left', 'left', 'right', 'right'].map((side, i) => <Boot key={i} className={`standing ${side}`} />)}
+    </div>
+  )
+}
+
+/** A gold chocolate coin, turning as it falls. */
+export function coinSprite() {
+  const c = document.createElement('canvas')
+  c.width = 24
+  c.height = 24
+  const g = c.getContext('2d')
+  const fill = g.createLinearGradient(4, 4, 20, 20)
+  fill.addColorStop(0, '#fff3b8')
+  fill.addColorStop(0.5, '#e8b64a')
+  fill.addColorStop(1, '#8a5a14')
+  g.fillStyle = fill
+  g.beginPath(); g.arc(12, 12, 9, 0, Math.PI * 2); g.fill()
+  g.strokeStyle = 'rgba(110, 70, 15, 0.8)'
+  g.lineWidth = 1.2
+  g.beginPath(); g.arc(12, 12, 6.5, 0, Math.PI * 2); g.stroke()
+  return c
+}
+
+/** A little heart, glowing. */
+export function heartSprite() {
+  const c = document.createElement('canvas')
+  c.width = 24
+  c.height = 24
+  const g = c.getContext('2d')
+  const halo = g.createRadialGradient(12, 12, 0, 12, 12, 12)
+  halo.addColorStop(0, 'rgba(255, 150, 180, 0.5)')
+  halo.addColorStop(1, 'rgba(255, 150, 180, 0)')
+  g.fillStyle = halo
+  g.fillRect(0, 0, 24, 24)
+  g.fillStyle = '#ff8fae'
+  g.beginPath()
+  g.moveTo(12, 18)
+  g.bezierCurveTo(4, 12.5, 5.5, 5.5, 12, 8.6)
+  g.bezierCurveTo(18.5, 5.5, 20, 12.5, 12, 18)
+  g.fill()
+  return c
+}
+
+/** Sky lanterns rising slowly up the window, drifting, their flames flickering. */
+export function SkyLanterns() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    let w = 0
+    let h = 0
+    let lanterns = []
+    const make = (anywhere) => {
+      const depth = Math.random()
+      return {
+        x: Math.random() * w,
+        y: anywhere ? h * (0.2 + Math.random() * 0.9) : h + 40,
+        rise: 8 + depth * 16,
+        sway: 6 + Math.random() * 10,
+        phase: Math.random() * 10,
+        size: 10 + depth * 16,
+        glow: 0.5 + depth * 0.5,
+      }
+    }
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      lanterns = Array.from({ length: 14 }, () => make(true))
+    }
+    size()
+    window.addEventListener('resize', size)
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      g.clearRect(0, 0, w, h)
+      for (const l of lanterns) {
+        l.y -= l.rise * dt
+        l.x += Math.sin(t * 0.3 + l.phase) * l.sway * dt
+        if (l.y < -60) Object.assign(l, make(false))
+        // Fading out as they climb away.
+        const fade = Math.min(1, Math.max(0, l.y / (h * 0.25)))
+        const flicker = 0.85 + 0.15 * Math.sin(t * 7 + l.phase)
+        const s = l.size
+        g.globalAlpha = fade * l.glow
+        g.globalCompositeOperation = 'lighter'
+        const halo = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, s * 2.4)
+        halo.addColorStop(0, `rgba(255, 170, 90, ${(0.4 * flicker).toFixed(3)})`)
+        halo.addColorStop(1, 'rgba(255, 140, 70, 0)')
+        g.fillStyle = halo
+        g.fillRect(l.x - s * 2.4, l.y - s * 2.4, s * 4.8, s * 4.8)
+        g.globalCompositeOperation = 'source-over'
+        const body = g.createLinearGradient(l.x, l.y - s * 0.6, l.x, l.y + s * 0.6)
+        body.addColorStop(0, '#ffcf8a')
+        body.addColorStop(1, `rgba(255, ${Math.round(120 + 40 * flicker)}, 60, 1)`)
+        g.fillStyle = body
+        g.beginPath()
+        g.moveTo(l.x - s * 0.42, l.y - s * 0.6)
+        g.lineTo(l.x + s * 0.42, l.y - s * 0.6)
+        g.lineTo(l.x + s * 0.3, l.y + s * 0.55)
+        g.lineTo(l.x - s * 0.3, l.y + s * 0.55)
+        g.closePath()
+        g.fill()
+        g.fillStyle = `rgba(255, 250, 220, ${(0.9 * flicker).toFixed(3)})`
+        g.beginPath(); g.ellipse(l.x, l.y + s * 0.5, s * 0.22, s * 0.08, 0, 0, Math.PI * 2); g.fill()
+      }
+      g.globalAlpha = 1
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
+  }, [])
+  return <canvas ref={ref} className="sky-lanterns" aria-hidden="true" />
+}
+
+/** Confetti tumbling down the page, turning over as it falls. */
+export function ConfettiFall() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    let w = 0
+    let h = 0
+    let bits = []
+    const make = (anywhere) => ({
+      x: Math.random() * w,
+      y: anywhere ? Math.random() * h : -10,
+      fall: 30 + Math.random() * 40,
+      sway: 14 + Math.random() * 20,
+      phase: Math.random() * 10,
+      turn: Math.random() * Math.PI,
+      spin: (Math.random() - 0.5) * 4,
+      flip: Math.random() * Math.PI,
+      flipRate: 3 + Math.random() * 5,
+      w: 3 + Math.random() * 3,
+      h: 6 + Math.random() * 4,
+      colour: CONFETTI[Math.floor(Math.random() * CONFETTI.length)],
+    })
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      bits = Array.from({ length: Math.round((w * h) / 45000) }, () => make(true))
+    }
+    size()
+    window.addEventListener('resize', size)
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      g.clearRect(0, 0, w, h)
+      for (const b of bits) {
+        b.y += b.fall * dt
+        b.x += Math.sin(t * 1.3 + b.phase) * b.sway * dt
+        b.turn += b.spin * dt
+        b.flip += b.flipRate * dt
+        if (b.y > h + 12) Object.assign(b, make(false))
+        g.save()
+        g.translate(b.x, b.y)
+        g.rotate(b.turn)
+        g.scale(Math.cos(b.flip), 1)
+        g.fillStyle = `rgba(${b.colour}, 0.85)`
+        g.fillRect(-b.w / 2, -b.h / 2, b.w, b.h)
+        g.restore()
+      }
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
+  }, [])
+  return <canvas ref={ref} className="confetti-fall" aria-hidden="true" />
 }
