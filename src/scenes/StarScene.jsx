@@ -10,11 +10,13 @@ import {
   FESTIVE_TINTS, MeteorShower, MilkyWay, Fireflies, fireflySprite,
   Fireworks, Countdown, NewYearPage,
   BootsRow, SkyLanterns, ConfettiFall, coinSprite, heartSprite, CONFETTI,
+  Balloons, BuntingSwags, drawBalloon, BALLOON_TONES,
 } from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
 import { useMinute } from '../useMinute.js'
 import { useFirstDay } from '../useFirstDay.js'
+import { useBirthdays } from '../useBirthdays.js'
 
 // Starlit: a grimoire, open at night.
 //
@@ -84,7 +86,8 @@ export default function StarScene({ days, tags }) {
   // midnight with the app left open.
   useMinute()
   const firstDay = useFirstDay()
-  const tonight = festivalOf(todayISO(), firstDay)
+  const birthdays = useBirthdays()
+  const tonight = festivalOf(todayISO(), firstDay, birthdays)
 
   const lastCast = useRef(-Infinity)
   // Set by the casting below: a burst of petals and butterflies where an
@@ -216,17 +219,21 @@ export default function StarScene({ days, tags }) {
   const has = (id) => festivals.some((f) => f.id === id)
   const festival = tonight?.id ?? null
   const nth = festivals.find((f) => f.id === 'advent')?.nth ?? 0
-  const greeted = festivals.map((f) => f.id).join(',')
+  const greeted = festivals.map((f) => f.key ?? f.id).join(',')
+  const yours = festivals.some((f) => f.self)
   useEffect(() => {
     if (!greeted) return undefined
     const page = document.documentElement
     page.dataset.festival = festivals[0].id
+    // On your own birthday the moon wears a party hat (themes.css).
+    if (yours) page.dataset.birthday = 'yours'
     const timers = festivals.map((f, i) => setTimeout(() => {
       setNotices((was) => [...was, {
-        kind: 'festival', festival: f.id, name: f.name, nth: f.nth, since: f.since, id: `festival-${f.id}-${Date.now()}`,
+        kind: 'festival', festival: f.id, name: f.name, nth: f.nth, since: f.since,
+        age: f.age, self: f.self, eyebrow: f.eyebrow, id: `festival-${f.key ?? f.id}-${Date.now()}`,
       }].slice(-3))
     }, 1400 + i * 2600))
-    return () => { timers.forEach(clearTimeout); delete page.dataset.festival }
+    return () => { timers.forEach(clearTimeout); delete page.dataset.festival; delete page.dataset.birthday }
   }, [greeted])
 
   // --- the seal ----------------------------------------------------------------
@@ -362,6 +369,23 @@ export default function StarScene({ days, tags }) {
       const turn = festival === 'new-years-eve' || festival === 'new-year'
       const love = festival === 'valentines'
       const journey = festival === 'anniversary'
+      // A birthday lets go of a handful of balloons.
+      if (festival === 'birthday') {
+        for (let i = 0; i < Math.min(7, 2 + count / 10); i++) {
+          motes.current.push({
+            balloon: true,
+            x: x0 + Math.random() * Math.max(1, x1 - x0),
+            y,
+            vx: (Math.random() - 0.5) * 40,
+            vy: -(50 + Math.random() * 40),
+            age: 0,
+            life: 3 + Math.random() * 1.5,
+            size: 6 + Math.random() * 3,
+            seed: Math.random() * 100,
+            tone: BALLOON_TONES[Math.floor(Math.random() * BALLOON_TONES.length)],
+          })
+        }
+      }
       // St. Nicholas rains chocolate coins; Carnival bursts into confetti.
       // Both are thrown up and fall back, turning over as they go.
       if (festival === 'st-nicholas' || festival === 'carnival') {
@@ -539,7 +563,7 @@ export default function StarScene({ days, tags }) {
         const m = list[i]
         m.age += dt
         if (m.age >= m.life) { list.splice(i, 1); continue }
-        if (m.bat || m.fly || m.streak || m.tumble) continue // drawn below
+        if (m.bat || m.fly || m.streak || m.tumble || m.balloon) continue // drawn below
         m.vx *= Math.exp(-dt * 1.2)
         m.vy += 12 * dt
         m.x += (m.vx + Math.sin(t * 2.2 + m.seed) * 16) * dt
@@ -594,6 +618,15 @@ export default function StarScene({ days, tags }) {
         g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke()
       }
       g.globalCompositeOperation = 'source-over'
+      for (const m of list) {
+        if (!m.balloon) continue
+        m.vy -= 6 * dt
+        m.x += (m.vx + Math.sin(t * 1.4 + m.seed) * 18) * dt
+        m.y += m.vy * dt
+        const k = m.age / m.life
+        g.globalAlpha = k < 0.1 ? k / 0.1 : k > 0.75 ? (1 - k) / 0.25 : 1
+        drawBalloon(g, m.x, m.y, m.size, m.tone, Math.sin(t * 1.4 + m.seed) * 0.15)
+      }
       for (const m of list) {
         if (!m.tumble) continue
         m.vy += 420 * dt
@@ -694,6 +727,8 @@ export default function StarScene({ days, tags }) {
       {has('st-nicholas') && <BootsRow />}
       {has('valentines') && <SkyLanterns />}
       {has('carnival') && <ConfettiFall />}
+      {has('birthday') && <BuntingSwags />}
+      {has('birthday') && <Balloons />}
       {has('anniversary') && <MeteorShower radiant={[0.55, 0.02]} speed={[420, 700]} tones={['255, 220, 140', '255, 240, 200', '255, 206, 120']} />}
       {has('easter') && <Meadow />}
       {has('easter') && <SpringDay />}

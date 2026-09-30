@@ -65,6 +65,11 @@ import { formatDayHeading } from '../time.js'
 // harlequin diamond, streamers and confetti over its bar, and on the day
 // confetti tumbling down the page; a spell cast on it bursts into confetti.
 //
+// Birthdays: a cake by the date with its candle lit, bunting strung over
+// the bar, the name and the age turned; on the day balloons rising up the
+// window and bunting across the top of the sky, and a spell cast on it lets
+// go of balloons. On your own, the moon wears a party hat.
+//
 // And the anniversary of the first day logged: a gold medal with the years
 // on it by the date, gold dust over its bar, and on the day the seal gilded
 // and gold stars falling from the moon.
@@ -329,8 +334,30 @@ export function Medal({ years = 1 }) {
   )
 }
 
+/** A birthday cake, two tiers and a candle burning on top. */
+export function Cake({ lit = false }) {
+  return (
+    <span className={`cake${lit ? ' lit' : ''}`} aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <ellipse className="cake-plate" cx="13" cy="22.8" rx="10.4" ry="1.6" />
+        <rect className="cake-tier low" x="4.8" y="15" width="16.4" height="7.4" rx="1.3" />
+        <path className="cake-icing" d="M4.8 16.4c1 1.8 2.1.2 3.1 1.3s2-.4 3 .9 2.1-.6 3.1.7 2-.3 3 .8 2.1-.5 3.1-.3V15.8c0-.5-.4-.8-.9-.8H5.7c-.5 0-.9.3-.9.8Z" />
+        <rect className="cake-tier high" x="8" y="10.2" width="10" height="5.4" rx="1" />
+        <path className="cake-icing" d="M8 11.3c.8 1.4 1.7.1 2.5 1s1.7-.3 2.5.8 1.7-.4 2.5.6 1.6-.2 2.5-.1V11c0-.4-.3-.8-.8-.8H8.8c-.5 0-.8.4-.8.8Z" />
+        <circle className="cake-sprinkle pink" cx="7.6" cy="20.4" r="0.55" />
+        <circle className="cake-sprinkle blue" cx="11.2" cy="21" r="0.55" />
+        <circle className="cake-sprinkle gold" cx="15.4" cy="20.2" r="0.55" />
+        <circle className="cake-sprinkle pink" cx="18.6" cy="21.1" r="0.55" />
+        <rect className="cake-candle" x="12.2" y="5" width="1.6" height="5.2" rx="0.4" />
+        <path className="cake-flame" d="M13 1.2q1.6 2.2 0 3.6-1.6-1.4 0-3.6Z" />
+      </svg>
+    </span>
+  )
+}
+
 /** What sits by the date on a festival. */
 export function FestiveMark({ id, lit = false, nth = 1 }) {
+  if (id === 'birthday') return <Cake lit={lit} />
   if (id === 'anniversary') return <Medal years={nth} />
   if (id === 'st-nicholas') return <Boot />
   if (id === 'valentines') return <Rose />
@@ -364,6 +391,7 @@ export const FESTIVE_TINTS = {
   valentines: '#ff9ab8',
   carnival: '#ffd34f',
   anniversary: '#ffe29a',
+  birthday: '#ffc4d8',
 }
 
 /** What the sky says as the app opens on a festival night. */
@@ -376,6 +404,12 @@ export const FESTIVE_LINES = {
   'st-nicholas': { eyebrow: 'A festival day', line: 'the boots were filled in the night', spell: '#ffcf9a' },
   valentines: { eyebrow: 'A festival day', line: 'lanterns rise for everyone you love', spell: '#ff9ab8' },
   carnival: { eyebrow: 'A festival day', line: 'masks on; the whole grimoire is dancing', spell: '#ffd34f' },
+  birthday: {
+    spell: '#ffc4d8',
+    line: ({ age, self }) => (age == null
+      ? 'many happy returns'
+      : self ? `happy birthday; ${age} today` : `${age} years today`),
+  },
   anniversary: {
     eyebrow: 'Your journey',
     spell: '#ffe29a',
@@ -957,6 +991,44 @@ export function makeFolkRims() {
     draw(g, w, h, rand)
     c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
   })
+  const wide = (w, h, draw) => new Promise((resolve) => {
+    const c = document.createElement('canvas')
+    c.width = w * 2
+    c.height = h * 2
+    const g = c.getContext('2d')
+    g.scale(2, 2)
+    draw(g, w, h)
+    c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
+  })
+  // Bunting: a string sagging between two points, pennants hanging off it
+  // in turn, each a little shaded down one side.
+  const bunting = (g, x0, y0, x1, y1, sag, width, drop) => {
+    const at = (t) => [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t + sag * 4 * t * (1 - t)]
+    const n = Math.floor((x1 - x0) / (width + 4))
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = at((i + 0.1) / n)
+      const [bx, by] = at((i + 0.1) / n + width / (x1 - x0))
+      const rgb = BALLOON_TONES[i % BALLOON_TONES.length]
+      const fill = g.createLinearGradient(ax, ay, bx, by)
+      fill.addColorStop(0, `rgba(${rgb}, 0.95)`)
+      fill.addColorStop(1, `rgba(${rgb}, 0.7)`)
+      g.fillStyle = fill
+      g.beginPath()
+      g.moveTo(ax, ay)
+      g.lineTo(bx, by)
+      g.lineTo((ax + bx) / 2, (ay + by) / 2 + drop)
+      g.closePath()
+      g.fill()
+    }
+    g.strokeStyle = 'rgba(236, 226, 206, 0.8)'
+    g.lineWidth = 1
+    g.beginPath()
+    for (let t = 0; t <= 1.001; t += 0.02) {
+      const [x, y] = at(t)
+      if (t === 0) g.moveTo(x, y); else g.lineTo(x, y)
+    }
+    g.stroke()
+  }
   const fadeRight = (g, w, h, from = 0.55) => {
     g.globalCompositeOperation = 'destination-in'
     const fade = g.createLinearGradient(w * from, 0, w * 0.9, 0)
@@ -1064,8 +1136,14 @@ export function makeFolkRims() {
     }
     fadeRight(g, w, h, 0.5)
   }
-  folkRimsMade = Promise.all([picture(treats), picture(roses), picture(streamers)]).then(([t, r, c]) => {
+  folkRimsMade = Promise.all([
+    picture(treats), picture(roses), picture(streamers),
+    picture((g, w) => bunting(g, -4, 7, w * 0.86, 12, 18, 16, 18)),
+    wide(480, 60, (g) => bunting(g, 0, 3, 480, 3, 34, 24, 22)),
+  ]).then(([t, r, c, flags, swag]) => {
     const root = document.documentElement.style
+    if (flags) root.setProperty('--bunting-rim', `url(${flags})`)
+    if (swag) root.setProperty('--bunting-swag', `url(${swag})`)
     if (t) root.setProperty('--treats-rim', `url(${t})`)
     if (r) root.setProperty('--rose-rim', `url(${r})`)
     if (c) root.setProperty('--confetti-rim', `url(${c})`)
@@ -2618,4 +2696,103 @@ export function ConfettiFall() {
     return () => { stop(); window.removeEventListener('resize', size) }
   }, [])
   return <canvas ref={ref} className="confetti-fall" aria-hidden="true" />
+}
+
+// --- birthdays: balloons and bunting ---------------------------------------------
+export const BALLOON_TONES = ['255, 110, 150', '255, 206, 84', '110, 196, 255', '140, 224, 160', '190, 150, 255', '255, 150, 90']
+
+/** A balloon of `r` across, on its string, tilted a little by `tilt`. */
+export function drawBalloon(g, x, y, r, rgb, tilt = 0) {
+  g.save()
+  g.translate(x, y)
+  g.rotate(tilt)
+  g.strokeStyle = 'rgba(236, 230, 240, 0.55)'
+  g.lineWidth = Math.max(0.6, r / 18)
+  g.beginPath()
+  g.moveTo(0, r * 1.1)
+  g.bezierCurveTo(-r * 0.4, r * 1.7, r * 0.4, r * 2.3, 0, r * 3)
+  g.stroke()
+  g.fillStyle = `rgba(${rgb}, 1)`
+  g.beginPath()
+  g.moveTo(0, r * 0.95)
+  g.lineTo(-r * 0.16, r * 1.14)
+  g.lineTo(r * 0.16, r * 1.14)
+  g.closePath()
+  g.fill()
+  const fill = g.createRadialGradient(-r * 0.32, -r * 0.4, r * 0.06, 0, 0, r * 1.15)
+  fill.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
+  fill.addColorStop(0.18, `rgba(${rgb}, 0.97)`)
+  fill.addColorStop(1, `rgba(${rgb}, 0.8)`)
+  g.fillStyle = fill
+  g.beginPath()
+  g.ellipse(0, 0, r * 0.86, r, 0, 0, Math.PI * 2)
+  g.fill()
+  g.restore()
+}
+
+/**
+ * Balloons let go at the foot of the window, rising slowly and swaying on
+ * their strings, and nudged aside by the pointer when it gets in the way.
+ */
+export function Balloons() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    let w = 0
+    let h = 0
+    let balloons = []
+    const pointer = { x: -9999, y: -9999 }
+    const make = (anywhere) => {
+      const near = Math.random()
+      return {
+        x: Math.random() * w,
+        y: anywhere ? h * (0.15 + Math.random() * 0.95) : h + 80,
+        vx: 0,
+        rise: 16 + near * 18,
+        r: 12 + near * 12,
+        phase: Math.random() * 10,
+        tone: BALLOON_TONES[Math.floor(Math.random() * BALLOON_TONES.length)],
+        alpha: 0.6 + near * 0.35,
+      }
+    }
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      balloons = Array.from({ length: 10 }, () => make(true))
+    }
+    size()
+    window.addEventListener('resize', size)
+    const onMove = (e) => { pointer.x = e.clientX; pointer.y = e.clientY }
+    window.addEventListener('pointermove', onMove)
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      g.clearRect(0, 0, w, h)
+      for (const b of balloons) {
+        const dx = b.x - pointer.x
+        const dy = b.y - pointer.y
+        const d = Math.hypot(dx, dy)
+        if (d < 90 && d > 0.1) b.vx += (dx / d) * 260 * dt
+        b.vx *= Math.exp(-dt * 1.5)
+        b.x += (b.vx + Math.sin(t * 0.6 + b.phase) * 10) * dt
+        b.y -= b.rise * dt
+        if (b.y < -b.r * 4) Object.assign(b, make(false))
+        g.globalAlpha = b.alpha
+        drawBalloon(g, b.x, b.y, b.r, b.tone, Math.sin(t * 0.6 + b.phase) * 0.12 - b.vx / 600)
+      }
+      g.globalAlpha = 1
+    })
+    return () => { stop(); window.removeEventListener('resize', size); window.removeEventListener('pointermove', onMove) }
+  }, [])
+  return <canvas ref={ref} className="balloons" aria-hidden="true" />
+}
+
+/** Bunting strung across the open sky of the header, either side of the moon. */
+export function BuntingSwags() {
+  return <div className="bunting-swags" aria-hidden="true"><i /><i /></div>
 }

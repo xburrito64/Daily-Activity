@@ -2657,7 +2657,7 @@
 .star-notice[data-festival="christmas-eve"] .notice-eyebrow { color: #cfe6fb; }
 .star-notice.festival :is(.gift, .lantern, .egg) { width: 30px; height: 30px; margin: 0; }
 .star-notice.festival .wreath { width: 38px; height: 29px; margin: 0; }
-.star-notice.festival :is(.meteor-mark, .moon-mark, .jar, .medal, .boot, .rose, .carnival-mask, .hourglass, .fresh-page) { width: 30px; height: 30px; margin: 0; }
+.star-notice.festival :is(.meteor-mark, .moon-mark, .jar, .cake, .medal, .boot, .rose, .carnival-mask, .hourglass, .fresh-page) { width: 30px; height: 30px; margin: 0; }
 
 /* --- The Sundays of Advent --------------------------------------------------
    Warm where Christmas Eve is cold: candlelight, fir and holly red. On the
@@ -3673,6 +3673,146 @@
 .star-notice[data-festival="anniversary"] { border-color: rgba(233, 200, 130, 0.6); }
 .star-notice[data-festival="anniversary"] .notice-eyebrow { color: #f0cf86; }
 
+/* --- Birthdays --------------------------------------------------------------------
+   Everyone's own day (src/birthdays.js): a cake, bunting, balloons; on your
+   own, the moon wears a party hat. See scenes/Festive.jsx. */
+
+[data-theme="starlit"] .daysection[data-festival="birthday"] .dayhead::before {
+  width: 11px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(160deg, #ffd0e0, #ff6f9e);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='4 0 16 24'><ellipse cx='12' cy='8.6' rx='6.6' ry='7.8'/><path d='M12 16.2 10.5 18.2h3Z'/><path d='M12 18.2c-1.4 1.4 1.4 2.4 0 4.2' stroke='%23000' stroke-width='1.3' fill='none'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='4 0 16 24'><ellipse cx='12' cy='8.6' rx='6.6' ry='7.8'/><path d='M12 16.2 10.5 18.2h3Z'/><path d='M12 18.2c-1.4 1.4 1.4 2.4 0 4.2' stroke='%23000' stroke-width='1.3' fill='none'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="birthday"] .dayhead::before { background: linear-gradient(160deg, #ffffff, #ff8fb4); }
+[data-festival="birthday"] .festdate {
+  background: linear-gradient(180deg, #fff6e0 0%, #ffd6a6 38%, #ffb3cf 72%, #c9a8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 170, 200, 0.38));
+}
+[data-festival="birthday"] .festname { color: #ffc4d8; text-shadow: 0 0 10px rgba(255, 140, 180, 0.45); }
+.compactrow[data-festival="birthday"] .gdate { color: #ffc4d8; text-shadow: 0 0 8px rgba(255, 140, 180, 0.45); }
+
+/* A cake with its candle lit; on the day itself, the candle flickers. */
+.cake {
+  position: relative;
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  margin: -7px 0 -4px;
+  --mark-glow: drop-shadow(0 0 5px rgba(255, 180, 200, 0.45));
+}
+.cake svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; filter: var(--mark-glow); }
+.cake-plate { fill: #d9c7a4; }
+.cake-tier.low { fill: #f2b6c9; }
+.cake-tier.high { fill: #b9dcfb; }
+.cake-icing { fill: #fff6fa; }
+.cake-sprinkle.pink { fill: #ff6f9e; }
+.cake-sprinkle.blue { fill: #4fa8ff; }
+.cake-sprinkle.gold { fill: #ffc94f; }
+.cake-candle { fill: #ffe08a; }
+.cake-flame { fill: #ffcf5a; }
+.cake.lit::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: radial-gradient(circle, rgba(255, 220, 130, 0.7), transparent 70%);
+  will-change: opacity;
+  animation: candle 1.9s steps(28) infinite;
+}
+
+/* Bunting over the top corners of its bar. */
+[data-theme="starlit"] [data-festival="birthday"] .track {
+  border-color: rgba(255, 190, 210, 0.42);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(255, 160, 190, 0.2),
+    0 0 20px -6px rgba(255, 150, 190, 0.3);
+}
+[data-theme="starlit"] [data-festival="birthday"] .track::before,
+[data-theme="starlit"] [data-festival="birthday"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--bunting-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="birthday"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="birthday"] .track::after { right: 0; transform: scaleX(-1); }
+
+/* A spell cast on it is a balloon. */
+.mc-balloon { display: none; }
+.star-cast[data-festival="birthday"] :is(.mc-mid, .mc-inner polygon, .mc-inner circle:not(.mc-heart)) { display: none; }
+.star-cast[data-festival="birthday"] .mc-balloon { display: block; }
+
+/* --- the day itself --- */
+[data-theme="starlit"][data-festival="birthday"] .app > .sky {
+  background:
+    radial-gradient(1400px 600px at 50% -10%, rgba(255, 170, 200, 0.14), transparent 70%),
+    radial-gradient(1600px 420px at 50% 116%, rgba(255, 200, 120, 0.12), transparent 70%),
+    linear-gradient(180deg, #110d19 0%, #0b0a12 55%, #08080d 100%);
+}
+/* Bunting across the open sky of the header, either side of the moon. */
+.app > .bunting-swags { position: fixed; inset: 0; z-index: 23; pointer-events: none; animation: frost-creep 2s ease-out backwards; }
+.bunting-swags i {
+  position: absolute;
+  top: 0;
+  width: 17vw;
+  aspect-ratio: 8 / 1;
+  background: var(--bunting-swag) 0 0 / 100% 100% no-repeat;
+}
+.bunting-swags i:nth-child(1) { left: 29vw; }
+.bunting-swags i:nth-child(2) { left: 63vw; }
+.app > .balloons {
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+/* Your own birthday: the moon in a party hat. */
+[data-birthday="yours"] .seal-moon::before,
+[data-birthday="yours"] .seal-moon::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+}
+[data-birthday="yours"] .seal-moon::before {
+  top: -44%;
+  left: 38%;
+  width: 52%;
+  height: 66%;
+  background: repeating-linear-gradient(135deg, #ff6f9e 0 7px, #ffd34f 7px 14px, #6fc8ff 14px 21px);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform: rotate(24deg);
+}
+[data-birthday="yours"] .seal-moon::after {
+  top: -48%;
+  left: 78%;
+  width: 16%;
+  height: 16%;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #fff0c4 60%, #ffd34f);
+  border-radius: 50%;
+}
+.star-notice[data-festival="birthday"] { border-color: rgba(255, 190, 210, 0.55); }
+.star-notice[data-festival="birthday"] .notice-eyebrow { color: #ffc4d8; }
+
 /* --- Halloween ---------------------------------------------------------------
    All Hallows' Eve: the day strung with cobwebs and lit by a carved lantern;
    on the night itself an orange moon over a violet mist, great webs in the
@@ -4099,6 +4239,7 @@
   .app > .dawn, .app > .meadow, .egg.wobble, .mc-bloom,
   .candle .flame, .bauble, .app > .advent-pane, .wreath.lit::after, .mc-advent,
   .jar.lit::after, .mc-radiant, .mc-phases, .mc-sun,
+  .cake.lit::after,
   .mc-journey,
   .mc-coin, .mc-jester, .boot.standing,
   .hourglass.lit::after, .mc-burst, .countdown span, .year-mark span, .app > .page-turn { animation: none; }

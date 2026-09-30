@@ -30,6 +30,10 @@ export const saveVault = (dir) => request('/api/setup/vault', json('POST', { dir
 /** Look for every missing game cover now; answers with the games that got one. */
 export const refillCovers = () => request('/api/games/refill', json('POST', {}))
 export const getDay = (date) => request(`/api/day/${date}`)
+/** The birthdays kept on this machine. */
+export const getBirthdays = () => request('/api/birthdays')
+/** Save the birthdays; answers with them as saved, new ones given ids. */
+export const saveBirthdays = (birthdays) => request('/api/birthdays', json('PUT', { birthdays }))
 /** The first day anything was logged, as { date }; date is null before there is one. */
 export const getFirstDay = () => request('/api/first-day')
 

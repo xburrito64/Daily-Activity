@@ -9,6 +9,7 @@ import { readJson } from './config.js'
 import { withIcons, describeSets, iconSets, ICON_EXTENSIONS } from './icons.js'
 import { cleanTags, removedIds, tagsText, readPicture } from './tags.js'
 import { writeSettings, cleanKey, checkVault, tryKey, KEY_NAMES } from './setup.js'
+import { cleanBirthdays, birthdaysText } from './birthdays.js'
 
 const MAX_RANGE_DAYS = 400
 // How long a total may be reused before the vault is read again. Only an edit
@@ -35,6 +36,8 @@ export function createApp({
   refillCovers = true,
 }) {
   const store = createStore(vaultDailyDir)
+  // Beside the tags, on this machine: see birthdays.js.
+  const birthdaysFile = path.join(path.dirname(tagsFile), 'birthdays.json')
   // Covers sit beside the notes they belong to, in a folder of their own.
   // Nothing else in the vault is ours to put things in, and a folder full of
   // pictures next to the days that mention them is the version of this that
@@ -105,6 +108,23 @@ export function createApp({
     // only needs a refresh rather than a restart. `icons` is the set picked
     // in the settings; see icons.js for what happens to one that isn't there.
     res.json(withIcons(readJson(tagsFile), tagIconsDir, String(req.query.icons ?? '')))
+  }))
+
+  /** The birthdays, as kept on this machine; none yet is an empty list. */
+  app.get('/api/birthdays', wrap(async (_req, res) => {
+    res.json(fs.existsSync(birthdaysFile) ? readJson(birthdaysFile) : [])
+  }))
+
+  /** Save the birthdays as changed in the settings, the list before kept beside it. */
+  app.put('/api/birthdays', wrap(async (req, res) => {
+    const next = cleanBirthdays(req.body?.birthdays)
+    if (fs.existsSync(birthdaysFile)) {
+      fs.copyFileSync(birthdaysFile, path.join(path.dirname(birthdaysFile), 'birthdays.previous.json'))
+    }
+    const tmp = `${birthdaysFile}.tmp-${process.pid}`
+    fs.writeFileSync(tmp, birthdaysText(next), 'utf8')
+    fs.renameSync(tmp, birthdaysFile)
+    res.json(next)
   }))
 
   /** The icon sets to choose between, each with a few of its pictures. */

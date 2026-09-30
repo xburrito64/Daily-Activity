@@ -6,6 +6,7 @@ import {
 } from './time.js'
 import { useMinute } from './useMinute.js'
 import { useFirstDay } from './useFirstDay.js'
+import { useBirthdays } from './useBirthdays.js'
 import { Initial, Chronicle } from './scenes/ScriptParts.jsx'
 import { illumination } from './scenes/manuscript.js'
 import { MagicCircle, Moonweed, RankGem, rankTitle } from './scenes/StarParts.jsx'
@@ -1062,6 +1063,7 @@ function DayList({
   const scriptorium = theme === 'scriptorium'
   const starlit = theme === 'starlit'
   const firstDay = useFirstDay()
+  const birthdays = useBirthdays()
   // Starlit ranks every tag by its hours this past month.
   const month = useMemo(() => (starlit ? monthByTag(days, todayISO()) : null), [days, starlit])
   const words = wordsFor(theme)
@@ -1141,7 +1143,7 @@ function DayList({
           // Christmas Eve, the Sundays of Advent, Halloween, Easter, and
           // whatever festivals follow them.
           // Starlit only, so far.
-          const festival = starlit ? festivalOf(date, firstDay) : null
+          const festival = starlit ? festivalOf(date, firstDay, birthdays) : null
           let blocks = resizing?.date === date
             ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
             : day?.blocks ?? []
@@ -1450,10 +1452,12 @@ ${b.note}` : ''}`}
                   <>
                     <span className="festdate">{formatDayHeading(date)}</span>
                     {[festival, ...(festival.also ?? [])].map((f) => (
-                      <FestiveMark key={f.id} id={f.id} lit={isToday} nth={f.nth} />
+                      <FestiveMark key={f.key ?? f.id} id={f.id} lit={isToday} nth={f.nth} />
                     ))}
                     <span className="festname">
-                      {[festival, ...(festival.also ?? [])].map((f) => f.name).join(' · ')}
+                      {[festival, ...(festival.also ?? [])]
+                        .map((f) => (f.age != null ? `${f.name} · ${f.age}` : f.name))
+                        .join(' · ')}
                     </span>
                   </>
                 ) : formatDayHeading(date)}

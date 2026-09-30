@@ -7,6 +7,8 @@
 // Only in Starlit, so far. Each festival is a date and a name; how it looks
 // belongs to the theme (themes.css, Festive.jsx).
 
+import { birthdaysOn } from '../birthdays.js'
+
 /**
  * Easter Sunday in a given year, by the Gregorian computus: the first Sunday
  * after the first full moon on or after the spring equinox, as the church
@@ -150,15 +152,17 @@ export function anniversaryOn(date, firstDay) {
 /**
  * The festivals falling on this date (YYYY-MM-DD), the one that leads
  * first. Empty for an ordinary day, or anything that is not a date. With
- * `firstDay`, the anniversary of it comes along too, last.
+ * `firstDay`, the anniversary of it comes along too, last; with
+ * `birthdays`, any birthdays that day come first, since they are the
+ * people's own.
  */
-export function festivalsOn(date, firstDay = null) {
+export function festivalsOn(date, firstDay = null, birthdays = null) {
   const m = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!m) return []
   const year = Number(m[1])
   const month = Number(m[2])
   const day = Number(m[3])
-  const found = []
+  const found = birthdaysOn(date, birthdays)
   for (const f of FESTIVALS) {
     if (f.match) {
       const hit = f.match(year, month, day)
@@ -177,8 +181,8 @@ export function festivalsOn(date, firstDay = null) {
  * The festival leading on this date, or null; any others falling on the
  * same day are in its `also`.
  */
-export function festivalOf(date, firstDay = null) {
-  const [lead, ...also] = festivalsOn(date, firstDay)
+export function festivalOf(date, firstDay = null, birthdays = null) {
+  const [lead, ...also] = festivalsOn(date, firstDay, birthdays)
   if (!lead) return null
   return also.length ? { ...lead, also } : lead
 }

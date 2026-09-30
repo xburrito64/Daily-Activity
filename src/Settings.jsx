@@ -3,6 +3,7 @@ import { getIconSets, refillCovers } from './api.js'
 import TagIcon from './TagIcon.jsx'
 import TagEditor from './TagEditor.jsx'
 import SetupPanel from './SetupPanel.jsx'
+import BirthdayEditor from './BirthdayEditor.jsx'
 import {
   BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, LABEL_STYLES, DEFAULTS, THEMES,
 } from './appearance.js'
@@ -14,6 +15,7 @@ const SAMPLE_TAGS = 3
 const TABS = [
   { id: 'tags', name: 'Tags' },
   { id: 'look', name: 'Look' },
+  { id: 'birthdays', name: 'Birthdays' },
   { id: 'setup', name: 'Setup' },
 ]
 // The tab last looked at, for as long as the app is open: closing the panel
@@ -77,6 +79,7 @@ export default function Settings({
           onCoversFound={onCoversFound}
         />
       )}
+      {tab === 'birthdays' && <BirthdayEditor />}
       {tab === 'setup' && <SetupPanel />}
     </aside>
   )

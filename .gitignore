@@ -7,6 +7,10 @@ dist/
 # clone-and-run, delete the next line.
 config.json
 
+# Birthdays are people's: they stay on the machine they were typed into.
+birthdays.json
+birthdays.previous.json
+
 # tooling scratch
 .playwright-mcp/
 *.log

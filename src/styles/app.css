@@ -2155,6 +2155,54 @@ h1 {
 .tagadd { display: flex; gap: var(--s-4); }
 .tagadd input { flex: 1; }
 
+/* --- birthdays ------------------------------------------------------------ */
+.bdayeditor { display: grid; gap: var(--s-5); }
+.bdaylist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.bdayrow {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 112px 30px;
+  grid-template-areas: "star name date remove" ". when when .";
+  align-items: center;
+  column-gap: var(--s-3);
+  row-gap: 2px;
+  padding: var(--s-2) var(--s-3) var(--s-3) var(--s-2);
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+.bdayrow.mine { border-color: color-mix(in srgb, var(--c-accent) 55%, var(--c-line)); }
+.bdaystar { grid-area: star; }
+.bdayname { grid-area: name; }
+.bdayrow .bdaydate { grid-area: date; }
+.bdayremove { grid-area: remove; }
+.bdaywhen { grid-area: when; font-size: var(--f-sm); color: var(--c-text-faint); }
+.bdayrow .bdaydate.bad + .bdayremove + .bdaywhen { color: var(--c-danger-soft); }
+.settings input.bdaydate { font-variant-numeric: tabular-nums; }
+.settings input.bdaydate.bad { border-color: color-mix(in srgb, var(--c-danger) 60%, var(--c-line)); }
+.bdaystar,
+.bdayremove {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--c-text-faint);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.bdaystar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linejoin: round; }
+.bdaystar[aria-pressed="true"] { color: var(--c-accent); }
+.bdaystar[aria-pressed="true"] svg { fill: currentColor; }
+.bdayremove svg { width: 14px; height: 14px; }
+.bdaystar:hover,
+.bdayremove:hover { color: var(--c-text); border-color: var(--c-line); }
+.bdaystar:focus-visible,
+.bdayremove:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; }
+.bdayadd { display: grid; grid-template-columns: minmax(0, 1fr) 112px auto; gap: var(--s-3); }
+
 /* --- setup ---------------------------------------------------------------- */
 .vaultpath {
   display: block;
