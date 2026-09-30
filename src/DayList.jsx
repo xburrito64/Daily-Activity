@@ -1122,7 +1122,8 @@ function DayList({
         {dates.map((date, rowIndex) => {
           const day = days[date]
           const isToday = date === today
-          // Christmas Eve, Halloween, and whatever festivals follow them.
+          // Christmas Eve, the Sundays of Advent, Halloween, Easter, and
+          // whatever festivals follow them.
           // Starlit only, so far.
           const festival = starlit ? festivalOf(date) : null
           let blocks = resizing?.date === date
@@ -1432,7 +1433,7 @@ ${b.note}` : ''}`}
                 {festival ? (
                   <>
                     <span className="festdate">{formatDayHeading(date)}</span>
-                    <FestiveMark id={festival.id} lit={isToday} />
+                    <FestiveMark id={festival.id} lit={isToday} nth={festival.nth} />
                     <span className="festname">{festival.name}</span>
                   </>
                 ) : formatDayHeading(date)}

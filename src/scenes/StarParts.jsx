@@ -84,7 +84,7 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
       {/* Shown in place of the hexagram when the spell is cast on a
           festival day (themes.css, .star-cast[data-festival]): a snowflake
           on Christmas Eve, a jack-o'-lantern's face on Halloween, a blossom
-          at Easter. */}
+          at Easter, the many-pointed star of Advent. */}
       {festive && layer('mc-flake', (
         <>
           {[0, 60, 120, 180, 240, 300].map((a) => <path key={a} d={FLAKE_ARM} transform={`rotate(${a})`} />)}
@@ -97,6 +97,12 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           <path className="mc-carved" d="M-20-5-12-21-5-5Z" />
           <path className="mc-carved" d="M5-5 12-21 20-5Z" />
           <path className="mc-carved" d={GRIN} />
+        </>
+      ))}
+      {festive && layer('mc-advent', (
+        <>
+          <polygon points={star(8, 33, 14)} />
+          <polygon points={star(8, 20, 9, -Math.PI / 2 + Math.PI / 8)} />
         </>
       ))}
       {festive && layer('mc-bloom', (
@@ -213,7 +219,7 @@ function Ring({ className, children }) {
   )
 }
 
-export function Seal() {
+export function Seal({ children }) {
   const band = `b${useId().replace(/:/g, '')}`
   return (
     <div className="seal" aria-hidden="true">
@@ -247,6 +253,7 @@ export function Seal() {
         <path d={ticks(24, 41, 44, 6, 38)} />
       </Ring>
       <div className="seal-moon"><Moon size="100%" /></div>
+      {children}
     </div>
   )
 }

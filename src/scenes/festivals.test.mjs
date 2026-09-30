@@ -1,7 +1,7 @@
 // Festivals: which days are more than a date, and the frost on Christmas Eve.
 
 import assert from 'node:assert/strict'
-import { festivalOf, frostFerns, cobweb, easterSunday, blossomBranch, meadow } from './festivals.js'
+import { festivalOf, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough } from './festivals.js'
 
 let passed = 0
 let failed = 0
@@ -109,6 +109,45 @@ t('the blossom branch and the flower field stay on their panes', () => {
     assert.ok(f.height > 0 && f.height < 96, 'no flower taller than the field')
     assert.ok(f.kind >= 0 && f.kind < 4)
   }
+})
+
+t('the four Sundays of Advent count back from the last Sunday before Christmas', () => {
+  const known = {
+    2025: ['11-30', '12-07', '12-14', '12-21'],
+    2026: ['11-29', '12-06', '12-13', '12-20'],
+    2027: ['11-28', '12-05', '12-12', '12-19'],
+    2029: ['12-02', '12-09', '12-16', '12-23'],
+  }
+  const names = ['First Advent', 'Second Advent', 'Third Advent', 'Fourth Advent']
+  for (const [year, days] of Object.entries(known)) {
+    days.forEach((day, i) => {
+      const f = festivalOf(`${year}-${day}`)
+      assert.equal(f?.id, 'advent', `${year}-${day}`)
+      assert.equal(f?.nth, i + 1)
+      assert.equal(f?.name, names[i])
+    })
+  }
+  // The Saturdays and Mondays round them are ordinary.
+  assert.equal(festivalOf('2026-12-05'), null)
+  assert.equal(festivalOf('2026-12-07'), null)
+  assert.equal(festivalOf('2026-11-22'), null)
+})
+
+t('when Christmas Eve is the fourth Sunday of Advent, it is Christmas Eve', () => {
+  // 2023 and 2028: the 24th is a Sunday.
+  for (const year of [2023, 2028]) {
+    assert.deepEqual(adventSundays(year)[3], { month: 12, day: 24 })
+    assert.equal(festivalOf(`${year}-12-24`)?.id, 'christmas-eve')
+    assert.equal(festivalOf(`${year}-12-17`)?.name, 'Third Advent')
+  }
+})
+
+t('the fir bough hangs its star inside the pane', () => {
+  const f = firBough(360, 120)
+  assert.deepEqual(f, firBough(360, 120))
+  assert.ok(f.needles.length > f.wood.length, 'more needles than wood')
+  assert.ok(f.berries.length > 0)
+  for (const s of f.stars) assert.ok(s.x > 0 && s.x < 360 && s.y > 0 && s.y < 120)
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

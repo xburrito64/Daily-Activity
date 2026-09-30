@@ -6,6 +6,7 @@ import {
   FestiveMark, FESTIVE_LINES, makePictures, FrostPane, Aurora, GuidingStar, Snowfall, crystalFlake,
   HallowPane, HallowNight, batFrames,
   Dawn, Meadow, SpringDay, EggHunt, petalSprite, drawButterfly, BUTTERFLY_TONES,
+  AdventWreath, AdventPane, AdventNight, starSprite,
 } from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
@@ -34,8 +35,8 @@ import { useMinute } from '../useMinute.js'
 // finished pictures the graphics card only turns. With less movement asked
 // for, nothing turns, breathes or falls.
 //
-// Christmas Eve, Halloween and Easter are festivals, each with a sky of its
-// own: see Festive.jsx.
+// Christmas Eve, the Sundays of Advent, Halloween and Easter are festivals,
+// each with a sky of its own: see Festive.jsx.
 
 const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ'
 const CAST_WINDOW_MS = 5000
@@ -206,12 +207,13 @@ export default function StarScene({ days, tags }) {
   // themes.css), and the sky says so once, shortly after opening.
   const festival = tonight?.id ?? null
   const name = tonight?.name ?? ''
+  const nth = tonight?.nth ?? 0
   useEffect(() => {
     if (!festival) return undefined
     const page = document.documentElement
     page.dataset.festival = festival
     const timer = setTimeout(() => {
-      setNotices((was) => [...was, { kind: 'festival', festival, name, id: `festival-${Date.now()}` }].slice(-3))
+      setNotices((was) => [...was, { kind: 'festival', festival, name, nth, id: `festival-${Date.now()}` }].slice(-3))
     }, 1400)
     return () => { clearTimeout(timer); delete page.dataset.festival }
   }, [festival])
@@ -252,6 +254,7 @@ export default function StarScene({ days, tags }) {
     const flake = crystalFlake(40)
     const bats = batFrames(40)
     const petal = petalSprite()
+    const goldStar = starSprite()
     let tinted = new Map()
     const spriteFor = (colour) => {
       if (!tinted.has(colour)) {
@@ -284,7 +287,9 @@ export default function StarScene({ days, tags }) {
         ? `color-mix(in oklab, ${colour} 22%, #ffb866)`
         : festival === 'easter'
           ? `color-mix(in oklab, ${colour} 22%, #ffc4dc)`
-          : manaOf(colour))
+          : festival === 'advent'
+            ? `color-mix(in oklab, ${colour} 22%, #ffd98a)`
+            : manaOf(colour))
     const show = (node, x, y, px, colour, festival = '') => {
       node.style.display = 'block'
       node.dataset.festival = festival
@@ -341,6 +346,7 @@ export default function StarScene({ days, tags }) {
       const frost = festival === 'christmas-eve'
       const hallow = festival === 'halloween'
       const spring = festival === 'easter'
+      const advent = festival === 'advent'
       // At Easter it scatters into petals, and a few butterflies take wing.
       if (spring) {
         for (let i = 0; i < Math.min(5, 1 + count / 14); i++) {
@@ -393,7 +399,9 @@ export default function StarScene({ days, tags }) {
             ? (i % 2 === 0 ? flake : pale)
             : hallow ? (i % 3 === 0 ? gold : sprite)
               : spring ? (i % 3 === 0 ? sprite : petal)
-                : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
+                // Advent: embers, and little gold stars among them.
+                : advent ? (i % 3 === 0 ? goldStar : gold)
+                  : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
         })
       }
     }
@@ -552,11 +560,13 @@ export default function StarScene({ days, tags }) {
       <canvas ref={stillCanvas} className="star-field" aria-hidden="true" />
       <canvas ref={liveCanvas} className="star-field" aria-hidden="true" />
       {festival === 'christmas-eve' && <GuidingStar />}
-      <Seal />
+      <Seal>{festival === 'advent' && <AdventWreath lit={nth} />}</Seal>
       {festival === 'christmas-eve' && <FrostPane />}
       {festival === 'christmas-eve' && <Snowfall />}
       {festival === 'halloween' && <HallowPane />}
       {festival === 'halloween' && <HallowNight />}
+      {festival === 'advent' && <AdventPane />}
+      {festival === 'advent' && <AdventNight />}
       {festival === 'easter' && <Meadow />}
       {festival === 'easter' && <SpringDay />}
       {festival === 'easter' && (
@@ -601,12 +611,14 @@ function StarNotices({ notices, tags }) {
             >
               <span className="notice-mark">
                 <MagicCircle size="100%" className="notice-circle" />
-                <FestiveMark id={n.festival} />
+                <FestiveMark id={n.festival} nth={n.nth} />
               </span>
               <span className="notice-words">
                 <span className="notice-eyebrow">{n.eyebrow ?? words?.eyebrow ?? 'A festival night'}</span>
                 <b className="notice-title">{n.name}</b>
-                <span className="notice-line">{n.line ?? words?.line}</span>
+                <span className="notice-line">
+                  {n.line ?? (typeof words?.line === 'function' ? words.line(n.nth) : words?.line)}
+                </span>
               </span>
             </div>
           )

@@ -1,6 +1,7 @@
 // The days of the year that are more than a date: which they are, the frost
-// that grows over Christmas Eve, the cobwebs strung across Halloween, and
-// the blossom and the flower field of Easter.
+// that grows over Christmas Eve, the fir of the four Sundays of Advent, the
+// cobwebs strung across Halloween, and the blossom and the flower field of
+// Easter.
 //
 // Only in Starlit, so far. Each festival is a date and a name; how it looks
 // belongs to the theme (themes.css, Festive.jsx).
@@ -27,12 +28,39 @@ export function easterSunday(year) {
   return { month: Math.floor(n / 31), day: (n % 31) + 1 }
 }
 
+/**
+ * The four Sundays of Advent in a given year, first to fourth, as
+ * { month, day }. The fourth is the last Sunday before Christmas Day, so in a
+ * year when Christmas Eve is a Sunday, it is Christmas Eve; each of the
+ * others is a week before the next.
+ */
+export function adventSundays(year) {
+  const eve = new Date(Date.UTC(year, 11, 24))
+  const fourth = Date.UTC(year, 11, 24 - eve.getUTCDay())
+  return [3, 2, 1, 0].map((weeks) => {
+    const d = new Date(fourth - weeks * 7 * 86400000)
+    return { month: d.getUTCMonth() + 1, day: d.getUTCDate() }
+  })
+}
+
+const ORDINALS = ['First', 'Second', 'Third', 'Fourth']
+
 // A festival on the same date every year has a month and a day; one that
-// moves has `on`, which finds its date in a given year.
+// moves has `on`, which finds its date in a given year; one that comes more
+// than once has `match`, which says which of it a date is, if any.
+// Christmas Eve comes before Advent: in a year it falls on the fourth Sunday
+// of Advent, it is Christmas Eve that day.
 export const FESTIVALS = [
   { id: 'easter', name: 'Easter', on: easterSunday },
   { id: 'halloween', name: 'Halloween', month: 10, day: 31 },
   { id: 'christmas-eve', name: 'Christmas Eve', month: 12, day: 24 },
+  {
+    id: 'advent',
+    match: (year, month, day) => {
+      const nth = adventSundays(year).findIndex((d) => d.month === month && d.day === day)
+      return nth < 0 ? null : { id: 'advent', name: `${ORDINALS[nth]} Advent`, nth: nth + 1 }
+    },
+  },
 ]
 
 /** The festival falling on this date (YYYY-MM-DD), or null. */
@@ -42,10 +70,16 @@ export function festivalOf(date) {
   const year = Number(m[1])
   const month = Number(m[2])
   const day = Number(m[3])
-  return FESTIVALS.find((f) => {
+  for (const f of FESTIVALS) {
+    if (f.match) {
+      const found = f.match(year, month, day)
+      if (found) return found
+      continue
+    }
     const at = f.on ? f.on(year) : f
-    return at.month === month && at.day === day
-  }) ?? null
+    if (at.month === month && at.day === day) return f
+  }
+  return null
 }
 
 /** The same small generator the star field uses: one seed, one picture. */
@@ -279,4 +313,60 @@ export function meadow(w, h, seed = 5) {
     })
   }
   return { blades, flowers }
+}
+
+/**
+ * A fir bough reaching in from the top-left corner of a `w` by `h` pane:
+ * a branch out along the top edge, drooping a little under its own weight,
+ * twigs off both sides, and every stick of it thick with needles leaning
+ * toward its tip; red berries in clusters here and there, and a small gold
+ * star hanging off a twig on a thread. With `side`, a second bough comes
+ * down the left edge as well.
+ *
+ * Returns the wood, the needles (each with one of three greens), the
+ * berries and the hanging stars. Always the same bough for the same seed.
+ */
+export function firBough(w, h, seed = 3, { reach = 0.8, side = false, stars = 1 } = {}) {
+  const rand = seeded(seed)
+  const wood = []
+  const needles = []
+  const berries = []
+  const tips = []
+  const grow = (x, y, angle, length, width, depth, droop) => {
+    const step = 2.4
+    const count = Math.max(3, Math.floor(length / step))
+    let a = angle
+    for (let i = 0; i < count; i++) {
+      a += droop / count + (rand() - 0.5) * 0.08
+      const nx = x + Math.cos(a) * step
+      const ny = y + Math.sin(a) * step
+      const along = i / count
+      wood.push({ x0: x, y0: y, x1: nx, y1: ny, width: width * (1 - along * 0.6) })
+      const size = (depth === 1 ? 9 : 6.5) * (1 - along * 0.45)
+      for (const turn of [-1, 1]) {
+        const n = a + turn * (0.95 + (rand() - 0.5) * 0.3)
+        needles.push({ x0: nx, y0: ny, x1: nx + Math.cos(n) * size, y1: ny + Math.sin(n) * size, tone: Math.floor(rand() * 3) })
+      }
+      if (depth === 1 && i > 2 && i % 4 === 0) {
+        const turn = i % 8 === 0 ? 1 : -1
+        grow(nx, ny, a + turn * (0.75 + rand() * 0.3), length * (1 - along) * (0.28 + rand() * 0.14), width * 0.5, 0, turn * 0.2 + 0.15)
+      }
+      x = nx
+      y = ny
+    }
+    tips.push({ x, y })
+  }
+  grow(-6, h * 0.06, 0.1, w * reach, 2.6, 1, 0.3)
+  if (side) grow(w * 0.05, -6, 1.45, h * reach, 2.6, 1, -0.3)
+  for (let i = 0; i < 7; i++) {
+    const t = wood[Math.floor(rand() * wood.length * 0.7)]
+    for (let k = 0; k < 3; k++) berries.push({ x: t.x1 + (rand() - 0.5) * 6, y: t.y1 + 2 + rand() * 4, r: 1.5 + rand() * 0.8 })
+  }
+  // Stars hang from twigs that come down into the pane, not ones reaching
+  // up out of it.
+  const hanging = tips
+    .filter((t) => t.y > h * 0.12 && t.x > w * 0.12 && t.x < w * 0.7)
+    .slice(0, Math.max(0, stars))
+    .map((t) => ({ x: t.x, y: t.y + 1, drop: 10 + rand() * 8 }))
+  return { wood, needles, berries, stars: hanging }
 }

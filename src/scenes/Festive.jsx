@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { frostFerns, cobweb, blossomBranch, meadow } from './festivals.js'
+import { frostFerns, cobweb, blossomBranch, meadow, firBough } from './festivals.js'
 import { runLoop, stillness } from './loop.js'
 
 // The festival nights of Starlit.
@@ -10,6 +10,15 @@ import { runLoop, stillness } from './loop.js'
 // that breaks into snow crystals. On the night itself the northern lights
 // come out over the grimoire, the guiding star shows, frost creeps in at the
 // corners of the window and snow falls across everything.
+//
+// The Sundays of Advent. Warm where Christmas Eve is cold: candlelight,
+// fir and holly red. The day has fir boughs over the corners of its bar, a
+// gold star hanging off one; its date in candlelight, a flame for its
+// diamond, and beside it a wreath with as many candles lit as Sundays have
+// come; painting on it casts an Advent star that goes up in embers. On the
+// Sunday itself the moon rises behind a great wreath, its candles burning,
+// glass baubles hang swinging from sprigs of fir along the top of the
+// window, and embers drift up the page.
 //
 // Halloween. The day is strung with cobwebs, a spider hanging off its bar,
 // its date lit amber like candlelight through a carved face, a pumpkin for
@@ -108,8 +117,41 @@ export function Egg({ tone = 0, wobble = false, className = '' }) {
   )
 }
 
-/** Christmas Eve's gift, Halloween's lantern, or Easter's egg: what sits by the date. */
-export function FestiveMark({ id, lit = false }) {
+// Where the four candles of the little wreath stand, left to right: two at
+// the front of the ring, two further back on it, lit in that order.
+const WREATH_CANDLES = [[6.2, 20.4], [12.8, 17.2], [21.2, 17.2], [27.8, 20.4]]
+
+/** The Advent wreath beside the date, `lit` of its four candles burning. */
+export function Wreath({ lit = 1, flicker = false }) {
+  const candle = ([x, base], i) => (
+    <g key={i}>
+      <rect className="wreath-candle" x={x - 1.3} y={base - 8} width="2.6" height="8" rx="0.4" />
+      <rect className="wreath-shine" x={x - 0.9} y={base - 7.6} width="0.7" height="7.2" />
+      {i < lit
+        ? <path className="wreath-flame" d={`M${x} ${base - 13.2}q1.6 2.4 0 4.1q-1.6-1.7 0-4.1Z`} />
+        : <path className="wreath-wick" d={`M${x} ${base - 8}v-1.1`} />}
+    </g>
+  )
+  return (
+    <span className={`wreath${flicker ? ' lit' : ''}`} title="Advent" aria-hidden="true">
+      <svg viewBox="0 0 34 26">
+        <path className="wreath-fir" d="M3.5 19.8A13.5 4.4 0 0 1 30.5 19.8" />
+        <path className="wreath-needles" d="M3.5 19.8A13.5 4.4 0 0 1 30.5 19.8" />
+        {[1, 2].map((i) => candle(WREATH_CANDLES[i], i))}
+        <path className="wreath-fir" d="M3.5 19.8A13.5 4.4 0 0 0 30.5 19.8" />
+        <path className="wreath-needles" d="M3.5 19.8A13.5 4.4 0 0 0 30.5 19.8" />
+        {[[8.5, 23.3], [12.6, 24.1], [17, 24.4], [21.4, 24.1], [25.5, 23.3]].map(([x, y]) => (
+          <circle key={x} className="wreath-berry" cx={x} cy={y} r="0.95" />
+        ))}
+        {[0, 3].map((i) => candle(WREATH_CANDLES[i], i))}
+      </svg>
+    </span>
+  )
+}
+
+/** Christmas Eve's gift, Advent's wreath, Halloween's lantern, or Easter's egg: what sits by the date. */
+export function FestiveMark({ id, lit = false, nth = 1 }) {
+  if (id === 'advent') return <Wreath lit={nth} flicker={lit} />
   if (id === 'easter') return <Egg wobble={lit} />
   if (id === 'halloween') return <Lantern lit={lit} />
   if (id === 'christmas-eve') return <Gift glint={lit} />
@@ -121,6 +163,16 @@ export const FESTIVE_LINES = {
   'christmas-eve': { line: 'snow falls over the grimoire', spell: '#cfeaff' },
   halloween: { line: 'the veil is thin tonight', spell: '#ffb866' },
   easter: { line: 'five eggs are hidden about the grimoire', spell: '#ffc4dc', eyebrow: 'A festival morning' },
+  advent: {
+    eyebrow: 'A Sunday in Advent',
+    spell: '#ffd98a',
+    line: (nth) => [
+      'the first candle is lit',
+      'two candles burn in the wreath',
+      'three candles burn, and one still waits',
+      'all four candles burn; Christmas is near',
+    ][nth - 1],
+  },
 }
 
 /** A small spider, let down on its thread. */
@@ -394,9 +446,132 @@ export function makeBlooms() {
   return bloomsMade
 }
 
+// --- fir ------------------------------------------------------------------------
+const NEEDLE_GREENS = ['#1d4631', '#2c6844', '#3f8a58']
+
+/** A fir bough, as firBough grew it: wood, needles, berries, hanging stars. */
+function drawFir(g, { wood, needles, berries, stars }) {
+  g.lineCap = 'round'
+  g.strokeStyle = '#3a2a1e'
+  for (const l of wood) {
+    g.lineWidth = l.width
+    g.beginPath(); g.moveTo(l.x0, l.y0); g.lineTo(l.x1, l.y1); g.stroke()
+  }
+  NEEDLE_GREENS.forEach((green, tone) => {
+    g.strokeStyle = green
+    g.lineWidth = 1.1
+    g.beginPath()
+    for (const n of needles) {
+      if (n.tone !== tone) continue
+      g.moveTo(n.x0, n.y0)
+      g.lineTo(n.x1, n.y1)
+    }
+    g.stroke()
+  })
+  for (const b of berries) {
+    const fill = g.createRadialGradient(b.x - b.r * 0.35, b.y - b.r * 0.35, 0, b.x, b.y, b.r)
+    fill.addColorStop(0, '#ff9a9a')
+    fill.addColorStop(0.35, '#d8313f')
+    fill.addColorStop(1, '#7a0f1c')
+    g.fillStyle = fill
+    g.beginPath(); g.arc(b.x, b.y, b.r, 0, Math.PI * 2); g.fill()
+  }
+  for (const s of stars) {
+    g.strokeStyle = 'rgba(232, 200, 130, 0.7)'
+    g.lineWidth = 0.6
+    g.beginPath(); g.moveTo(s.x, s.y); g.lineTo(s.x, s.y + s.drop); g.stroke()
+    const cy = s.y + s.drop + 5
+    const halo = g.createRadialGradient(s.x, cy, 0, s.x, cy, 14)
+    halo.addColorStop(0, 'rgba(255, 214, 120, 0.45)')
+    halo.addColorStop(1, 'rgba(255, 214, 120, 0)')
+    g.fillStyle = halo
+    g.fillRect(s.x - 14, cy - 14, 28, 28)
+    g.fillStyle = '#f3cf78'
+    g.strokeStyle = '#9a6a22'
+    g.lineWidth = 0.5
+    g.beginPath()
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 5.2 : 2.2
+      const a = -Math.PI / 2 + (i * Math.PI) / 5
+      g[i ? 'lineTo' : 'moveTo'](s.x + Math.cos(a) * r, cy + Math.sin(a) * r)
+    }
+    g.closePath()
+    g.fill()
+    g.stroke()
+  }
+}
+
+/** A red velvet bow, tied where the two boughs meet in the corner. */
+function drawBow(g, x, y) {
+  const red = g.createLinearGradient(x - 16, y - 10, x + 16, y + 20)
+  red.addColorStop(0, '#e2404e')
+  red.addColorStop(1, '#7c1020')
+  g.fillStyle = red
+  g.strokeStyle = 'rgba(255, 170, 170, 0.5)'
+  g.lineWidth = 0.7
+  for (const side of [-1, 1]) {
+    g.beginPath()
+    g.moveTo(x, y)
+    g.bezierCurveTo(x + side * 6, y - 14, x + side * 22, y - 10, x + side * 17, y + 1)
+    g.bezierCurveTo(x + side * 13, y + 7, x + side * 5, y + 4, x, y)
+    g.fill(); g.stroke()
+    g.beginPath()
+    g.moveTo(x, y)
+    g.lineTo(x + side * 7, y + 22)
+    g.lineTo(x + side * 3, y + 19)
+    g.lineTo(x + side * 1, y + 23)
+    g.closePath()
+    g.fill(); g.stroke()
+  }
+  g.fillStyle = '#b3202f'
+  g.beginPath(); g.ellipse(x, y + 1, 4, 3.4, 0, 0, Math.PI * 2); g.fill(); g.stroke()
+}
+
+// Fir, grown once and shared as pictures: a bough for the top corners of a
+// bar, and a sprig tied with a bow for a bauble to hang from.
+let firsMade = null
+export function makeFirs() {
+  if (firsMade) return firsMade
+  const picture = (w, h, draw) => new Promise((resolve) => {
+    const scale = 2
+    const c = document.createElement('canvas')
+    c.width = w * scale
+    c.height = h * scale
+    const g = c.getContext('2d')
+    g.scale(scale, scale)
+    draw(g)
+    c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
+  })
+  firsMade = Promise.all([
+    picture(360, 120, (g) => drawFir(g, firBough(360, 120, 3, { reach: 0.8 }))),
+    // Two short boughs out either way from the middle, the bow over the knot.
+    picture(120, 44, (g) => {
+      const bough = firBough(60, 44, 11, { reach: 1, stars: 0 })
+      for (const side of [1, -1]) {
+        g.save()
+        g.translate(60, 4)
+        g.scale(side, 1)
+        g.rotate(0.12)
+        drawFir(g, bough)
+        g.restore()
+      }
+      g.save()
+      g.translate(60, 9)
+      g.scale(0.55, 0.55)
+      drawBow(g, 0, 0)
+      g.restore()
+    }),
+  ]).then(([rim, sprig]) => {
+    const root = document.documentElement.style
+    if (rim) root.setProperty('--fir-rim', `url(${rim})`)
+    if (sprig) root.setProperty('--fir-sprig', `url(${sprig})`)
+  })
+  return firsMade
+}
+
 /** Every festival's pictures, made once, whichever festival is in view. */
 export function makePictures() {
-  return Promise.all([makeFrost(), makeWebs(), makeBlooms()])
+  return Promise.all([makeFrost(), makeWebs(), makeBlooms(), makeFirs()])
 }
 
 /**
@@ -1120,4 +1295,218 @@ export function EggHunt({ day, onFound }) {
       )))}
     </div>
   )
+}
+
+// --- the Sundays of Advent: the great wreath, the boughs, the embers ---------------
+// Where the wreath's candles stand on its ring, as angles round it seen from
+// a little above: front left, back left, back right, front right.
+const RING_CANDLES = [165, 240, 300, 15]
+
+/**
+ * The great Advent wreath, set under the moon at the heart of the seal: a
+ * ring of fir seen from a little above, berries and a red bow in it, and
+ * four candles standing on it, `lit` of them burning.
+ */
+export function AdventWreath({ lit = 1 }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    const paint = () => {
+      const w = el.clientWidth
+      const h = el.clientHeight
+      if (!w || !h) return
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      const g = el.getContext('2d')
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      g.clearRect(0, 0, w, h)
+      const cx = w / 2
+      const cy = h * 0.62
+      const rx = w * 0.42
+      const ry = h * 0.16
+      const k = w / 200
+      let a = 7
+      const rand = () => { a = (a * 16807) % 2147483647; return a / 2147483647 }
+      g.lineCap = 'round'
+      // The ring: needles all round it, back half first so the front lies over it.
+      for (const half of [0, 1]) {
+        for (let i = 0; i < 360; i++) {
+          const t = (half === 0 ? Math.PI : 0) + (i / 360) * Math.PI
+          const x = cx + Math.cos(t) * rx
+          const y = cy + Math.sin(t) * ry
+          for (let n = 0; n < 3; n++) {
+            const d = rand() * Math.PI * 2
+            const len = (5 + rand() * 6) * k
+            g.strokeStyle = NEEDLE_GREENS[Math.floor(rand() * 3)]
+            g.lineWidth = 1.2 * k
+            g.beginPath()
+            g.moveTo(x, y)
+            g.lineTo(x + Math.cos(d) * len, y + Math.sin(d) * len * 0.5)
+            g.stroke()
+          }
+        }
+      }
+      for (let i = 0; i < 16; i++) {
+        const t = rand() * Math.PI * 2
+        const x = cx + Math.cos(t) * rx
+        const y = cy + Math.sin(t) * ry + 2 * k
+        for (let b = 0; b < 3; b++) {
+          const bx = x + (rand() - 0.5) * 7 * k
+          const by = y + (rand() - 0.5) * 4 * k
+          const r = (1.6 + rand() * 0.8) * k
+          const fill = g.createRadialGradient(bx - r * 0.35, by - r * 0.35, 0, bx, by, r)
+          fill.addColorStop(0, '#ff9a9a')
+          fill.addColorStop(0.35, '#d8313f')
+          fill.addColorStop(1, '#7a0f1c')
+          g.fillStyle = fill
+          g.beginPath(); g.arc(bx, by, r, 0, Math.PI * 2); g.fill()
+        }
+      }
+      g.save()
+      g.translate(cx, cy + ry + 2 * k)
+      g.scale(k * 0.8, k * 0.8)
+      drawBow(g, 0, 0)
+      g.restore()
+    }
+    paint()
+    const watch = new ResizeObserver(paint)
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [])
+  return (
+    <div className="advent-wreath" aria-hidden="true">
+      <canvas ref={ref} />
+      {RING_CANDLES.map((deg, i) => {
+        const t = (deg * Math.PI) / 180
+        return (
+          <span
+            key={deg}
+            className={`candle${Math.sin(t) < 0 ? ' back' : ''}`}
+            style={{ left: `${50 + Math.cos(t) * 42}%`, top: `${62 + Math.sin(t) * 16}%` }}
+          >
+            {i < lit ? <i className="flame" style={{ animationDelay: `${-i * 0.7}s` }} /> : <i className="wick" />}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+// Where the baubles hang along the top of the window, in the open sky either
+// side of the moon, and how far down each one's thread lets it.
+const BAUBLES = [
+  { left: '31%', drop: 58, tone: 'red' },
+  { left: '40%', drop: 30, tone: 'gold' },
+  { left: '70%', drop: 44, tone: 'green' },
+  { left: '78.5%', drop: 70, tone: 'red' },
+]
+
+/** Glass baubles hanging from sprigs of fir along the top of the window. */
+export function AdventPane() {
+  return (
+    <div className="advent-pane" aria-hidden="true">
+      {BAUBLES.map((b) => (
+        <span key={b.left} className="ornament" style={{ left: b.left }}>
+          <i className="sprig" />
+          <span className={`bauble ${b.tone}`} style={{ '--drop': `${b.drop}px` }} />
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** A warm glow, for an ember. */
+function emberSprite() {
+  const c = document.createElement('canvas')
+  c.width = 24
+  c.height = 24
+  const g = c.getContext('2d')
+  const fill = g.createRadialGradient(12, 12, 0, 12, 12, 12)
+  fill.addColorStop(0, 'rgba(255, 246, 220, 1)')
+  fill.addColorStop(0.25, 'rgba(255, 196, 110, 0.85)')
+  fill.addColorStop(1, 'rgba(255, 140, 60, 0)')
+  g.fillStyle = fill
+  g.fillRect(0, 0, 24, 24)
+  return c
+}
+
+/** A little five-pointed gold star, for what an Advent spell goes up in. */
+export function starSprite() {
+  const c = document.createElement('canvas')
+  c.width = 24
+  c.height = 24
+  const g = c.getContext('2d')
+  const halo = g.createRadialGradient(12, 12, 0, 12, 12, 12)
+  halo.addColorStop(0, 'rgba(255, 220, 140, 0.5)')
+  halo.addColorStop(1, 'rgba(255, 220, 140, 0)')
+  g.fillStyle = halo
+  g.fillRect(0, 0, 24, 24)
+  g.fillStyle = '#ffe29a'
+  g.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? 7 : 3
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    g[i ? 'lineTo' : 'moveTo'](12 + Math.cos(a) * r, 12 + Math.sin(a) * r)
+  }
+  g.closePath()
+  g.fill()
+  return c
+}
+
+/** Embers drifting slowly up the page, as off a room full of candles. */
+export function AdventNight() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    const sprite = emberSprite()
+    let w = 0
+    let h = 0
+    let embers = []
+    const make = (anywhere) => ({
+      x: Math.random() * w,
+      y: anywhere ? Math.random() * h : h + 10,
+      rise: 10 + Math.random() * 22,
+      sway: 8 + Math.random() * 14,
+      phase: Math.random() * 10,
+      size: 5 + Math.random() * 7,
+      life: 0,
+      span: 8 + Math.random() * 10,
+    })
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      embers = Array.from({ length: Math.round((w * h) / 90000) }, () => {
+        const e = make(true)
+        e.life = Math.random() * e.span
+        return e
+      })
+    }
+    size()
+    window.addEventListener('resize', size)
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      g.clearRect(0, 0, w, h)
+      g.globalCompositeOperation = 'lighter'
+      for (const e of embers) {
+        e.life += dt
+        e.y -= e.rise * dt
+        e.x += Math.sin(t * 0.8 + e.phase) * e.sway * dt
+        if (e.life > e.span || e.y < -20) Object.assign(e, make(false))
+        const k = e.life / e.span
+        g.globalAlpha = Math.sin(Math.PI * k) * (0.55 + 0.35 * Math.sin(t * 5 + e.phase))
+        g.drawImage(sprite, e.x - e.size / 2, e.y - e.size / 2, e.size, e.size)
+      }
+      g.globalAlpha = 1
+      g.globalCompositeOperation = 'source-over'
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
+  }, [])
+  return <canvas ref={ref} className="advent-night" aria-hidden="true" />
 }
