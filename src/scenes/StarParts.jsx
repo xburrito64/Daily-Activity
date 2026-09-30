@@ -84,7 +84,9 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
       {/* Shown in place of the hexagram when the spell is cast on a
           festival day (themes.css, .star-cast[data-festival]): a snowflake
           on Christmas Eve, a jack-o'-lantern's face on Halloween, a blossom
-          at Easter, the many-pointed star of Advent. */}
+          at Easter, the many-pointed star of Advent, a radiant on a night of
+          falling stars, the moon's phases on the Longest Night, the sun at
+          Midsummer. */}
       {festive && layer('mc-flake', (
         <>
           {[0, 60, 120, 180, 240, 300].map((a) => <path key={a} d={FLAKE_ARM} transform={`rotate(${a})`} />)}
@@ -97,6 +99,35 @@ export function MagicCircle({ size = 100, className = '', style, festive = false
           <path className="mc-carved" d="M-20-5-12-21-5-5Z" />
           <path className="mc-carved" d="M5-5 12-21 20-5Z" />
           <path className="mc-carved" d={GRIN} />
+        </>
+      ))}
+      {festive && layer('mc-radiant', (
+        <>
+          <circle r="31" />
+          {Array.from({ length: 12 }, (_, i) => {
+            const a = (i / 12) * Math.PI * 2 + 0.2
+            const reach = i % 3 === 0 ? 29 : i % 2 === 0 ? 22 : 17
+            return <path key={i} d={`M${(Math.cos(a) * 9).toFixed(2)} ${(Math.sin(a) * 9).toFixed(2)}L${(Math.cos(a) * reach).toFixed(2)} ${(Math.sin(a) * reach).toFixed(2)}`} />
+          })}
+        </>
+      ))}
+      {festive && layer('mc-phases', (
+        <>
+          <circle r="31" />
+          {Array.from({ length: 8 }, (_, i) => {
+            const a = -Math.PI / 2 + (i / 8) * Math.PI * 2
+            return <circle key={i} className={i % 2 === 0 ? 'mc-carved' : ''} cx={(Math.cos(a) * 22).toFixed(2)} cy={(Math.sin(a) * 22).toFixed(2)} r="4.6" />
+          })}
+        </>
+      ))}
+      {festive && layer('mc-sun', (
+        <>
+          <circle r="12" />
+          {Array.from({ length: 12 }, (_, i) => {
+            const a = (i / 12) * Math.PI * 2
+            const reach = i % 2 === 0 ? 31 : 24
+            return <path key={i} d={`M${(Math.cos(a) * 16).toFixed(2)} ${(Math.sin(a) * 16).toFixed(2)}L${(Math.cos(a) * reach).toFixed(2)} ${(Math.sin(a) * reach).toFixed(2)}`} />
+          })}
         </>
       ))}
       {festive && layer('mc-advent', (

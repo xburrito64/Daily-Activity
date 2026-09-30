@@ -1433,8 +1433,12 @@ ${b.note}` : ''}`}
                 {festival ? (
                   <>
                     <span className="festdate">{formatDayHeading(date)}</span>
-                    <FestiveMark id={festival.id} lit={isToday} nth={festival.nth} />
-                    <span className="festname">{festival.name}</span>
+                    {[festival, ...(festival.also ?? [])].map((f) => (
+                      <FestiveMark key={f.id} id={f.id} lit={isToday} nth={f.nth} />
+                    ))}
+                    <span className="festname">
+                      {[festival, ...(festival.also ?? [])].map((f) => f.name).join(' · ')}
+                    </span>
                   </>
                 ) : formatDayHeading(date)}
                 {starlit && !day?.malformed && isComplete(day?.blocks) && (

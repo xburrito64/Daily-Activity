@@ -2653,6 +2653,7 @@
 .star-notice[data-festival="christmas-eve"] .notice-eyebrow { color: #cfe6fb; }
 .star-notice.festival :is(.gift, .lantern, .egg) { width: 30px; height: 30px; margin: 0; }
 .star-notice.festival .wreath { width: 38px; height: 29px; margin: 0; }
+.star-notice.festival :is(.meteor-mark, .moon-mark, .jar) { width: 30px; height: 30px; margin: 0; }
 
 /* --- The Sundays of Advent --------------------------------------------------
    Warm where Christmas Eve is cold: candlelight, fir and holly red. On the
@@ -2882,6 +2883,279 @@
 }
 .star-notice[data-festival="advent"] { border-color: rgba(255, 215, 140, 0.55); }
 .star-notice[data-festival="advent"] .notice-eyebrow { color: #ffd98a; }
+
+/* --- The sky days ------------------------------------------------------------
+   The nights of falling stars (the Perseids, the Geminids) and the turnings
+   of the year (the Longest Night, Midsummer). See scenes/Festive.jsx. */
+
+[data-theme="starlit"] .daysection[data-festival="perseids"] .dayhead::before {
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #fffbe6, #ffd98a);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m17 2.5 1.5 3.4 3.7.4-2.8 2.5.8 3.6-3.2-1.9-3.2 1.9.8-3.6-2.8-2.5 3.7-.4Z'/><path d='M2.5 21.5 12.5 11.5' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m17 2.5 1.5 3.4 3.7.4-2.8 2.5.8 3.6-3.2-1.9-3.2 1.9.8-3.6-2.8-2.5 3.7-.4Z'/><path d='M2.5 21.5 12.5 11.5' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="perseids"] .dayhead::before { background: linear-gradient(135deg, #ffffff, #ffe7a8); }
+[data-theme="starlit"] .daysection[data-festival="geminids"] .dayhead::before {
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #f4fbff, #9fdcff);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m17 2.5 1.5 3.4 3.7.4-2.8 2.5.8 3.6-3.2-1.9-3.2 1.9.8-3.6-2.8-2.5 3.7-.4Z'/><path d='M2.5 21.5 12.5 11.5' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m17 2.5 1.5 3.4 3.7.4-2.8 2.5.8 3.6-3.2-1.9-3.2 1.9.8-3.6-2.8-2.5 3.7-.4Z'/><path d='M2.5 21.5 12.5 11.5' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="geminids"] .dayhead::before { background: linear-gradient(135deg, #ffffff, #c8ecff); }
+[data-theme="starlit"] .daysection[data-festival="longest-night"] .dayhead::before {
+  width: 13px;
+  height: 14px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #f4f2ff, #b4acf0);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M14 2.5a9.5 9.5 0 1 0 7.5 15.4A8 8 0 0 1 14 2.5Z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M14 2.5a9.5 9.5 0 1 0 7.5 15.4A8 8 0 0 1 14 2.5Z'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="longest-night"] .dayhead::before { background: linear-gradient(135deg, #ffffff, #d6d0ff); }
+[data-theme="starlit"] .daysection[data-festival="midsummer"] .dayhead::before {
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(135deg, #fff6c8, #ffc768);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='4.8'/><path d='M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4M4.6 4.6l2.8 2.8M16.6 16.6l2.8 2.8M4.6 19.4l2.8-2.8M16.6 7.4l2.8-2.8' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='4.8'/><path d='M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4M4.6 4.6l2.8 2.8M16.6 16.6l2.8 2.8M4.6 19.4l2.8-2.8M16.6 7.4l2.8-2.8' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+[data-theme="starlit"] .daysection.today[data-festival="midsummer"] .dayhead::before { background: linear-gradient(135deg, #ffffff, #ffe29a); }
+[data-festival="perseids"] .festdate {
+  background: linear-gradient(180deg, #fffdf2 0%, #fff0c4 45%, #f2cf7c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(255, 220, 140, 0.35));
+}
+[data-festival="perseids"] .festname { color: #ffe2a0; text-shadow: 0 0 10px rgba(255, 210, 120, 0.45); }
+.compactrow[data-festival="perseids"] .gdate { color: #ffe2a0; text-shadow: 0 0 8px rgba(255, 210, 120, 0.45); }
+[data-festival="geminids"] .festdate {
+  background: linear-gradient(180deg, #ffffff 0%, #e2f5ff 45%, #9fd4f4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(160, 220, 255, 0.35));
+}
+[data-festival="geminids"] .festname { color: #b8e6ff; text-shadow: 0 0 10px rgba(140, 210, 255, 0.45); }
+.compactrow[data-festival="geminids"] .gdate { color: #b8e6ff; text-shadow: 0 0 8px rgba(140, 210, 255, 0.45); }
+[data-festival="longest-night"] .festdate {
+  background: linear-gradient(180deg, #ffffff 0%, #e6e2ff 45%, #aaa2e6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(190, 180, 255, 0.35));
+}
+[data-festival="longest-night"] .festname { color: #cfc8ff; text-shadow: 0 0 10px rgba(170, 160, 255, 0.45); }
+.compactrow[data-festival="longest-night"] .gdate { color: #cfc8ff; text-shadow: 0 0 8px rgba(170, 160, 255, 0.45); }
+[data-festival="midsummer"] .festdate {
+  background: linear-gradient(180deg, #fffbe0 0%, #ffe9a6 42%, #c6e38a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 9px rgba(220, 255, 150, 0.32));
+}
+[data-festival="midsummer"] .festname { color: #dff59c; text-shadow: 0 0 10px rgba(200, 255, 120, 0.4); }
+.compactrow[data-festival="midsummer"] .gdate { color: #dff59c; text-shadow: 0 0 8px rgba(200, 255, 120, 0.4); }
+
+/* What sits by the date: a falling star, a crescent, a jar of fireflies. */
+:is(.meteor-mark, .moon-mark, .jar) {
+  position: relative;
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  margin: -7px 0 -4px;
+}
+:is(.meteor-mark, .moon-mark, .jar) svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
+.meteor-mark { --head: #fff3c8; filter: drop-shadow(0 0 5px rgba(255, 214, 130, 0.55)); }
+.meteor-mark.blue { --head: #e8f8ff; filter: drop-shadow(0 0 5px rgba(150, 215, 255, 0.55)); }
+.meteor-tail-head { stop-color: var(--head); }
+.meteor-tail-end { stop-color: var(--head); stop-opacity: 0; }
+.meteor-star { fill: var(--head); }
+.moon-mark { filter: drop-shadow(0 0 5px rgba(190, 180, 255, 0.55)); }
+.moon-mark-crescent { fill: #e9e5ff; }
+.moon-mark-star { fill: #ffffff; }
+.jar { filter: drop-shadow(0 0 5px rgba(200, 255, 120, 0.4)); }
+.jar-lid { fill: #8a6a3a; }
+.jar-glass { fill: rgba(180, 220, 255, 0.12); stroke: rgba(220, 235, 255, 0.7); stroke-width: 0.7; }
+.jar-fly { fill: #eaff8e; }
+.jar-shine { fill: none; stroke: rgba(255, 255, 255, 0.35); stroke-width: 1; stroke-linecap: round; }
+.jar.lit::after {
+  content: "";
+  position: absolute;
+  inset: -4px -6px -6px;
+  background: radial-gradient(50% 50% at 50% 60%, rgba(214, 255, 120, 0.5), transparent 70%);
+  will-change: opacity;
+  animation: jar-glow 3.4s steps(51) infinite;
+}
+@keyframes jar-glow {
+  0%, 100% { opacity: 0.25; }
+  20% { opacity: 0.9; }
+  45% { opacity: 0.35; }
+  70% { opacity: 1; }
+}
+
+[data-theme="starlit"] [data-festival="perseids"] .track {
+  border-color: rgba(255, 225, 160, 0.38);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(255, 210, 130, 0.14),
+    0 0 20px -6px rgba(255, 210, 130, 0.25);
+}
+[data-theme="starlit"] [data-festival="perseids"] .track::before,
+[data-theme="starlit"] [data-festival="perseids"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--meteor-rim-gold) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="perseids"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="perseids"] .track::after { right: 0; transform: scaleX(-1); }
+[data-theme="starlit"] [data-festival="geminids"] .track {
+  border-color: rgba(170, 225, 255, 0.4);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(150, 210, 255, 0.14),
+    0 0 20px -6px rgba(150, 210, 255, 0.25);
+}
+[data-theme="starlit"] [data-festival="geminids"] .track::before,
+[data-theme="starlit"] [data-festival="geminids"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--meteor-rim-blue) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="geminids"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="geminids"] .track::after { right: 0; transform: scaleX(-1); }
+[data-theme="starlit"] [data-festival="longest-night"] .track {
+  border-color: rgba(200, 192, 255, 0.4);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(120, 100, 220, 0.3),
+    0 0 20px -6px rgba(170, 160, 255, 0.28);
+}
+[data-theme="starlit"] [data-festival="longest-night"] .track::before,
+[data-theme="starlit"] [data-festival="longest-night"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--dust-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="longest-night"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="longest-night"] .track::after { right: 0; transform: scaleX(-1); }
+[data-theme="starlit"] [data-festival="midsummer"] .track {
+  border-color: rgba(220, 255, 150, 0.34);
+  box-shadow:
+    var(--track-well),
+    inset 0 0 0 2px rgba(10, 12, 20, 0.85),
+    inset 0 -26px 28px -18px rgba(255, 200, 140, 0.26),
+    0 0 20px -6px rgba(200, 255, 120, 0.24);
+}
+[data-theme="starlit"] [data-festival="midsummer"] .track::before,
+[data-theme="starlit"] [data-festival="midsummer"] .track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  height: 100%;
+  aspect-ratio: 3 / 1;
+  background: var(--grass-rim) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+[data-theme="starlit"] [data-festival="midsummer"] .track::before { left: 0; }
+[data-theme="starlit"] [data-festival="midsummer"] .track::after { right: 0; transform: scaleX(-1); }
+
+/* A spell cast on them: a radiant, the moon's phases, the sun. */
+.mc-radiant, .mc-phases, .mc-sun { display: none; }
+.star-cast:is([data-festival="perseids"], [data-festival="geminids"], [data-festival="longest-night"], [data-festival="midsummer"]) :is(.mc-mid, .mc-inner polygon, .mc-inner circle:not(.mc-heart)) { display: none; }
+.star-cast:is([data-festival="perseids"], [data-festival="geminids"]) .mc-radiant,
+.star-cast[data-festival="longest-night"] .mc-phases,
+.star-cast[data-festival="midsummer"] .mc-sun { display: block; }
+.mc-radiant { animation: mc-spin 30s linear infinite reverse; }
+.mc-phases { animation: mc-spin 40s linear infinite; }
+.mc-sun { animation: mc-spin 24s linear infinite; }
+
+/* --- the nights themselves --- */
+[data-theme="starlit"][data-festival="perseids"] .app > .sky {
+  background:
+    radial-gradient(900px 600px at 14% -4%, rgba(255, 226, 170, 0.08), transparent 70%),
+    radial-gradient(1300px 700px at 0% 110%, rgba(52, 38, 84, 0.2), transparent 70%),
+    linear-gradient(180deg, #0a0d18 0%, #080a12 55%, #06070d 100%);
+}
+[data-theme="starlit"][data-festival="geminids"] .app > .sky {
+  background:
+    radial-gradient(900px 600px at 82% -4%, rgba(170, 220, 255, 0.1), transparent 70%),
+    radial-gradient(1300px 700px at 0% 110%, rgba(40, 60, 100, 0.2), transparent 70%),
+    linear-gradient(180deg, #090e19 0%, #070a12 55%, #05070c 100%);
+}
+/* The Longest Night: the darkest sky of the year, the Milky Way across it. */
+[data-theme="starlit"][data-festival="longest-night"] .app > .sky {
+  background:
+    radial-gradient(1300px 700px at 30% -10%, rgba(80, 70, 150, 0.16), transparent 70%),
+    linear-gradient(180deg, #07080f 0%, #05060b 55%, #040408 100%);
+}
+[data-festival="longest-night"] .seal-moon { filter: drop-shadow(0 0 26px rgba(210, 205, 255, 0.5)); }
+/* Midsummer: a sky that never goes fully dark, the sun only just below the
+   foot of the page. */
+[data-theme="starlit"][data-festival="midsummer"] .app > .sky {
+  background:
+    radial-gradient(1700px 460px at 50% 116%, rgba(255, 190, 140, 0.3), rgba(255, 150, 160, 0.1) 45%, transparent 75%),
+    linear-gradient(180deg, #101a33 0%, #16233f 45%, #262e4a 78%, #3e3446 100%);
+}
+[data-festival="midsummer"] .app > .star-field { opacity: 0.5; }
+[data-festival="midsummer"] .seal-moon { filter: drop-shadow(0 0 22px rgba(255, 230, 190, 0.45)); }
+.app > .milky-way {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.app > :is(.meteor-shower, .fireflies) {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.star-notice[data-festival="perseids"] { border-color: rgba(255, 225, 160, 0.55); }
+.star-notice[data-festival="perseids"] .notice-eyebrow { color: #ffe2a0; }
+.star-notice[data-festival="geminids"] { border-color: rgba(170, 225, 255, 0.55); }
+.star-notice[data-festival="geminids"] .notice-eyebrow { color: #b8e6ff; }
+.star-notice[data-festival="longest-night"] { border-color: rgba(200, 192, 255, 0.55); }
+.star-notice[data-festival="longest-night"] .notice-eyebrow { color: #cfc8ff; }
+.star-notice[data-festival="midsummer"] { border-color: rgba(220, 255, 150, 0.5); }
+.star-notice[data-festival="midsummer"] .notice-eyebrow { color: #dff59c; }
 
 /* --- Halloween ---------------------------------------------------------------
    All Hallows' Eve: the day strung with cobwebs and lit by a carved lantern;
@@ -3307,7 +3581,8 @@
   .lantern.lit::after, .daysection.today .bar-spider,
   .hallow-mist, .hallow-mist i, .web-pane, .app > .web-spider,
   .app > .dawn, .app > .meadow, .egg.wobble, .mc-bloom,
-  .candle .flame, .bauble, .app > .advent-pane, .wreath.lit::after, .mc-advent { animation: none; }
+  .candle .flame, .bauble, .app > .advent-pane, .wreath.lit::after, .mc-advent,
+  .jar.lit::after, .mc-radiant, .mc-phases, .mc-sun { animation: none; }
   .seal-outer, .seal-middle, .seal-inner,
   .mc-outer, .mc-mid, .mc-inner,
   .star-beam span,

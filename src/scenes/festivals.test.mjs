@@ -1,7 +1,9 @@
 // Festivals: which days are more than a date, and the frost on Christmas Eve.
 
 import assert from 'node:assert/strict'
-import { festivalOf, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough } from './festivals.js'
+import {
+  festivalOf, festivalsOn, frostFerns, cobweb, easterSunday, blossomBranch, meadow, adventSundays, firBough, solstice,
+} from './festivals.js'
 
 let passed = 0
 let failed = 0
@@ -148,6 +150,49 @@ t('the fir bough hangs its star inside the pane', () => {
   assert.ok(f.needles.length > f.wood.length, 'more needles than wood')
   assert.ok(f.berries.length > 0)
   for (const s of f.stars) assert.ok(s.x > 0 && s.x < 360 && s.y > 0 && s.y < 120)
+})
+
+t('the solstices land within minutes of the published moments', () => {
+  // UTC, from the published tables.
+  const known = [
+    [2024, 'june', '2024-06-20T20:51'], [2024, 'december', '2024-12-21T09:20'],
+    [2025, 'june', '2025-06-21T02:42'], [2025, 'december', '2025-12-21T15:03'],
+    [2026, 'june', '2026-06-21T08:24'], [2026, 'december', '2026-12-21T20:50'],
+    [2027, 'june', '2027-06-21T14:11'], [2027, 'december', '2027-12-22T02:42'],
+  ]
+  for (const [year, which, at] of known) {
+    const off = Math.abs(solstice(year, which) - Date.parse(`${at}Z`)) / 60000
+    assert.ok(off < 5, `${year} ${which} is ${off.toFixed(1)} minutes out`)
+  }
+})
+
+t('the Longest Night and Midsummer fall on the solstice, on this machine\'s clock', () => {
+  for (const year of [2025, 2026, 2027]) {
+    for (const [which, id] of [['june', 'midsummer'], ['december', 'longest-night']]) {
+      const d = new Date(solstice(year, which))
+      const date = `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const on = festivalsOn(date).map((f) => f.id)
+      assert.ok(on.includes(id), `${date} should be ${id}, is ${on}`)
+    }
+  }
+})
+
+t('the nights of falling stars', () => {
+  assert.equal(festivalOf('2027-08-12')?.id, 'perseids')
+  assert.equal(festivalOf('2026-12-14')?.id, 'geminids')
+  assert.equal(festivalOf('2027-08-13'), null)
+})
+
+t('two festivals on one day: the first leads, the other comes along', () => {
+  // 21 December 2025 was the fourth Sunday of Advent and the solstice.
+  const both = festivalOf('2025-12-21')
+  assert.equal(both.id, 'advent')
+  assert.equal(both.nth, 4)
+  assert.deepEqual(both.also.map((f) => f.id), ['longest-night'])
+  // 6 December 2026 is the second Sunday of Advent and St. Nicholas.
+  assert.deepEqual(festivalsOn('2026-12-06').map((f) => f.id), ['advent', 'st-nicholas'])
+  // A day with only one has nothing along with it.
+  assert.equal(festivalOf('2026-10-31').also, undefined)
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

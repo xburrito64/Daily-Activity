@@ -37,9 +37,21 @@ import { runLoop, stillness } from './loop.js'
 // the window (the spell for a field of flowers, the gentlest there is), and
 // five eggs are hidden about the grimoire for finding.
 //
-// All of it is drawn once and then only shown, apart from the snow, the
-// wisps, the bats, the petals and the butterflies, which run on the shared
-// clock (loop.js) like every other scene.
+// The nights of falling stars, the Perseids in August and the Geminids in
+// December: a falling star beside the date, streaks across its bar, and on
+// the night a real shower, every star falling away from the one point in
+// the sky the shower comes from, a fireball now and then leaving a trail.
+//
+// The turnings of the year. The Longest Night: a crescent beside the date,
+// star dust over its bar, and on the night the darkest sky of the year with
+// the Milky Way across it. Midsummer: a jar of fireflies, grass at the foot
+// of its bar, and on the night a sky that never goes fully dark, fireflies
+// drifting low about the page and toward the pointer.
+//
+// All of it is drawn once and then only shown, apart from what moves (the
+// snow, the wisps, the bats, the petals, the butterflies, the embers, the
+// falling stars and the fireflies), which runs on the shared clock
+// (loop.js) like every other scene.
 
 /** A gift, wrapped in midnight blue, tied in crimson, sealed with a star. */
 export function Gift({ glint = false }) {
@@ -149,8 +161,62 @@ export function Wreath({ lit = 1, flicker = false }) {
   )
 }
 
-/** Christmas Eve's gift, Advent's wreath, Halloween's lantern, or Easter's egg: what sits by the date. */
+/** A falling star, gold for the Perseids, pale blue for the Geminids. */
+export function ShootingStar({ tone = 'gold' }) {
+  const tail = `tail${useId().replace(/:/g, '')}`
+  return (
+    <span className={`meteor-mark ${tone}`} aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <defs>
+          <linearGradient id={tail} x1="17" y1="9" x2="2" y2="24" gradientUnits="userSpaceOnUse">
+            <stop offset="0" className="meteor-tail-head" />
+            <stop offset="1" className="meteor-tail-end" />
+          </linearGradient>
+        </defs>
+        <path d="M17 9 2.5 23.5" stroke={`url(#${tail})`} strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M13.6 8.6 1.8 20.4" stroke={`url(#${tail})`} strokeWidth="0.8" strokeLinecap="round" opacity="0.6" />
+        <path className="meteor-star" d="m17.6 3.6 1.4 3.4 3.6.3-2.7 2.4.8 3.5-3.1-1.9-3.1 1.9.8-3.5-2.7-2.4 3.6-.3Z" />
+      </svg>
+    </span>
+  )
+}
+
+/** A crescent and three stars, for the Longest Night. */
+export function MoonMark() {
+  return (
+    <span className="moon-mark" aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <path className="moon-mark-crescent" d="M15.5 3.5a9.8 9.8 0 1 0 7 16.6A8.2 8.2 0 0 1 15.5 3.5Z" />
+        <path className="moon-mark-star" d="m21 3 .6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6Z" />
+        <path className="moon-mark-star" d="m23 10.5.4 1 1 .4-1 .4-.4 1-.4-1-1-.4 1-.4Z" />
+        <path className="moon-mark-star" d="m17.5 11 .3.8.8.3-.8.3-.3.8-.3-.8-.8-.3.8-.3Z" />
+      </svg>
+    </span>
+  )
+}
+
+/** A jar of fireflies, for Midsummer; on the night itself its light pulses. */
+export function FireflyJar({ lit = false }) {
+  return (
+    <span className={`jar${lit ? ' lit' : ''}`} aria-hidden="true">
+      <svg viewBox="0 0 26 26">
+        <rect className="jar-lid" x="8.2" y="3.4" width="9.6" height="3" rx="0.8" />
+        <path className="jar-glass" d="M8.6 6.4h8.8v1.4c2 1 2.6 2.6 2.6 4.4v8.2c0 1.8-1.2 2.8-3 2.8H9c-1.8 0-3-1-3-2.8v-8.2c0-1.8.6-3.4 2.6-4.4Z" />
+        {[[10.5, 17.5], [15, 14], [13, 20.2], [16.8, 19], [11.4, 12.4]].map(([x, y]) => (
+          <circle key={`${x}-${y}`} className="jar-fly" cx={x} cy={y} r="1.1" />
+        ))}
+        <path className="jar-shine" d="M8.4 11.5v7.5" />
+      </svg>
+    </span>
+  )
+}
+
+/** What sits by the date on a festival: gift, wreath, lantern, egg, falling star, moon or jar. */
 export function FestiveMark({ id, lit = false, nth = 1 }) {
+  if (id === 'perseids') return <ShootingStar tone="gold" />
+  if (id === 'geminids') return <ShootingStar tone="blue" />
+  if (id === 'longest-night') return <MoonMark />
+  if (id === 'midsummer') return <FireflyJar lit={lit} />
   if (id === 'advent') return <Wreath lit={nth} flicker={lit} />
   if (id === 'easter') return <Egg wobble={lit} />
   if (id === 'halloween') return <Lantern lit={lit} />
@@ -158,8 +224,24 @@ export function FestiveMark({ id, lit = false, nth = 1 }) {
   return null
 }
 
+/** The colour a spell cast on each festival's day is drawn in. */
+export const FESTIVE_TINTS = {
+  'christmas-eve': '#e6f6ff',
+  halloween: '#ffb866',
+  easter: '#ffc4dc',
+  advent: '#ffd98a',
+  perseids: '#ffe7a8',
+  geminids: '#aee8ff',
+  'longest-night': '#d6d0ff',
+  midsummer: '#e4ff9c',
+}
+
 /** What the sky says as the app opens on a festival night. */
 export const FESTIVE_LINES = {
+  perseids: { eyebrow: 'A night of falling stars', line: 'the Perseids are falling; look up', spell: '#ffe7a8' },
+  geminids: { eyebrow: 'A night of falling stars', line: 'the Geminids fall, slow and many-coloured', spell: '#aee8ff' },
+  'longest-night': { eyebrow: 'The turning of the year', line: 'the longest night; from here the days grow', spell: '#d6d0ff' },
+  midsummer: { eyebrow: 'The turning of the year', line: 'the shortest night; the sky never quite goes dark', spell: '#e4ff9c' },
   'christmas-eve': { line: 'snow falls over the grimoire', spell: '#cfeaff' },
   halloween: { line: 'the veil is thin tonight', spell: '#ffb866' },
   easter: { line: 'five eggs are hidden about the grimoire', spell: '#ffc4dc', eyebrow: 'A festival morning' },
@@ -569,9 +651,112 @@ export function makeFirs() {
   return firsMade
 }
 
+// --- the sky days: what lies over their bars ------------------------------------
+// Falling stars across a corner (gold, or pale blue), star dust, and grass
+// with a firefly or two: made once, like the rest.
+let skyRimsMade = null
+export function makeSkyRims() {
+  if (skyRimsMade) return skyRimsMade
+  const picture = (draw) => new Promise((resolve) => {
+    const w = 360
+    const h = 120
+    const c = document.createElement('canvas')
+    c.width = w * 2
+    c.height = h * 2
+    const g = c.getContext('2d')
+    g.scale(2, 2)
+    let a = 17
+    const rand = () => { a = (a * 16807) % 2147483647; return a / 2147483647 }
+    draw(g, w, h, rand)
+    c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
+  })
+  const streaks = (rgb) => (g, w, h, rand) => {
+    for (const [x, y, len, width] of [[70, 58, 120, 1.6], [150, 26, 90, 1.1], [42, 104, 70, 0.9], [230, 60, 60, 0.8]]) {
+      const tx = x + len * 0.85
+      const ty = y - len * 0.5
+      const line = g.createLinearGradient(x, y, tx, ty)
+      line.addColorStop(0, 'rgba(255, 255, 250, 0.95)')
+      line.addColorStop(0.25, `rgba(${rgb}, 0.55)`)
+      line.addColorStop(1, `rgba(${rgb}, 0)`)
+      g.strokeStyle = line
+      g.lineWidth = width
+      g.lineCap = 'round'
+      g.beginPath(); g.moveTo(x, y); g.lineTo(tx, ty); g.stroke()
+      const head = g.createRadialGradient(x, y, 0, x, y, 6)
+      head.addColorStop(0, 'rgba(255, 255, 250, 0.9)')
+      head.addColorStop(1, `rgba(${rgb}, 0)`)
+      g.fillStyle = head
+      g.fillRect(x - 6, y - 6, 12, 12)
+    }
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle = `rgba(255, 255, 255, ${(0.2 + rand() * 0.5).toFixed(2)})`
+      g.fillRect(rand() * w * 0.7, rand() * h, 1, 1)
+    }
+  }
+  const dust = (g, w, h, rand) => {
+    const haze = g.createRadialGradient(0, 0, 0, 0, 0, w * 0.6)
+    haze.addColorStop(0, 'rgba(150, 140, 230, 0.16)')
+    haze.addColorStop(1, 'rgba(150, 140, 230, 0)')
+    g.fillStyle = haze
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 520; i++) {
+      const d = rand() ** 1.6
+      const x = d * w * 0.8 * (0.3 + rand() * 0.7) / 0.65
+      const y = rand() * h * (1 - d * 0.4)
+      const r = rand() < 0.06 ? 1.1 : 0.35 + rand() * 0.45
+      g.fillStyle = `rgba(${rand() < 0.3 ? '255, 240, 220' : '225, 230, 255'}, ${((0.9 - d * 0.7) * (0.4 + rand() * 0.6)).toFixed(2)})`
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill()
+    }
+    // Thinning away from the corner, so the dust has no edge of its own.
+    g.globalCompositeOperation = 'destination-in'
+    const fade = g.createRadialGradient(0, 0, w * 0.1, 0, 0, w * 0.62)
+    fade.addColorStop(0, 'rgba(0, 0, 0, 1)')
+    fade.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    g.fillStyle = fade
+    g.fillRect(0, 0, w, h)
+  }
+  const grass = (g, w, h, rand) => {
+    const { blades } = meadow(w * 0.75, h * 0.7, 23)
+    const fill = g.createLinearGradient(0, h, 0, h * 0.35)
+    fill.addColorStop(0, '#0b1714')
+    fill.addColorStop(1, 'rgba(110, 170, 120, 0.85)')
+    g.fillStyle = fill
+    for (const b of blades) {
+      const k = 1 - b.x / (w * 0.75)
+      const height = b.height * (0.4 + k * 0.9)
+      g.beginPath()
+      g.moveTo(b.x - b.width / 2, h)
+      g.quadraticCurveTo(b.x + b.lean * 0.3, h - height * 0.6, b.x + b.lean, h - height)
+      g.quadraticCurveTo(b.x + b.lean * 0.3 + b.width * 0.3, h - height * 0.6, b.x + b.width / 2, h)
+      g.fill()
+    }
+    for (const [x, y] of [[40, 62], [96, 84], [150, 52], [70, 30]]) {
+      const glow = g.createRadialGradient(x, y, 0, x, y, 9)
+      glow.addColorStop(0, 'rgba(250, 255, 200, 1)')
+      glow.addColorStop(0.25, 'rgba(200, 255, 120, 0.7)')
+      glow.addColorStop(1, 'rgba(160, 255, 90, 0)')
+      g.fillStyle = glow
+      g.fillRect(x - 9, y - 9, 18, 18)
+    }
+  }
+  skyRimsMade = Promise.all([
+    picture(streaks('255, 226, 150')),
+    picture(streaks('170, 226, 255')),
+    picture(dust),
+    picture(grass),
+  ]).then(([gold, blue, stars, meadowRim]) => {
+    const root = document.documentElement.style
+    if (gold) root.setProperty('--meteor-rim-gold', `url(${gold})`)
+    if (blue) root.setProperty('--meteor-rim-blue', `url(${blue})`)
+    if (stars) root.setProperty('--dust-rim', `url(${stars})`)
+    if (meadowRim) root.setProperty('--grass-rim', `url(${meadowRim})`)
+  })
+  return skyRimsMade
+}
+
 /** Every festival's pictures, made once, whichever festival is in view. */
 export function makePictures() {
-  return Promise.all([makeFrost(), makeWebs(), makeBlooms(), makeFirs()])
+  return Promise.all([makeFrost(), makeWebs(), makeBlooms(), makeFirs(), makeSkyRims()])
 }
 
 /**
@@ -1431,18 +1616,18 @@ function emberSprite() {
   return c
 }
 
-/** A little five-pointed gold star, for what an Advent spell goes up in. */
-export function starSprite() {
+/** A little five-pointed star, gold unless told otherwise. */
+export function starSprite(fill = '#ffe29a', halo = '255, 220, 140') {
   const c = document.createElement('canvas')
   c.width = 24
   c.height = 24
   const g = c.getContext('2d')
-  const halo = g.createRadialGradient(12, 12, 0, 12, 12, 12)
-  halo.addColorStop(0, 'rgba(255, 220, 140, 0.5)')
-  halo.addColorStop(1, 'rgba(255, 220, 140, 0)')
-  g.fillStyle = halo
+  const glow = g.createRadialGradient(12, 12, 0, 12, 12, 12)
+  glow.addColorStop(0, `rgba(${halo}, 0.5)`)
+  glow.addColorStop(1, `rgba(${halo}, 0)`)
+  g.fillStyle = glow
   g.fillRect(0, 0, 24, 24)
-  g.fillStyle = '#ffe29a'
+  g.fillStyle = fill
   g.beginPath()
   for (let i = 0; i < 10; i++) {
     const r = i % 2 === 0 ? 7 : 3
@@ -1509,4 +1694,265 @@ export function AdventNight() {
     return () => { stop(); window.removeEventListener('resize', size) }
   }, [])
   return <canvas ref={ref} className="advent-night" aria-hidden="true" />
+}
+
+// --- falling stars, the Milky Way, fireflies --------------------------------------
+/**
+ * A meteor shower. Every falling star comes away from the one point in the
+ * sky the shower is named for (`radiant`, as fractions of the window), the
+ * way real ones do; now and then one is a fireball, bigger and slower, that
+ * leaves a faint trail hanging after it.
+ */
+export function MeteorShower({ radiant = [0.15, 0.03], speed = [900, 1500], tones = ['255, 240, 200'] }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    let w = 0
+    let h = 0
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    size()
+    window.addEventListener('resize', size)
+    const meteors = []
+    const trails = []
+    const spawn = () => {
+      const x = Math.random() * w
+      const y = h * (0.04 + Math.random() * 0.7)
+      const dx = x - radiant[0] * w
+      const dy = y - radiant[1] * h
+      const d = Math.hypot(dx, dy) || 1
+      const fireball = Math.random() < 0.08
+      const v = (speed[0] + Math.random() * (speed[1] - speed[0])) * (fireball ? 0.7 : 1)
+      meteors.push({
+        x, y, ux: dx / d, uy: dy / d, v, age: 0,
+        life: fireball ? 1 + Math.random() * 0.4 : 0.3 + Math.random() * 0.5,
+        length: fireball ? 260 + Math.random() * 140 : 80 + Math.random() * 150,
+        width: fireball ? 2.6 : 1.1 + Math.random() * 0.9,
+        tone: tones[Math.floor(Math.random() * tones.length)],
+        fireball,
+      })
+    }
+    let next = performance.now() + 800
+    const stop = runLoop((now, dt) => {
+      if (now > next) {
+        spawn()
+        if (Math.random() < 0.18) spawn()
+        next = now + 300 + Math.random() * 1100
+      }
+      g.clearRect(0, 0, w, h)
+      g.globalCompositeOperation = 'lighter'
+      g.lineCap = 'round'
+      for (let i = trails.length - 1; i >= 0; i--) {
+        const t = trails[i]
+        t.age += dt
+        if (t.age > t.life) { trails.splice(i, 1); continue }
+        g.strokeStyle = `rgba(${t.tone}, ${(0.16 * (1 - t.age / t.life)).toFixed(3)})`
+        g.lineWidth = 2 + t.age * 2
+        g.beginPath(); g.moveTo(t.x0, t.y0); g.lineTo(t.x1, t.y1); g.stroke()
+      }
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i]
+        m.age += dt
+        const k = m.age / m.life
+        const hx = m.x + m.ux * m.v * m.age
+        const hy = m.y + m.uy * m.v * m.age
+        const reach = m.length * Math.min(1, k * 3)
+        const tx = hx - m.ux * reach
+        const ty = hy - m.uy * reach
+        if (k >= 1) {
+          if (m.fireball) trails.push({ x0: tx, y0: ty, x1: hx, y1: hy, age: 0, life: 1.8, tone: m.tone })
+          meteors.splice(i, 1)
+          continue
+        }
+        const fade = Math.sin(Math.PI * k) ** 0.7
+        const line = g.createLinearGradient(hx, hy, tx, ty)
+        line.addColorStop(0, `rgba(255, 255, 250, ${fade.toFixed(3)})`)
+        line.addColorStop(0.2, `rgba(${m.tone}, ${(0.7 * fade).toFixed(3)})`)
+        line.addColorStop(1, `rgba(${m.tone}, 0)`)
+        g.strokeStyle = line
+        g.lineWidth = m.width
+        g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke()
+        const r = m.width * (m.fireball ? 4 : 2.5)
+        const head = g.createRadialGradient(hx, hy, 0, hx, hy, r)
+        head.addColorStop(0, `rgba(255, 255, 250, ${fade.toFixed(3)})`)
+        head.addColorStop(1, `rgba(${m.tone}, 0)`)
+        g.fillStyle = head
+        g.fillRect(hx - r, hy - r, r * 2, r * 2)
+      }
+      g.globalCompositeOperation = 'source-over'
+    })
+    return () => { stop(); window.removeEventListener('resize', size) }
+  }, [])
+  return <canvas ref={ref} className="meteor-shower" aria-hidden="true" />
+}
+
+/**
+ * The Milky Way, across the sky from the lower left to the upper right: a
+ * soft river of light, dark lanes of dust down it, and thousands of small
+ * stars gathered along it. Drawn once.
+ */
+export function MilkyWay() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    const paint = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const w = window.innerWidth
+      const h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      const g = el.getContext('2d')
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      g.clearRect(0, 0, w, h)
+      let a = 29
+      const rand = () => { a = (a * 16807) % 2147483647; return a / 2147483647 }
+      const gauss = () => (rand() + rand() + rand() - 1.5) / 1.5
+      const along = (t, off) => {
+        // The band's middle line, gently bowed, and a point off it.
+        const x = t * w
+        const y = h * (0.88 - t * 0.8) + Math.sin(t * Math.PI) * h * 0.06
+        const nx = 0.8 * h
+        const ny = w
+        const n = Math.hypot(nx, ny)
+        return [x + (nx / n) * off, y + (ny / n) * off]
+      }
+      const width = Math.min(w, h) * 0.2
+      g.globalCompositeOperation = 'lighter'
+      for (let i = 0; i < 260; i++) {
+        const t = rand()
+        const [x, y] = along(t, gauss() * width * 0.8)
+        const r = width * (0.25 + rand() * 0.5)
+        const warm = Math.abs(t - 0.45) < 0.2 && rand() < 0.5
+        const glow = g.createRadialGradient(x, y, 0, x, y, r)
+        glow.addColorStop(0, warm ? 'rgba(255, 226, 200, 0.05)' : 'rgba(170, 180, 255, 0.045)')
+        glow.addColorStop(1, 'rgba(170, 180, 255, 0)')
+        g.fillStyle = glow
+        g.fillRect(x - r, y - r, r * 2, r * 2)
+      }
+      g.globalCompositeOperation = 'destination-out'
+      for (let i = 0; i < 70; i++) {
+        const t = rand()
+        const [x, y] = along(t, gauss() * width * 0.25)
+        const r = width * (0.08 + rand() * 0.18)
+        const dust = g.createRadialGradient(x, y, 0, x, y, r)
+        dust.addColorStop(0, 'rgba(0, 0, 0, 0.35)')
+        dust.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        g.fillStyle = dust
+        g.fillRect(x - r, y - r, r * 2, r * 2)
+      }
+      g.globalCompositeOperation = 'lighter'
+      for (let i = 0; i < 2200; i++) {
+        const t = rand()
+        const [x, y] = along(t, gauss() * width)
+        const r = rand() < 0.03 ? 0.9 : 0.25 + rand() * 0.45
+        g.fillStyle = `rgba(${rand() < 0.25 ? '255, 236, 210' : '222, 228, 255'}, ${(0.25 + rand() * 0.65).toFixed(2)})`
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill()
+      }
+    }
+    paint()
+    window.addEventListener('resize', paint)
+    return () => window.removeEventListener('resize', paint)
+  }, [])
+  return <canvas ref={ref} className="milky-way" aria-hidden="true" />
+}
+
+/** A firefly's glow, drawn once and stamped. */
+export function fireflySprite() {
+  const c = document.createElement('canvas')
+  c.width = 32
+  c.height = 32
+  const g = c.getContext('2d')
+  const glow = g.createRadialGradient(16, 16, 0, 16, 16, 16)
+  glow.addColorStop(0, 'rgba(250, 255, 210, 1)')
+  glow.addColorStop(0.15, 'rgba(214, 255, 120, 0.9)')
+  glow.addColorStop(0.45, 'rgba(170, 255, 90, 0.25)')
+  glow.addColorStop(1, 'rgba(150, 255, 80, 0)')
+  g.fillStyle = glow
+  g.fillRect(0, 0, 32, 32)
+  return c
+}
+
+/**
+ * Fireflies about the lower part of the page, drifting slowly and lighting
+ * up in their own time, and drawn a little toward the pointer when it
+ * comes near.
+ */
+export function Fireflies() {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (stillness()) return undefined
+    const el = ref.current
+    const g = el.getContext('2d')
+    const sprite = fireflySprite()
+    let w = 0
+    let h = 0
+    let flies = []
+    const pointer = { x: -9999, y: -9999 }
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      w = window.innerWidth
+      h = window.innerHeight
+      el.width = Math.round(w * dpr)
+      el.height = Math.round(h * dpr)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      if (flies.length === 0) {
+        flies = Array.from({ length: 26 }, () => ({
+          x: Math.random() * w,
+          y: h * (0.35 + Math.random() * 0.62),
+          vx: 0,
+          vy: 0,
+          a: Math.random() * 100,
+          b: Math.random() * 100,
+          period: 2.2 + Math.random() * 3.4,
+          size: 12 + Math.random() * 10,
+        }))
+      }
+    }
+    size()
+    window.addEventListener('resize', size)
+    const onMove = (e) => { pointer.x = e.clientX; pointer.y = e.clientY }
+    window.addEventListener('pointermove', onMove)
+    const stop = runLoop((now, dt) => {
+      const t = now / 1000
+      g.clearRect(0, 0, w, h)
+      g.globalCompositeOperation = 'lighter'
+      for (const f of flies) {
+        let ax = Math.sin(t * 0.23 + f.a) * 9 + Math.sin(t * 0.61 + f.b) * 5
+        let ay = Math.cos(t * 0.19 + f.b) * 7 + Math.sin(t * 0.47 + f.a) * 4
+        const dx = pointer.x - f.x
+        const dy = pointer.y - f.y
+        const d = Math.hypot(dx, dy)
+        if (d < 260 && d > 30) {
+          ax += (dx / d) * 14
+          ay += (dy / d) * 14
+        }
+        if (f.y < h * 0.3) ay += 12
+        if (f.y > h - 10) ay -= 12
+        if (f.x < 10) ax += 12
+        if (f.x > w - 10) ax -= 12
+        f.vx = (f.vx + ax * dt) * Math.exp(-dt * 0.7)
+        f.vy = (f.vy + ay * dt) * Math.exp(-dt * 0.7)
+        f.x += f.vx * dt
+        f.y += f.vy * dt
+        // A firefly's light: a slow swell and fade, then dark for a while.
+        const phase = ((t + f.a) % f.period) / f.period
+        const light = phase < 0.35 ? Math.sin((phase / 0.35) * Math.PI) : 0
+        if (light < 0.02) continue
+        g.globalAlpha = light
+        g.drawImage(sprite, f.x - f.size / 2, f.y - f.size / 2, f.size, f.size)
+      }
+      g.globalAlpha = 1
+      g.globalCompositeOperation = 'source-over'
+    })
+    return () => { stop(); window.removeEventListener('resize', size); window.removeEventListener('pointermove', onMove) }
+  }, [])
+  return <canvas ref={ref} className="fireflies" aria-hidden="true" />
 }

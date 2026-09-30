@@ -1,7 +1,8 @@
-// The days of the year that are more than a date: which they are, the frost
-// that grows over Christmas Eve, the fir of the four Sundays of Advent, the
-// cobwebs strung across Halloween, and the blossom and the flower field of
-// Easter.
+// The days of the year that are more than a date: which they are, and the
+// pictures some of them are drawn with (the frost of Christmas Eve, the fir
+// of Advent, the cobwebs of Halloween, the blossom and flower field of
+// Easter). Some are fixed dates, some move with the moon or the sun; see
+// FESTIVALS for which is which.
 //
 // Only in Starlit, so far. Each festival is a date and a name; how it looks
 // belongs to the theme (themes.css, Festive.jsx).
@@ -45,41 +46,115 @@ export function adventSundays(year) {
 
 const ORDINALS = ['First', 'Second', 'Third', 'Fourth']
 
+// The periodic terms of the Sun's motion that move a solstice off its mean
+// time by up to an hour or so (Meeus, Astronomical Algorithms, table 27.C).
+const SOLSTICE_TERMS = [
+  [485, 324.96, 1934.136], [203, 337.23, 32964.467], [199, 342.08, 20.186],
+  [182, 27.85, 445267.112], [156, 73.14, 45036.886], [136, 171.52, 22518.443],
+  [77, 222.54, 65928.934], [74, 296.72, 3034.906], [70, 243.58, 9037.513],
+  [58, 119.81, 33718.147], [52, 297.17, 150.678], [50, 21.02, 2281.226],
+  [45, 247.54, 29929.562], [44, 325.15, 31555.956], [29, 60.93, 4443.417],
+  [18, 155.12, 67555.328], [17, 288.79, 4562.452], [16, 198.04, 62894.029],
+  [14, 199.76, 31436.921], [12, 95.39, 14577.848], [12, 287.11, 31931.756],
+  [12, 320.81, 34777.259], [9, 227.73, 1222.114], [8, 15.45, 16859.074],
+]
+
+/**
+ * The moment of a solstice, June's or December's, in a given year, as
+ * milliseconds since 1970 (UTC) — good to a minute or two. From Meeus: the
+ * mean solstice for the year, corrected by the periodic terms above.
+ */
+export function solstice(year, which) {
+  const Y = (year - 2000) / 1000
+  const mean = which === 'june'
+    ? 2451716.56767 + 365241.62603 * Y + 0.00325 * Y ** 2 + 0.00888 * Y ** 3 - 0.0003 * Y ** 4
+    : 2451900.05952 + 365242.74049 * Y - 0.06223 * Y ** 2 - 0.00823 * Y ** 3 + 0.00032 * Y ** 4
+  const T = (mean - 2451545) / 36525
+  const rad = Math.PI / 180
+  const W = (35999.373 * T - 2.47) * rad
+  const spread = 1 + 0.0334 * Math.cos(W) + 0.0007 * Math.cos(2 * W)
+  const S = SOLSTICE_TERMS.reduce((sum, [A, B, C]) => sum + A * Math.cos((B + C * T) * rad), 0)
+  const jde = mean + (0.00001 * S) / spread
+  // Julian day to the calendar, less the minute or so between the clock the
+  // planets keep and the one on the wall.
+  return (jde - 2440587.5) * 86400000 - 69000
+}
+
+/** The day, on this machine's clock, that a moment falls on. */
+const localDay = (ms) => {
+  const d = new Date(ms)
+  return { month: d.getMonth() + 1, day: d.getDate() }
+}
+
+/** Shrove Tuesday, the last day of Carnival: seven weeks less a day before Easter. */
+export function shroveTuesday(year) {
+  const e = easterSunday(year)
+  const d = new Date(Date.UTC(year, e.month - 1, e.day) - 47 * 86400000)
+  return { month: d.getUTCMonth() + 1, day: d.getUTCDate() }
+}
+
 // A festival on the same date every year has a month and a day; one that
 // moves has `on`, which finds its date in a given year; one that comes more
 // than once has `match`, which says which of it a date is, if any.
-// Christmas Eve comes before Advent: in a year it falls on the fourth Sunday
-// of Advent, it is Christmas Eve that day.
+//
+// In the order they take the lead when two fall on the same day: the first
+// sets how the day looks, the rest join in beside it. Christmas Eve is ahead
+// of Advent, so in a year it falls on the fourth Sunday it is Christmas Eve
+// (and not also Advent, which would be the same candle twice).
 export const FESTIVALS = [
   { id: 'easter', name: 'Easter', on: easterSunday },
+  { id: 'carnival', name: 'Carnival', on: shroveTuesday },
   { id: 'halloween', name: 'Halloween', month: 10, day: 31 },
+  { id: 'new-years-eve', name: "New Year's Eve", month: 12, day: 31 },
+  { id: 'new-year', name: "New Year's Day", month: 1, day: 1 },
   { id: 'christmas-eve', name: 'Christmas Eve', month: 12, day: 24 },
   {
     id: 'advent',
     match: (year, month, day) => {
+      if (month === 12 && day === 24) return null
       const nth = adventSundays(year).findIndex((d) => d.month === month && d.day === day)
       return nth < 0 ? null : { id: 'advent', name: `${ORDINALS[nth]} Advent`, nth: nth + 1 }
     },
   },
+  { id: 'st-nicholas', name: 'St. Nicholas', month: 12, day: 6 },
+  { id: 'longest-night', name: 'The Longest Night', on: (year) => localDay(solstice(year, 'december')) },
+  { id: 'geminids', name: 'The Geminids', month: 12, day: 14 },
+  { id: 'perseids', name: 'The Perseids', month: 8, day: 12 },
+  { id: 'midsummer', name: 'Midsummer', on: (year) => localDay(solstice(year, 'june')) },
+  { id: 'valentines', name: "Valentine's Day", month: 2, day: 14 },
 ]
 
-/** The festival falling on this date (YYYY-MM-DD), or null. */
-export function festivalOf(date) {
+/**
+ * The festivals falling on this date (YYYY-MM-DD), the one that leads
+ * first. Empty for an ordinary day, or anything that is not a date.
+ */
+export function festivalsOn(date) {
   const m = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) return null
+  if (!m) return []
   const year = Number(m[1])
   const month = Number(m[2])
   const day = Number(m[3])
+  const found = []
   for (const f of FESTIVALS) {
     if (f.match) {
-      const found = f.match(year, month, day)
-      if (found) return found
+      const hit = f.match(year, month, day)
+      if (hit) found.push(hit)
       continue
     }
     const at = f.on ? f.on(year) : f
-    if (at.month === month && at.day === day) return f
+    if (at.month === month && at.day === day) found.push(f)
   }
-  return null
+  return found
+}
+
+/**
+ * The festival leading on this date, or null; any others falling on the
+ * same day are in its `also`.
+ */
+export function festivalOf(date) {
+  const [lead, ...also] = festivalsOn(date)
+  if (!lead) return null
+  return also.length ? { ...lead, also } : lead
 }
 
 /** The same small generator the star field uses: one seed, one picture. */

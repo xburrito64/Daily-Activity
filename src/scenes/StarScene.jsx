@@ -7,6 +7,7 @@ import {
   HallowPane, HallowNight, batFrames,
   Dawn, Meadow, SpringDay, EggHunt, petalSprite, drawButterfly, BUTTERFLY_TONES,
   AdventWreath, AdventPane, AdventNight, starSprite,
+  FESTIVE_TINTS, MeteorShower, MilkyWay, Fireflies, fireflySprite,
 } from './Festive.jsx'
 import { runLoop, stillness } from './loop.js'
 import { todayISO } from '../time.js'
@@ -35,8 +36,10 @@ import { useMinute } from '../useMinute.js'
 // finished pictures the graphics card only turns. With less movement asked
 // for, nothing turns, breathes or falls.
 //
-// Christmas Eve, the Sundays of Advent, Halloween and Easter are festivals,
-// each with a sky of its own: see Festive.jsx.
+// Festivals (Christmas Eve, Advent, Halloween, Easter, the falling stars,
+// the solstices and the rest) each have a sky of their own: see
+// festivals.js for when they are and Festive.jsx for how they look. When
+// two fall on one day, both skies come out.
 
 const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ'
 const CAST_WINDOW_MS = 5000
@@ -203,20 +206,24 @@ export default function StarScene({ days, tags }) {
   // The frost and the webs are made once, for any festival day in the list,
   // whenever it is.
   useEffect(() => { makePictures() }, [])
-  // On the night itself, the page knows it (for the colder sky in
-  // themes.css), and the sky says so once, shortly after opening.
+  // On the day itself, the page knows which festival leads (for its sky in
+  // themes.css), and the sky greets each one once, shortly after opening.
+  const festivals = tonight ? [tonight, ...(tonight.also ?? [])] : []
+  const has = (id) => festivals.some((f) => f.id === id)
   const festival = tonight?.id ?? null
-  const name = tonight?.name ?? ''
-  const nth = tonight?.nth ?? 0
+  const nth = festivals.find((f) => f.id === 'advent')?.nth ?? 0
+  const greeted = festivals.map((f) => f.id).join(',')
   useEffect(() => {
-    if (!festival) return undefined
+    if (!greeted) return undefined
     const page = document.documentElement
-    page.dataset.festival = festival
-    const timer = setTimeout(() => {
-      setNotices((was) => [...was, { kind: 'festival', festival, name, nth, id: `festival-${Date.now()}` }].slice(-3))
-    }, 1400)
-    return () => { clearTimeout(timer); delete page.dataset.festival }
-  }, [festival])
+    page.dataset.festival = festivals[0].id
+    const timers = festivals.map((f, i) => setTimeout(() => {
+      setNotices((was) => [...was, {
+        kind: 'festival', festival: f.id, name: f.name, nth: f.nth, id: `festival-${f.id}-${Date.now()}`,
+      }].slice(-3))
+    }, 1400 + i * 2600))
+    return () => { timers.forEach(clearTimeout); delete page.dataset.festival }
+  }, [greeted])
 
   // --- the seal ----------------------------------------------------------------
   // It crowns the page: centred over the open stretch of the header between
@@ -255,6 +262,8 @@ export default function StarScene({ days, tags }) {
     const bats = batFrames(40)
     const petal = petalSprite()
     const goldStar = starSprite()
+    const silverStar = starSprite('#eeeaff', '220, 214, 255')
+    const firefly = fireflySprite()
     let tinted = new Map()
     const spriteFor = (colour) => {
       if (!tinted.has(colour)) {
@@ -281,15 +290,9 @@ export default function StarScene({ days, tags }) {
     // A spell cast on a festival day takes the festival's sigil and colours:
     // frost on Christmas Eve, candlelight on Halloween.
     const festivalAt = (track) => track?.closest('[data-festival]')?.dataset.festival ?? ''
-    const tint = (colour, festival) => (festival === 'christmas-eve'
-      ? `color-mix(in oklab, ${colour} 22%, #e6f6ff)`
-      : festival === 'halloween'
-        ? `color-mix(in oklab, ${colour} 22%, #ffb866)`
-        : festival === 'easter'
-          ? `color-mix(in oklab, ${colour} 22%, #ffc4dc)`
-          : festival === 'advent'
-            ? `color-mix(in oklab, ${colour} 22%, #ffd98a)`
-            : manaOf(colour))
+    const tint = (colour, festival) => (FESTIVE_TINTS[festival]
+      ? `color-mix(in oklab, ${colour} 22%, ${FESTIVE_TINTS[festival]})`
+      : manaOf(colour))
     const show = (node, x, y, px, colour, festival = '') => {
       node.style.display = 'block'
       node.dataset.festival = festival
@@ -347,6 +350,28 @@ export default function StarScene({ days, tags }) {
       const hallow = festival === 'halloween'
       const spring = festival === 'easter'
       const advent = festival === 'advent'
+      const meteors = festival === 'perseids' || festival === 'geminids'
+      const solstice = festival === 'longest-night'
+      const summer = festival === 'midsummer'
+      // On a night of falling stars, the spell throws out falling stars of
+      // its own, every which way.
+      if (meteors) {
+        for (let i = 0; i < Math.min(12, 4 + count / 6); i++) {
+          const a = -Math.PI * (0.1 + Math.random() * 0.8)
+          const speed = 380 + Math.random() * 420
+          motes.current.push({
+            streak: true,
+            x: x0 + Math.random() * Math.max(1, x1 - x0),
+            y,
+            vx: Math.cos(a) * speed,
+            vy: Math.sin(a) * speed,
+            age: 0,
+            life: 0.35 + Math.random() * 0.3,
+            size: 40 + Math.random() * 50,
+            tone: festival === 'geminids' ? '190, 232, 255' : '255, 232, 170',
+          })
+        }
+      }
       // At Easter it scatters into petals, and a few butterflies take wing.
       if (spring) {
         for (let i = 0; i < Math.min(5, 1 + count / 14); i++) {
@@ -401,7 +426,9 @@ export default function StarScene({ days, tags }) {
               : spring ? (i % 3 === 0 ? sprite : petal)
                 // Advent: embers, and little gold stars among them.
                 : advent ? (i % 3 === 0 ? goldStar : gold)
-                  : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
+                  : solstice ? (i % 3 === 0 ? silverStar : pale)
+                    : summer ? firefly
+                      : i % 3 === 0 ? gold : i % 5 === 0 ? pale : sprite,
         })
       }
     }
@@ -464,7 +491,7 @@ export default function StarScene({ days, tags }) {
         const m = list[i]
         m.age += dt
         if (m.age >= m.life) { list.splice(i, 1); continue }
-        if (m.bat || m.fly) continue // drawn below
+        if (m.bat || m.fly || m.streak) continue // drawn below
         m.vx *= Math.exp(-dt * 1.2)
         m.vy += 12 * dt
         m.x += (m.vx + Math.sin(t * 2.2 + m.seed) * 16) * dt
@@ -498,6 +525,25 @@ export default function StarScene({ days, tags }) {
         const k = m.age / m.life
         g.globalAlpha = k < 0.1 ? k / 0.1 : k > 0.75 ? (1 - k) / 0.25 : 1
         drawButterfly(g, m.x, m.y, 18 * m.size, Math.sin((t + m.seed) * m.beat), m.tone, Math.max(-0.5, Math.min(0.5, m.vx / 120)))
+      }
+      for (const m of list) {
+        if (!m.streak) continue
+        const k = m.age / m.life
+        const hx = m.x + m.vx * m.age
+        const hy = m.y + m.vy * m.age
+        const speed = Math.hypot(m.vx, m.vy)
+        const tx = hx - (m.vx / speed) * m.size
+        const ty = hy - (m.vy / speed) * m.size
+        const fade = Math.sin(Math.PI * Math.min(1, k))
+        const line = g.createLinearGradient(hx, hy, tx, ty)
+        line.addColorStop(0, `rgba(255, 255, 250, ${fade.toFixed(3)})`)
+        line.addColorStop(0.3, `rgba(${m.tone}, ${(0.5 * fade).toFixed(3)})`)
+        line.addColorStop(1, `rgba(${m.tone}, 0)`)
+        g.globalAlpha = 1
+        g.strokeStyle = line
+        g.lineWidth = 1.3
+        g.lineCap = 'round'
+        g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke()
       }
       g.globalCompositeOperation = 'source-over'
       g.globalAlpha = 1
@@ -555,21 +601,25 @@ export default function StarScene({ days, tags }) {
 
   return (
     <>
-      {festival === 'christmas-eve' && <Aurora />}
-      {festival === 'easter' && <Dawn />}
+      {has('christmas-eve') && <Aurora />}
+      {has('easter') && <Dawn />}
+      {has('longest-night') && <MilkyWay />}
       <canvas ref={stillCanvas} className="star-field" aria-hidden="true" />
       <canvas ref={liveCanvas} className="star-field" aria-hidden="true" />
-      {festival === 'christmas-eve' && <GuidingStar />}
-      <Seal>{festival === 'advent' && <AdventWreath lit={nth} />}</Seal>
-      {festival === 'christmas-eve' && <FrostPane />}
-      {festival === 'christmas-eve' && <Snowfall />}
-      {festival === 'halloween' && <HallowPane />}
-      {festival === 'halloween' && <HallowNight />}
-      {festival === 'advent' && <AdventPane />}
-      {festival === 'advent' && <AdventNight />}
-      {festival === 'easter' && <Meadow />}
-      {festival === 'easter' && <SpringDay />}
-      {festival === 'easter' && (
+      {has('christmas-eve') && <GuidingStar />}
+      <Seal>{has('advent') && <AdventWreath lit={nth} />}</Seal>
+      {has('christmas-eve') && <FrostPane />}
+      {has('christmas-eve') && <Snowfall />}
+      {has('halloween') && <HallowPane />}
+      {has('halloween') && <HallowNight />}
+      {has('advent') && <AdventPane />}
+      {has('advent') && <AdventNight />}
+      {has('perseids') && <MeteorShower radiant={[0.14, 0.02]} speed={[1000, 1600]} tones={['255, 240, 200', '255, 226, 150', '200, 255, 214']} />}
+      {has('geminids') && <MeteorShower radiant={[0.82, 0.06]} speed={[600, 1000]} tones={['255, 255, 255', '255, 236, 160', '170, 228, 255', '190, 255, 214']} />}
+      {has('midsummer') && <Fireflies />}
+      {has('easter') && <Meadow />}
+      {has('easter') && <SpringDay />}
+      {has('easter') && (
         <EggHunt
           day={todayISO()}
           onFound={(x, y, found, of) => {
