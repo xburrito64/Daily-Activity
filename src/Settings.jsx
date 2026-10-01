@@ -5,7 +5,7 @@ import TagEditor from './TagEditor.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import BirthdayEditor from './BirthdayEditor.jsx'
 import {
-  BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, LABEL_STYLES, DEFAULTS, THEMES,
+  BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, BLOCK_LOOKS, LABEL_STYLES, DEFAULTS, THEMES,
 } from './appearance.js'
 
 // How many tags a tag-box look is shown with. Enough to see the colours
@@ -263,6 +263,26 @@ function Look({ appearance, onChange, tags, onResetRows, onCoversFound }) {
       </section>
 
       <section className="settingsgroup">
+        <h3>Blocks on the bar</h3>
+        <p className="settingsnote">Each sample has one block laid over another, so you can see how a look steps around it.</p>
+        <div className="choicelist">
+          {BLOCK_LOOKS.map((look) => (
+            <button
+              key={look.id}
+              type="button"
+              className={`choice${appearance.blockLook === look.id ? ' on' : ''}`}
+              aria-pressed={appearance.blockLook === look.id}
+              onClick={() => set('blockLook')(look.id)}
+            >
+              <span className="choicename">{look.name}</span>
+              <span className="choicenote">{look.note}</span>
+              <BlockSample look={look.id} tags={tags.filter((tag) => !tag.hidden)} />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="settingsgroup">
         <h3>Labels on the bar</h3>
         <div className="choicelist">
           {LABEL_STYLES.map((style) => (
@@ -320,4 +340,67 @@ function Toggle({ on, onFlip, label, note }) {
       </span>
     </button>
   )
+}
+
+/**
+ * A short bar in one block look: one block on its own, then a second with a
+ * third laid over its end — cut into pieces exactly as the real bar cuts it,
+ * so the sample shows the joins as well as the ends.
+ */
+function BlockSample({ look, tags }) {
+  const [a, b, c] = unlike(tags.map((tag) => tag.colour), ['#7b8fd6', '#d68a5c', '#5fb38a'])
+  const pieces = [
+    { tag: a, from: 2, to: 30, top: 0, z: 0 },
+    { tag: b, from: 33, to: 58, top: 0, z: 0, end: true },
+    { tag: b, from: 58, to: 80, top: 0, z: 0, start: true },
+    { tag: c, from: 58, to: 80, top: 50, z: 1, end: true },
+    { tag: c, from: 80, to: 97, top: 0, z: 0, start: true },
+  ]
+  return (
+    <span className="blocksample" data-blocks={look}>
+      <span className="sampletrack">
+        <span className="blocks">
+          {pieces.map((p, i) => (
+            <span
+              key={i}
+              className={`block settled${p.start ? ' joined-start' : ''}${p.end ? ' joined-end' : ''}`}
+              style={{
+                left: `${p.from}%`,
+                width: `${p.to - p.from}%`,
+                top: p.top ? `${p.top}%` : 'var(--block-inset)',
+                bottom: 'var(--block-inset)',
+                zIndex: p.z,
+                '--tag': p.tag,
+              }}
+            />
+          ))}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/**
+ * Three of the colours that are easy to tell apart, topped up from `spare`.
+ * Tag colours are oklch(); the spares are hex. Anything else is passed over.
+ */
+function unlike(colours, spare) {
+  const hue = (colour) => {
+    const lch = String(colour).match(/^oklch\(\s*[\d.]+%?\s+[\d.]+\s+([\d.]+)/i)
+    if (lch) return Number(lch[1])
+    if (!/^#[0-9a-f]{6}$/i.test(colour)) return null
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(colour.slice(i, i + 2), 16) / 255)
+    const max = Math.max(r, g, b)
+    const d = max - Math.min(r, g, b)
+    if (!d) return 0
+    const h = max === r ? (g - b) / d : max === g ? 2 + (b - r) / d : 4 + (r - g) / d
+    return (h * 60 + 360) % 360
+  }
+  const apart = (x, y) => { const d = Math.abs(hue(x) - hue(y)); return Math.min(d, 360 - d) > 60 }
+  const picked = []
+  for (const colour of colours) {
+    if (hue(colour) !== null && picked.every((p) => apart(p, colour))) picked.push(colour)
+    if (picked.length === 3) return picked
+  }
+  return [...picked, ...spare.filter((s) => picked.every((p) => apart(p, s)))].slice(0, 3)
 }

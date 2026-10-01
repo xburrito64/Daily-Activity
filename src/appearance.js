@@ -41,6 +41,18 @@ export const CHIP_LOOKS = [
   { id: 'banner', name: 'Banner', note: 'Solid colour, like the blocks on the bar' },
 ]
 
+/**
+ * Ways to draw the blocks on the bar. Each one has to hold up at any length
+ * and any height, and across the cuts where a block steps around an overlap:
+ * see "Block looks" in styles/app.css.
+ */
+export const BLOCK_LOOKS = [
+  { id: 'classic', name: 'Classic', note: 'Filled with the tag colour, as it has always been' },
+  { id: 'crystal', name: 'Mana crystal', note: 'Cut like a gem: bevelled corners, a bright crown, light caught inside' },
+  { id: 'grimoire', name: 'Grimoire', note: 'A spell written in the tag colour: dark ink, a glowing rim, runes running through' },
+  { id: 'woven', name: 'Woven', note: 'Cloth in the tag colour, stitched onto the day' },
+]
+
 /** What a block on the bar shows when there is room. */
 export const LABEL_STYLES = [
   { id: 'auto', name: 'Icon and name', note: 'The name beside the icon where it fits, the icon alone where it doesn’t' },
@@ -53,6 +65,7 @@ export const DEFAULTS = {
   barWidth: BAR_WIDTH.usual,
   iconSet: '',
   chipLook: 'classic',
+  blockLook: 'classic',
   labels: 'auto',
   // Game and anime covers on the bar. Off, a named block wears its tag's
   // icon there instead; the cards in a note keep their covers either way.
@@ -76,6 +89,7 @@ export function normalise(raw) {
       : DEFAULTS.barWidth,
     iconSet: typeof got.iconSet === 'string' ? got.iconSet : DEFAULTS.iconSet,
     chipLook: CHIP_LOOKS.some((look) => look.id === got.chipLook) ? got.chipLook : DEFAULTS.chipLook,
+    blockLook: BLOCK_LOOKS.some((look) => look.id === got.blockLook) ? got.blockLook : DEFAULTS.blockLook,
     labels: LABEL_STYLES.some((style) => style.id === got.labels) ? got.labels : DEFAULTS.labels,
     covers: typeof got.covers === 'boolean' ? got.covers : DEFAULTS.covers,
     hints: typeof got.hints === 'boolean' ? got.hints : DEFAULTS.hints,

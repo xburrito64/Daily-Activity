@@ -30,7 +30,7 @@ t('nothing saved is the app as it has always looked', () => {
 
 t('a good choice is kept exactly', () => {
   const picked = {
-    theme: 'tidewater', barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', labels: 'icon', covers: false, hints: false,
+    theme: 'tidewater', barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', blockLook: 'woven', labels: 'icon', covers: false, hints: false,
   }
   assert.deepEqual(normalise(picked), picked)
 })
@@ -45,6 +45,8 @@ t('a width is kept inside the slider', () => {
 t('a look or a label style that no longer exists falls back', () => {
   assert.equal(normalise({ chipLook: 'retired-look' }).chipLook, 'classic')
   assert.equal(normalise({ labels: 'sideways' }).labels, 'auto')
+  assert.equal(normalise({ blockLook: 'marble' }).blockLook, 'classic')
+  assert.equal(normalise({}).blockLook, 'classic', 'the blocks look as they always have until one is picked')
   assert.equal(normalise({ iconSet: 42 }).iconSet, '')
   assert.equal(normalise({ theme: 'vaporwave' }).theme, 'starlit')
 })

@@ -83,7 +83,8 @@ needed.
 Most of this can be done from inside the app instead: the gear at the top
 right opens the settings. **Tags** adds, renames, recolours, reorders and hides
 tags and gives them pictures; **Look** has the bar width, icon sets, tag-box
-styles, labels, covers and hints; **Setup** picks the vault folder and takes
+styles, block looks (classic, mana crystal, grimoire, woven),
+labels, covers and hints; **Setup** picks the vault folder and takes
 the RAWG and SteamGridDB keys, checking each with its site before keeping it.
 A tag's id never changes once it is made, which is why renaming one is safe
 for every note that uses it — and a tag still used by any day can be hidden

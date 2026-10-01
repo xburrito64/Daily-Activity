@@ -1059,7 +1059,7 @@ function DayList({
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
   const covers = useContext(Covers)
-  const { chipLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
+  const { chipLook, blockLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
   const scriptorium = theme === 'scriptorium'
   const starlit = theme === 'starlit'
   const firstDay = useFirstDay()
@@ -1131,6 +1131,7 @@ function DayList({
       <div
         className={`scroller${armedTag ? ' armed' : ''}`}
         ref={scrollRef}
+        data-blocks={blockLook}
         // Every row's height, for the days out of sight: the browser skips
         // drawing those and holds their place at exactly this. See app.css.
         style={{ '--row-total': `${rowTotal}px` }}
@@ -1286,6 +1287,11 @@ function DayList({
                     }
                     style={{
                       ...spanAt(piece.from, piece.to),
+                      // Where the piece starts along the bar, for the looks
+                      // with a pattern: drawn from the bar's own start, the
+                      // pattern runs on unbroken across the cut where a block
+                      // steps around an overlap.
+                      '--x': trackWidth ? `${xAt(piece.from)}px` : '0px',
                       // Every block runs from wherever it starts to the floor
                       // of the bar. Whatever is layered over it covers the
                       // lower part, so nothing is left standing in empty
@@ -1296,7 +1302,7 @@ function DayList({
                       bottom: 'var(--block-inset)',
                       // How deep the block sits is how it stacks.
                       zIndex: piece.lane,
-                      background: tag?.colour ?? '#555',
+                      '--tag': tag?.colour ?? '#555',
                     }}
                     title={`${b.game || b.show || tag?.name || b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
 ${b.note}` : ''}`}
