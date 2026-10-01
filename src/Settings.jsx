@@ -281,6 +281,12 @@ function Look({ appearance, onChange, tags, onResetRows, onCoversFound }) {
             </button>
           ))}
         </div>
+        <Toggle
+          on={appearance.keepPauses}
+          onFlip={() => set('keepPauses')(!appearance.keepPauses)}
+          label="Show short pauses as gaps"
+          note="Off, a block rises to fill the bar whenever there is room above it, even for ten minutes. On, a ten-minute pause in something above it is left as a gap and the block stays where it is."
+        />
       </section>
 
       <section className="settingsgroup">

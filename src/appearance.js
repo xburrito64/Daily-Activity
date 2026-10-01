@@ -72,6 +72,9 @@ export const DEFAULTS = {
   covers: true,
   // The line of shortcuts above the days.
   hints: true,
+  // A ten-minute pause in something above a block, drawn as a gap rather
+  // than filled by the block rising into it. See layoutLanes.
+  keepPauses: false,
 }
 
 /**
@@ -93,6 +96,7 @@ export function normalise(raw) {
     labels: LABEL_STYLES.some((style) => style.id === got.labels) ? got.labels : DEFAULTS.labels,
     covers: typeof got.covers === 'boolean' ? got.covers : DEFAULTS.covers,
     hints: typeof got.hints === 'boolean' ? got.hints : DEFAULTS.hints,
+    keepPauses: typeof got.keepPauses === 'boolean' ? got.keepPauses : DEFAULTS.keepPauses,
   }
 }
 

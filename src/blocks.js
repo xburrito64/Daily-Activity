@@ -259,9 +259,12 @@ export function setShow(blocks, id, show) {
  * A block is cut only where that count genuinely changes, and each run comes
  * back as one piece.
  *
+ * With `keepPauses` (a setting, off unless chosen), a ten-minute pause in
+ * something above a block is drawn as a gap rather than filled: see below.
+ *
  * Returns { block, from, to, lane, lanes, top, index, isFirst, isLast }.
  */
-export function layoutLanes(blocks) {
+export function layoutLanes(blocks, { keepPauses = false } = {}) {
   if (blocks.length === 0) return []
 
   // What is running at each ten minutes of the day, in list order — which is
@@ -285,14 +288,14 @@ export function layoutLanes(blocks) {
     const here = running[slot]
     if (here.length === 0) continue
 
-    // Ten minutes between two things above a block is not a reason for it to
-    // rise into the gap. It would stand at full height for exactly those ten
-    // minutes and drop back — a thin spike up the bar, read as something
-    // happening, when all that happened is a pause above it. So where every
-    // block here is drawn the same just before and just after, and the slot
-    // between is the only one that differs, they keep the place they had and
-    // the pause shows as the gap it was.
-    const bridged = here.every((b) => {
+    // Left alone, a block rises into any room above it, ten minutes of it
+    // included: the bar is always filled. Some would rather a ten-minute pause
+    // above a block read as a pause than as the block standing up to full
+    // height for exactly those ten minutes and dropping back. With
+    // keepPauses, where every block here is drawn the same just before and
+    // just after, and the slot between is the only one that differs, they
+    // keep the place they had and the pause shows as the gap it was.
+    const bridged = keepPauses && here.every((b) => {
       const share = shareAt(b, slot - 1)
       return share >= 0 && share === shareAt(b, slot + 1) && open.get(b)?.to === from
     }) && here.some((b) => shareAt(b, slot) !== shareAt(b, slot - 1))

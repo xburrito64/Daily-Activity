@@ -65,7 +65,7 @@ t('a block too short for two whole runes has none', () => {
   assert.equal(runeSpans(0, two, 0, two).length, 1)
 })
 
-t('across a step no rune is split, and every piece reads from the same first rune', () => {
+t('across a step no rune is split or pressed against it, and every piece reads from the same first rune', () => {
   // One block 0-200 cut at 103: the rune straddling the cut is in neither.
   const [whole] = runeSpans(0, 200, 0, 200)
   const origin = whole.left
@@ -75,8 +75,8 @@ t('across a step no rune is split, and every piece reads from the same first run
   const bStart = 103 + b.left
   assert.equal((aEnd - origin) % RUNE_CELL, 0, 'the first piece stops on a rune boundary')
   assert.equal((bStart - origin) % RUNE_CELL, 0, 'the second starts on one')
-  assert.ok(aEnd <= 103 && bStart >= 103)
-  assert.ok(bStart - aEnd <= RUNE_CELL, 'and at most the one rune is left out')
+  assert.ok(aEnd <= 103 - RUNE_MARGIN && bStart >= 103 + RUNE_MARGIN, 'kept clear of the cut, like an end')
+  assert.ok(bStart - aEnd < 2 * RUNE_MARGIN + 2 * RUNE_CELL, 'and no further off than that')
   assert.equal((b.shift + (bStart - origin)) % (RUNE_CELL * 8), 0, 'the pattern is the block\'s, not the piece\'s')
 })
 

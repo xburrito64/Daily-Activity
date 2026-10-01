@@ -40,6 +40,14 @@ export function pieceLook(piece, before, after) {
   return { vars, stepStart, stepEnd }
 }
 
+/**
+ * A piece standing clear of the rest of its block on both sides, and this
+ * narrow, is the block showing through a short gap above it: drawn as its
+ * surface alone, since edges down both sides of something this thin read as
+ * a separate post rather than as part of the block.
+ */
+export const PEEK_MAX = 28
+
 /** One rune and the space after it, in px; and the room kept at each end. */
 export const RUNE_CELL = 10
 export const RUNE_MARGIN = 12
@@ -54,9 +62,10 @@ export const RUNE_HOLE_ROOM = 8
  *
  * Only whole runes, never one cut off by an end: the block is given as many
  * as fit with RUNE_MARGIN clear at both ends, and the line is centred on it.
- * A piece shows the runes that fall wholly inside it, so at a step — where
- * the line moves to the middle of what shows — no rune is split across the
- * two heights. And `hole`, where the block's name sits across the line, is
+ * A piece shows the runes that fall inside it with RUNE_MARGIN to spare at
+ * a cut as well, so at a step — where the line moves to the middle of what
+ * shows — no rune is split across the two heights or pressed against the
+ * block beside it. And `hole`, where the block's name sits across the line, is
  * left clear by RUNE_HOLE_ROOM either side, the way the dotted line on an
  * empty day parts for its words.
  *
@@ -73,7 +82,10 @@ export function runeSpans(blockFrom, blockTo, from, to, hole = null, cell = RUNE
   const fits = (k) => {
     const lo = origin + k * cell
     const hi = lo + cell
-    if (lo < from || hi > to) return false
+    // A cut is kept clear like an end: the line jumps height there, and a
+    // rune right up against it reads as running into whatever is beside it.
+    if (lo < from + (from > blockFrom ? margin : 0)) return false
+    if (hi > to - (to < blockTo ? margin : 0)) return false
     return !hole || hi <= hole[0] - RUNE_HOLE_ROOM || lo >= hole[1] + RUNE_HOLE_ROOM
   }
   const runs = []

@@ -14,7 +14,7 @@ import { monthByTag, isComplete } from './scenes/starlit.js'
 import { festivalOf } from './scenes/festivals.js'
 import { FestiveMark, Spider } from './scenes/Festive.jsx'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
-import { pieceLook, runeSpans, RUNES_MIN_BAND } from './blockLooks.js'
+import { pieceLook, runeSpans, RUNES_MIN_BAND, PEEK_MAX } from './blockLooks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
 import { wordsFor } from './themeWords.js'
@@ -855,7 +855,7 @@ function DayList({
         was: { startSlot: block.startSlot, endSlot: block.endSlot },
         // Where it sits now, and how far down the bar it was taken hold of.
         // Both are what a slide is measured against.
-        wasLane: layoutLanes(days[date]?.blocks ?? [])
+        wasLane: layoutLanes(days[date]?.blocks ?? [], { keepPauses })
           .find((p) => p.block.id === block.id)?.lane ?? 0,
         grabY: (e.clientY - rect.top) / rect.height,
         // The day without this block in it. Which lane the pointer is asking
@@ -1060,7 +1060,7 @@ function DayList({
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
   const covers = useContext(Covers)
-  const { chipLook, blockLook, labels, covers: showCovers, hints, theme } = useContext(Appearance)
+  const { chipLook, blockLook, keepPauses, labels, covers: showCovers, hints, theme } = useContext(Appearance)
   const scriptorium = theme === 'scriptorium'
   const starlit = theme === 'starlit'
   const firstDay = useFirstDay()
@@ -1185,7 +1185,7 @@ function DayList({
           // on an empty day fills it in as you draw rather than after.
           const blank = !day?.malformed && blocks.length === 0
 
-          const pieces = layoutLanes(blocks)
+          const pieces = layoutLanes(blocks, { keepPauses })
           // Which block covers which is the lane's business, not the DOM's.
           //
           // The list order is the stacking order, and dragging an edge
@@ -1330,6 +1330,8 @@ function DayList({
                       // it steps up has to read as one shape.
                       + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
                       + `${look.stepStart ? ' step-start' : ''}${look.stepEnd ? ' step-end' : ''}`
+                      + (look.stepStart && look.stepEnd && trackWidth
+                        && xAt(piece.to) - xAt(piece.from) <= PEEK_MAX ? ' peek' : '')
                       + (runes.length > 0 ? ' runes' : '') + (runes.length > 1 ? ' runes2' : '')
                     }
                     style={{

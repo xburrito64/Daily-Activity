@@ -228,11 +228,19 @@ t('a block rises to fill the top once nothing is above it', () => {
   ])
 })
 
-t('a ten-minute pause above a block is a gap, not a spike', () => {
-  // The reported fault: two stretches of music on top of a walk, ten minutes
-  // apart. The walk stood up to full height for those ten minutes alone — a
-  // thin bar the whole height of the day — and dropped straight back.
+t('a ten-minute pause above a block is filled, as the bar always is', () => {
+  // The bar is never left with room in it: the walk stands up to full height
+  // for the ten minutes between the two stretches of music.
   const pieces = layoutLanes([b('m1', 'music', 0, 6), b('m2', 'music', 7, 12), b('w', 'walk', 0, 20)])
+  assert.deepStrictEqual(shape(pieces.filter((p) => p.block.id === 'w')),
+    ['w 0-6 1/2', 'w 12-20 0/1', 'w 6-7 0/1', 'w 7-12 1/2'])
+})
+
+t('with keepPauses, a ten-minute pause above a block is a gap instead', () => {
+  // Chosen in the settings: the walk stays where it is under the music, and
+  // the pause shows as the gap it was.
+  const pieces = layoutLanes([b('m1', 'music', 0, 6), b('m2', 'music', 7, 12), b('w', 'walk', 0, 20)],
+    { keepPauses: true })
   assert.deepStrictEqual(shape(pieces), [
     'm1 0-6 0/2',
     'm2 7-12 0/2',
@@ -241,10 +249,11 @@ t('a ten-minute pause above a block is a gap, not a spike', () => {
   ])
 })
 
-t('a longer pause above a block is room it rises into', () => {
+t('even with keepPauses, a longer pause above a block is room it rises into', () => {
   // Twenty minutes is a stretch of the walk with nothing above it, and it
   // is drawn that way, as it always was.
-  const pieces = layoutLanes([b('m1', 'music', 0, 6), b('m2', 'music', 8, 12), b('w', 'walk', 0, 20)])
+  const pieces = layoutLanes([b('m1', 'music', 0, 6), b('m2', 'music', 8, 12), b('w', 'walk', 0, 20)],
+    { keepPauses: true })
   assert.deepStrictEqual(shape(pieces.filter((p) => p.block.id === 'w')),
     ['w 0-6 1/2', 'w 12-20 0/1', 'w 6-8 0/1', 'w 8-12 1/2'])
 })

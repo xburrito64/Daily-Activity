@@ -30,7 +30,7 @@ t('nothing saved is the app as it has always looked', () => {
 
 t('a good choice is kept exactly', () => {
   const picked = {
-    theme: 'tidewater', barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', blockLook: 'woven', labels: 'icon', covers: false, hints: false,
+    theme: 'tidewater', barWidth: 1650, iconSet: 'Fantasy - Very Simple', chipLook: 'stub', blockLook: 'woven', labels: 'icon', covers: false, hints: false, keepPauses: true,
   }
   assert.deepEqual(normalise(picked), picked)
 })
@@ -56,6 +56,8 @@ t('covers and hints are on unless switched off', () => {
   assert.equal(normalise({}).hints, true)
   assert.equal(normalise({ covers: 'no' }).covers, true, 'only a real false turns one off')
   assert.equal(normalise({ hints: false }).hints, false)
+  assert.equal(normalise({}).keepPauses, false, 'the bar is filled unless a gap is asked for')
+  assert.equal(normalise({ keepPauses: 'yes' }).keepPauses, false)
 })
 
 t('the far end of the slider takes the limit off', () => {

@@ -927,6 +927,7 @@ h1 {
 [data-blocks="crystal"] :not(.dense) > .blocks > .block.joined-end { --cut-tr: 0px; --cut-br: 0px; --side-r: 0px; }
 [data-blocks="crystal"] :not(.dense) > .blocks > .block.step-start { --cut-tl: var(--cut); --side-l: var(--step-l); }
 [data-blocks="crystal"] :not(.dense) > .blocks > .block.step-end { --cut-tr: var(--cut); --side-r: var(--step-r); }
+[data-blocks="crystal"] :not(.dense) > .blocks > .block.peek { --cut-tl: 0px; --cut-tr: 0px; --side-l: 0px; --side-r: 0px; }
 
 /* --- Grimoire ------------------------------------------------------------
    A spell set down in the tag's colour: dark ink tinted by it, a glowing
@@ -958,8 +959,19 @@ h1 {
 }
 [data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-start { --side-l: 0px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 [data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-end { --side-r: 0px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block.step-start { --side-l: var(--step-l); border-top-left-radius: 2px; }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block.step-end { --side-r: var(--step-r); border-top-right-radius: 2px; }
+/* Down a step, only the glowing line: the top edge turning the corner, not
+   a page border closing the block, which it doesn't. */
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.step-start {
+  --side-l: var(--step-l);
+  --rim-l: linear-gradient(90deg, var(--tag) 0 2px, transparent 2px);
+  border-top-left-radius: 2px;
+}
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.step-end {
+  --side-r: var(--step-r);
+  --rim-r: linear-gradient(270deg, var(--tag) 0 2px, transparent 2px);
+  border-top-right-radius: 2px;
+}
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.peek { --side-l: 0px; --side-r: 0px; border-radius: 0; }
 /* The line of runes, and where it parts for a name, the rest of it after. */
 [data-blocks="grimoire"] :not(.dense) > .blocks > .block.runes:not(.preview)::before,
 [data-blocks="grimoire"] :not(.dense) > .blocks > .block.runes2:not(.preview)::after {
@@ -1044,6 +1056,8 @@ h1 {
 [data-blocks="woven"] :not(.dense) > .blocks > .block.joined-end { --st-tr: 0px; --st-br: 0px; --side-r: 0px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 [data-blocks="woven"] :not(.dense) > .blocks > .block.step-start { --st-tl: 4px; --side-l: var(--step-l); border-top-left-radius: 3px; }
 [data-blocks="woven"] :not(.dense) > .blocks > .block.step-end { --st-tr: 4px; --side-r: var(--step-r); border-top-right-radius: 3px; }
+[data-blocks="woven"] :not(.dense) > .blocks > .block.peek { border-radius: 0; }
+[data-blocks="woven"] :not(.dense) > .blocks > .block.peek:not(.preview)::after { content: none; }
 
 /* The samples in the settings: a short bar to show each look on. */
 .blocksample { display: block; margin-top: var(--s-2); }
