@@ -18,6 +18,7 @@ import { restWhenAway } from './scenes/loop.js'
 import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
+import { loadPeriod, savePeriod, periodOf } from './ledger.js'
 import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
 import { Covers } from './face.js'
 import {
@@ -152,6 +153,17 @@ export default function App() {
     return kept
   })
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // The stretch the ledger beside the Overview adds up, kept between visits.
+  const [ledgerChoice, setLedgerChoice] = useState(() => loadPeriod(todayISO()))
+  const chooseLedger = useCallback((next) => {
+    setLedgerChoice(next)
+    savePeriod(next)
+  }, [])
+  const ledgerFrom = view === 'compact' ? periodOf(ledgerChoice, todayISO()).from : null
+  const ledgerTo = view === 'compact' ? periodOf(ledgerChoice, todayISO()).to : null
+  // The same object while the days are the same: the list is handed it, and
+  // a new one every draw would draw the list again.
+  const ledgerPeriod = useMemo(() => (ledgerFrom ? { from: ledgerFrom, to: ledgerTo } : null), [ledgerFrom, ledgerTo])
   const changeAppearance = (next) => {
     const kept = normalise(next)
     // Before the state changes, so the draw it causes is already in the new
@@ -499,7 +511,17 @@ export default function App() {
 
           <div className="viewswitch">
             <button className={view === 'day' ? 'on' : ''} onClick={() => setView('day')}>Day</button>
-            <button className={view === 'compact' ? 'on' : ''} onClick={() => setView('compact')}>Overview</button>
+            <button
+              className={view === 'compact' ? 'on' : ''}
+              onClick={() => {
+                // The Overview opens on the stretch its ledger is adding up,
+                // so the days beside the figures are the days they count.
+                if (view !== 'compact') setJumpTo(periodOf(ledgerChoice, todayISO()).from)
+                setView('compact')
+              }}
+            >
+              Overview
+            </button>
           </div>
 
           {appearance.theme === 'nightshift' && <TermMonitor days={days} tags={tags} />}
@@ -577,8 +599,19 @@ export default function App() {
         find={find}
         jumpTo={jumpTo}
         onJumped={handleJumped}
+        period={ledgerPeriod}
         />
-        {view === 'compact' && <Totals days={days} tags={tags} range={visible} />}
+        {/* Kept built while the Day view is up, only out of sight: opening
+            the Overview then has the list to build and nothing else. */}
+        <Totals
+          days={days}
+          tags={tags}
+          ensure={ensure}
+          choice={ledgerChoice}
+          onChoice={chooseLedger}
+          onJump={setJumpTo}
+          hidden={view !== 'compact'}
+        />
       </div>
 
       {selectedBlock && (

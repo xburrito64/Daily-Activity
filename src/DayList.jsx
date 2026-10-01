@@ -28,6 +28,8 @@ const CLICK_SLOP_PX = 8
 const CHUNK = 21 // days added each time you reach an end
 const INITIAL = 70 // enough rows to fill the screen even at the smallest zoom
 const EDGE_PX = 600 // how close to an end before more days load
+const REPORT_MS = 150 // how often the days in view are said while scrolling
+const BAND_GROW_MS = 40 // the next few days are built within five times this, idle or not
 
 /** Zoom is the height of the bar itself. */
 export const ZOOM = {
@@ -432,6 +434,7 @@ function DayList({
   jumpTo,
   onJumped,
   find,
+  period,
 }) {
   const today = todayISO()
   const scrollRef = useRef(null)
@@ -504,10 +507,10 @@ function DayList({
    * is the one that animates.
    */
   const inked = useRef(new Map())
-  const wiping = (date, block) => {
+  const wiping = useCallback((date, block) => {
     const at = inked.current.get(`${date}:${block.id}`)
     return at === undefined || performance.now() - at < INK_MS
-  }
+  }, [])
   useEffect(() => {
     const now = performance.now()
     for (const date of dates) {
@@ -519,6 +522,94 @@ function DayList({
 
   const rowTotalRef = useRef(rowTotal)
   rowTotalRef.current = rowTotal
+
+  // --- only the days near the screen are built ---------------------------
+  // Hundreds of days are loaded, and a few dozen are ever in view. Building
+  // every one of them whenever the rows changed shape — a step of zoom,
+  // opening the Overview — took a tenth of a second at a time. So the days
+  // are built as a band around the screen, and the rest are empty room of
+  // exactly their height, so every position worked out from the row height
+  // still lands where it did.
+  //
+  // When the rows change shape, only what is on screen is built straight
+  // away. The band then grows outward a few rows at a time while nothing else
+  // is happening, until it reaches several screens either way — so that by
+  // the time you scroll, the days are already there, and scrolling builds
+  // nothing. Building as you scroll instead dropped frames.
+  //
+  // The band is kept as dates, not as places in the list: weeks loading in
+  // above the screen move every place down, and a band kept by place would
+  // throw away the days it had built and build as many again.
+  const [band, setBand] = useState({ from: null, to: null, mode, rowTotal: 0 })
+  const bandRef = useRef(band)
+  bandRef.current = band
+  /** The band as places in the list as it is now; -1 where it has gone. */
+  const bandAt = (b) => ({ first: datesRef.current.indexOf(b.from), last: datesRef.current.indexOf(b.to) })
+  const bandOf = (first, last, h) => ({
+    from: datesRef.current[first], to: datesRef.current[last], mode: modeRef.current, rowTotal: h,
+  })
+  /** Where the screen is in the list, and how far the band reaches round it. */
+  const bandView = () => {
+    const el = scrollRef.current
+    const h = rowTotalRef.current
+    const count = datesRef.current.length
+    if (!el || count === 0) return null
+    const screen = Math.max(1, Math.ceil(el.clientHeight / h))
+    const top = Math.min(count - 1, Math.max(0, Math.floor(el.scrollTop / h)))
+    const day = modeRef.current === 'day'
+    return {
+      h, count, top,
+      bottom: Math.min(count - 1, top + screen),
+      // Built straight away: a little past the screen.
+      near: day ? 1 : Math.ceil(screen / 2),
+      // Grown to, a few rows at a time. The Overview's rows are small enough
+      // that every day loaded can be built, so scrolling it builds nothing.
+      far: day ? 2 * screen + 2 : count,
+    }
+  }
+  const placeBand = useCallback(() => {
+    const at = bandView()
+    if (!at) return
+    const { h, count, top, bottom, near, far } = at
+    const was = bandAt(bandRef.current)
+    const fresh = bandRef.current.mode !== modeRef.current || bandRef.current.rowTotal !== h
+      || was.first < 0 || was.last < 0
+    const want = { first: Math.max(0, top - near), last: Math.min(count - 1, bottom + near) }
+    if (!fresh && was.first <= want.first && was.last >= want.last) return
+    // Moving on: what is built is kept where it joins what is needed, so
+    // scrolling back finds it still there; otherwise start again from here.
+    const joins = !fresh && was.last >= want.first - 1 && was.first <= want.last + 1
+    const next = joins
+      ? {
+        first: Math.max(Math.min(was.first, want.first), top - far),
+        last: Math.min(Math.max(was.last, want.last), bottom + far),
+      }
+      : want
+    setBand(bandOf(next.first, next.last, h))
+  }, [])
+  // The growing, a step at a time whenever the page has a moment to spare —
+  // scrolling included, since the graphics card does the scrolling and the
+  // page is mostly idle meanwhile. One step waits at a time.
+  const growing = useRef(null)
+  useEffect(() => () => cancelIdleCallback(growing.current), [])
+  useEffect(() => {
+    if (growing.current) return
+    growing.current = requestIdleCallback(() => {
+      growing.current = null
+      const at = bandView()
+      if (!at || bandRef.current.mode !== modeRef.current || bandRef.current.rowTotal !== at.h) return
+      const was = bandAt(bandRef.current)
+      if (was.first < 0 || was.last < 0) return
+      const target = { first: Math.max(0, at.top - at.far), last: Math.min(at.count - 1, at.bottom + at.far) }
+      if (was.first <= target.first && was.last >= target.last) return
+      const step = modeRef.current === 'day' ? 2 : 12
+      setBand(bandOf(
+        Math.max(target.first, Math.min(was.first, was.first - step)),
+        Math.min(target.last, Math.max(was.last, was.last + step)),
+        at.h,
+      ))
+    }, { timeout: BAND_GROW_MS * 5 })
+  })
 
   useEffect(() => { ensure(range.start, range.end) }, [range.start, range.end, ensure])
 
@@ -591,9 +682,24 @@ function DayList({
     didInitialScroll.current = true
   }, [dates, rowTotal, today, chromeReady])
 
-  // Which days are actually on screen, for the totals beside the list.
+  // Which days are actually on screen, for the date in the header (and
+  // Tidewater's water). Said at most every REPORT_MS while scrolling: each
+  // time it is said the whole app redraws, and in the Overview, where a row
+  // is a few pixels tall, the days in view change on almost every frame.
   const reportedRange = useRef('')
+  const reportTimer = useRef(null)
+  const lastReport = useRef(0)
+  useEffect(() => () => clearTimeout(reportTimer.current), [])
   const reportVisible = useCallback(() => {
+    if (reportTimer.current) return
+    const wait = Math.max(0, REPORT_MS - (performance.now() - lastReport.current))
+    reportTimer.current = setTimeout(() => {
+      reportTimer.current = null
+      lastReport.current = performance.now()
+      reportNowRef.current()
+    }, wait)
+  }, [])
+  const reportNow = useCallback(() => {
     const el = scrollRef.current
     if (!el || !onVisibleRange) return
     const h = rowTotalRef.current
@@ -608,6 +714,8 @@ function DayList({
     reportedRange.current = key
     onVisibleRange(range)
   }, [onVisibleRange])
+  const reportNowRef = useRef(reportNow)
+  reportNowRef.current = reportNow
 
   useEffect(reportVisible)
 
@@ -615,6 +723,7 @@ function DayList({
     const el = scrollRef.current
     if (!el) return
     reportVisible()
+    placeBand()
 
     const h = rowTotalRef.current
     const index = Math.max(0, Math.floor(el.scrollTop / h))
@@ -629,7 +738,7 @@ function DayList({
     } else if (el.scrollHeight - el.scrollTop - el.clientHeight < EDGE_PX) {
       setRange((r) => ({ ...r, end: shiftDate(r.end, CHUNK) }))
     }
-  }, [reportVisible])
+  }, [reportVisible, placeBand])
 
   // --- ctrl+scroll zoom, anchored on whatever is under the cursor --------
   // What the wheel handler needs, kept current without setting it up again:
@@ -744,6 +853,8 @@ function DayList({
     found.set(hit.date, onDay)
   }
   const searching = (find?.hits.length ?? 0) > 0
+  /** Whether a day is in the stretch the ledger beside the Overview is adding up. */
+  const inPeriod = (date) => !isDay && !!period && date >= period.from && date <= period.to
   const markOf = (date, b) => found.get(date)?.get(
     `${slotToTime(b.startSlot)}|${slotToTime(b.endSlot)}|${b.tag}|${b.game ?? ''}|${b.show ?? ''}`,
   )
@@ -998,16 +1109,20 @@ function DayList({
 
   useEffect(() => () => clearTimeout(wipeTimer.current), [])
 
-  function askWipe(date) {
+  // The same function from one draw to the next, so the rows it is handed
+  // to are not drawn again for it: which day is asking is read from a ref.
+  const confirmRef = useRef(confirmWipe)
+  confirmRef.current = confirmWipe
+  const askWipe = useCallback((date) => {
     clearTimeout(wipeTimer.current)
-    if (confirmWipe === date) {
+    if (confirmRef.current === date) {
       setConfirmWipe(null)
       onWipeDay(date)
       return
     }
     setConfirmWipe(date)
     wipeTimer.current = setTimeout(() => setConfirmWipe(null), WIPE_CONFIRM_MS)
-  }
+  }, [onWipeDay])
 
   const tagById = (id) => tags.find((t) => t.id === id)
   const armedTag = armed ? tagById(armed.tag) : null
@@ -1061,13 +1176,20 @@ function DayList({
     : null
   const covers = useContext(Covers)
   const { chipLook, blockLook, keepPauses, labels, covers: showCovers, hints, theme } = useContext(Appearance)
-  const scriptorium = theme === 'scriptorium'
   const starlit = theme === 'starlit'
   const firstDay = useFirstDay()
   const birthdays = useBirthdays()
-  // Starlit ranks every tag by its hours this past month.
-  const month = useMemo(() => (starlit ? monthByTag(days, todayISO()) : null), [days, starlit])
-  const words = wordsFor(theme)
+  // Starlit ranks every tag by its hours this past month. Kept the same
+  // object while the hours are the same: every row is handed it, and older
+  // weeks arriving as you scroll change nothing about this past month.
+  const monthRef = useRef(null)
+  const month = useMemo(() => {
+    const next = starlit ? monthByTag(days, todayISO()) : null
+    const was = monthRef.current
+    if (was && next && was.size === next.size && [...next].every(([id, minutes]) => was.get(id) === minutes)) return was
+    monthRef.current = next
+    return next
+  }, [days, starlit])
   // With covers off, a named block is drawn as though none had ever been
   // found: its own cover set aside, and nothing borrowed.
   const faceOf = (b) => blockFace(tagById(b.tag), showCovers ? b : { ...b, cover: '' }, showCovers ? covers : null)
@@ -1076,7 +1198,39 @@ function DayList({
     ? armedTag
     : resizingBlock && faceOf(resizingBlock)
 
+  // After every draw, and so after anything that has just moved the list —
+  // opening on today, a jump, the place kept while days load above — the
+  // band is put where the list now is, before the frame is shown.
+  useLayoutEffect(placeBand)
+  // Until then, if the rows have changed shape since the band was placed —
+  // zoomed, or the other view — only the rows that are about to be on screen
+  // are built, around the day the list is about to show.
+  let shown = { first: dates.indexOf(band.from), last: dates.indexOf(band.to) }
+  if (band.mode !== mode || band.rowTotal !== rowTotal || shown.first < 0 || shown.last < 0) {
+    const el = scrollRef.current
+    const screen = el ? Math.max(1, Math.ceil(el.clientHeight / rowTotal)) : 40
+    const at = pendingAnchor.current?.date ?? jumpTo ?? topDates.current[mode]
+    let i = dates.indexOf(at)
+    if (i < 0) i = el ? Math.floor(el.scrollTop / rowTotal) : 0
+    shown = { first: i - screen, last: i + screen }
+  }
+  shown = {
+    first: Math.min(Math.max(0, shown.first), Math.max(0, dates.length - 1)),
+    last: Math.min(Math.max(0, shown.last), dates.length - 1),
+  }
+
   const hourTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
+
+  // The hour lines inside every bar, as one picture shared by all of them:
+  // a line at each hour, on the same whole pixel the blocks' edges use.
+  // Twenty-three elements a row was over a thousand on the Overview, each
+  // made and placed whenever a row was.
+  const gridlines = useMemo(() => {
+    const at = (h) => (trackWidth ? `${Math.round((h / 24) * trackWidth)}px` : `${(h / 24) * 100}%`)
+    const one = (h) => `transparent ${at(h)}, var(--c-line-soft) ${at(h)}, `
+      + `var(--c-line-soft) calc(${at(h)} + 1px), transparent calc(${at(h)} + 1px)`
+    return `linear-gradient(90deg, ${Array.from({ length: 23 }, (_, i) => one(i + 1)).join(', ')})`
+  }, [trackWidth])
 
 
   return (
@@ -1133,476 +1287,560 @@ function DayList({
         className={`scroller${armedTag ? ' armed' : ''}`}
         ref={scrollRef}
         data-blocks={blockLook}
-        // Every row's height, for the days out of sight: the browser skips
-        // drawing those and holds their place at exactly this. See app.css.
-        style={{ '--row-total': `${rowTotal}px` }}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
       >
-        {dates.map((date, rowIndex) => {
-          const day = days[date]
-          const isToday = date === today
-          // Christmas Eve, the Sundays of Advent, Halloween, Easter, and
-          // whatever festivals follow them.
-          // Starlit only, so far.
-          const festival = starlit ? festivalOf(date, firstDay, birthdays) : null
-          let blocks = resizing?.date === date
-            ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
-            : day?.blocks ?? []
-
-          // While painting, lay the day out as it will be once the drag is
-          // released — so the new block shows at the height it will land at,
-          // and anything it overlaps shrinks to make room for it. A stretch
-          // that runs past midnight previews on every day it reaches, which
-          // is what shows you it is going to land as more than one block.
-          let previewId = null
+        <div className="rowspacer" aria-hidden="true" style={{ height: shown.first * rowTotal }} />
+        {dates.slice(shown.first, shown.last + 1).map((date, i) => {
+          const rowIndex = shown.first + i
+          // Everything a row is given is either the same for every row, or
+          // set only on the row it concerns, so a row with nothing new to
+          // show is skipped: loading the next few weeks, or painting on one
+          // day, no longer builds every other day on the list again.
           const span = painting?.find((p) => p.date === date)
-          if (span) {
-            const before = blocks
-            blocks = applyPaint(
-              before,
-              {
-                id: PREVIEW_ID,
-                tag: armed.tag,
-                startSlot: span.startSlot,
-                endSlot: span.endSlot,
-                note: '',
-              },
-              // Where the pointer went down decides the height on the day it
-              // went down on. The days it carried into take the same lane,
-              // measured from where the stretch enters them.
-              { slot: date === drag.date ? drag.anchor : span.startSlot, lane: drag.lane },
-            )
-            // Usually the new block, but painting a tag over itself merges,
-            // in which case the survivor is what changed.
-            previewId = blocks.find((b) => {
-              const was = before.find((o) => o.id === b.id)
-              return !was || was.startSlot !== b.startSlot || was.endSlot !== b.endSlot
-            })?.id ?? null
-          }
-
-          // Counted after the paint preview is folded in, so the first drag
-          // on an empty day fills it in as you draw rather than after.
-          const blank = !day?.malformed && blocks.length === 0
-
-          const pieces = layoutLanes(blocks, { keepPauses })
-          // Which block covers which is the lane's business, not the DOM's.
-          //
-          // The list order is the stacking order, and dragging an edge
-          // rewrites it to keep a block at the height it already had. If the
-          // blocks were drawn in list order, that rewrite would shuffle the
-          // elements on screen — and moving an element is enough to start
-          // anything that plays on arrival over again, for every block in the
-          // day, twice: once on the way out and once on the way back.
-          //
-          // So they are drawn in an order that never changes, and depth is
-          // said out loud with a z-index instead. Sorting by id is arbitrary,
-          // which is the point: nothing about the day can reorder it.
-          const drawn = [...pieces].sort((a, b) =>
-            (a.block.id < b.block.id ? -1 : a.block.id > b.block.id ? 1 : a.index - b.index))
-          // One piece per block, for the grab strips: they belong to the
-          // block's own ends rather than to any slice of it.
-          const wholes = drawn.filter((p) => p.isFirst)
-          // Each piece by its place in its block, so one can find the pieces
-          // either side of it: a block looks at where its neighbours start to
-          // draw its steps.
-          const pieceAt = new Map(pieces.map((p) => [`${p.block.id}#${p.index}`, p]))
-          // Where a block's name sits across the line of runes in one of its
-          // pieces, in px along the bar; null where it is up or down out of
-          // the way, or there is no name.
-          const holeIn = (piece) => {
-            const band = labelOf.get(piece.block)
-            if (!band) return null
-            const row = (piece.top + 0.5) / piece.lanes
-            if (row < band.top || row > band.bottom) return null
-            const middle = (xAt(band.from) + xAt(band.to)) / 2
-            return [middle - band.label.width / 2, middle + band.label.width / 2]
-          }
-          // A name belongs to the block rather than to any slice of it, so it
-          // is centred on the whole block. Choosing a slice and centring in
-          // that instead is what pushed names off to one side: the roomiest
-          // slice of a two-hour block can sit right at one end of it.
-          //
-          // Each block keeps its pieces, though, because the band a name sits
-          // in has to be one the block holds along the whole width the name
-          // reaches — see below.
-          const named = [...drawn.reduce((byBlock, p) => {
-            const had = byBlock.get(p.block) ?? []
-            had.push(p)
-            byBlock.set(p.block, had)
-            return byBlock
-          }, new Map())].map(([block, mine]) => ({
-            block,
-            mine,
-            middle: (block.startSlot + block.endSlot) / 2,
-          }))
-          // Where each name goes, worked out ahead of the blocks: Grimoire's
-          // runes part around it.
-          const wordsOnly = labels === 'name'
-          const labelled = day?.malformed ? [] : named.map(({ block: b, mine, middle }) => {
-            // A named game wears its own name and its own cover here.
-            // Twenty Game blocks in a week all called "Game" say nothing
-            // the colour hasn't already said.
-            const tag = faceOf(b)
-            // "Name only" is laid out as a block with no picture at all,
-            // which the fitting already knows how to do: the name, where
-            // it fits, and nothing where it doesn't.
-            const band = wordsOnly
-              ? bandFor(mine, middle, null, tag?.name ?? b.tag, barHeight, trackWidth, drawn)
-              : bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn, labels !== 'icon')
-            return band && { block: b, tag, band }
-          }).filter(Boolean)
-          const labelOf = new Map(labelled.map((l) => [l.block, l.band]))
-          const selectedPieces = selected?.date === date
-            ? pieces.filter((p) => p.block.id === selected.id)
-            : []
-
-          // Blocks a search has lit, and which of them it is standing on.
-          // Outlined rather than ringed: a block with something laid over it
-          // is several rectangles, and a ring on each of them draws lines
-          // through the middle of one block and leaves the shape it really
-          // has unmarked.
-          const litBlocks = searching
-            ? blocks.map((b) => ({ block: b, lit: litFor(date, b) })).filter((b) => b.lit)
-            : []
-
-          const track = (
-            <div
-              className={`track${dense ? ' dense' : ''}${blank ? ' empty' : ''}`
-                + `${searching ? ' finding' : ''}`}
-              data-track-date={date}
-              style={{ height: barHeight }}
-            >
-              {isToday && theme === 'hearthfire' && !day?.malformed && <Burnt date={date} />}
-              {/* Halloween's spider, let down from its web over the bar. */}
-              {festival?.id === 'halloween' && isDay && <Spider className="bar-spider" />}
-
-              {/* One per hour, on the same whole pixels the blocks use, so a
-                  gridline sits exactly under the edge that covers it. */}
-              {!dense && Array.from({ length: 23 }, (_, i) => (
-                <div key={i} className="gridline" style={{ left: edgeAt((i + 1) * 6) }} />
-              ))}
-
-              {/* Said out loud rather than left blank — but only in the Day
-                  view, where there is room for it. In the Overview a row is
-                  a few pixels tall and the hatching alone reads fine. */}
-              {blank && isDay && (
-                <span className="emptyday">{words.emptyDay}</span>
-              )}
-
-              {/* The blocks keep their depths to themselves, so a block three
-                  lanes down still sits under every name and grab strip. */}
-              {day?.malformed ? (
-                <span className="rowbroken">needs fixing in Obsidian</span>
-              ) : (
-              <div className="blocks">
-                {drawn.map((piece) => {
-                const b = piece.block
-                const tag = tagById(b.tag)
-                const look = pieceLook(
-                  piece,
-                  pieceAt.get(`${b.id}#${piece.index - 1}`),
-                  pieceAt.get(`${b.id}#${piece.index + 1}`),
-                )
-                // Grimoire's runes, whole ones only, through the middle of
-                // what shows of the piece; none where too little of it shows
-                // to hold a line. Where the block's name sits across that
-                // line, the runes part for it.
-                const runes = blockLook === 'grimoire' && trackWidth && barHeight / piece.lanes >= RUNES_MIN_BAND
-                  ? runeSpans(xAt(b.startSlot), xAt(b.endSlot), xAt(piece.from), xAt(piece.to), holeIn(piece))
-                  : []
-                return (
-                  <div
-                    // Named for which piece of its block it is, not for where
-                    // it happens to start. Dragging an edge moves where a
-                    // piece begins, and a key built from that would make every
-                    // step look like a different element: React would replace
-                    // it, and anything that plays on arrival would play again.
-                    key={`${b.id}#${piece.index}`}
-                    data-block-id={b.id}
-                    className={
-                      'block' + (b.id === previewId ? ' preview' : '')
-                      + litFor(date, b)
-                      // Only on the way in. A piece that appears because
-                      // something else moved is not an arrival.
-                      + (wiping(date, b) ? '' : ' settled')
-                      // Square where the block carries on: a block cut where
-                      // it steps up has to read as one shape.
-                      + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
-                      + `${look.stepStart ? ' step-start' : ''}${look.stepEnd ? ' step-end' : ''}`
-                      + (look.stepStart && look.stepEnd && trackWidth
-                        && xAt(piece.to) - xAt(piece.from) <= PEEK_MAX ? ' peek' : '')
-                      + (runes.length > 0 ? ' runes' : '') + (runes.length > 1 ? ' runes2' : '')
-                    }
-                    style={{
-                      ...spanAt(piece.from, piece.to),
-                      // Where the piece starts along the bar, for the looks
-                      // with a pattern: drawn from the bar's own start, the
-                      // pattern runs on unbroken across the cut where a block
-                      // steps around an overlap.
-                      '--x': trackWidth ? `${xAt(piece.from)}px` : '0px',
-                      ...look.vars,
-                      ...Object.fromEntries(runes.flatMap((r, i) => [
-                        [`--runes${i ? 2 : ''}-l`, `${r.left}px`],
-                        [`--runes${i ? 2 : ''}-r`, `${r.right}px`],
-                        [`--runes${i ? 2 : ''}-shift`, `${r.shift}px`],
-                      ])),
-                      // Every block runs from wherever it starts to the floor
-                      // of the bar. Whatever is layered over it covers the
-                      // lower part, so nothing is left standing in empty
-                      // space. Inset only against the edges of the bar itself.
-                      top: piece.top === 0
-                        ? 'var(--block-inset)'
-                        : `${(piece.top / piece.lanes) * 100}%`,
-                      bottom: 'var(--block-inset)',
-                      // How deep the block sits is how it stacks.
-                      zIndex: piece.lane,
-                      '--tag': tag?.colour ?? '#555',
-                    }}
-                    title={`${b.game || b.show || tag?.name || b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
-${b.note}` : ''}`}
-                  />
-                )
-                })}
-              </div>
-              )}
-
-              {/* Over the blocks, so it can be found against a full day, but
-                  under the names and grab strips, which you have to be able to
-                  read and grab through it. */}
-              {isToday && <NowLine date={date} />}
-
-              {/* Names are drawn over the blocks, one per block rather than
-                  one per piece: a block cut where it steps up is still one
-                  thing with one name, sitting in its own lane across the whole
-                  of it. */}
-              {labelled.map(({ block: b, tag, band }) => {
-                const { label, top, bottom, from, to } = band
-                return (
-                  <span
-                    key={`l${b.id}`}
-                    className={`block-label${litFor(date, b)}`}
-                    // Names its block, the way the block itself does. It is
-                    // not always drawn across the whole of it, so there is
-                    // otherwise no way to tell from the page which is which.
-                    data-block-id={b.id}
-                    style={{
-                      ...spanAt(from, to),
-                      top: `${top * 100}%`,
-                      height: `${(bottom - top) * 100}%`,
-                    }}
-                  >
-                    {!wordsOnly && <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />}
-                    {label.mode === 'full' && (tag ? tag.name : b.tag)}
-                  </span>
-                )
-              })}
-
-              {/* Handles are drawn over the blocks so they are never buried,
-                  but only as tall as the block itself — a full-height strip
-                  would reach into whatever is stacked above or below and steal
-                  its clicks. A ten-minute block is narrower than two grab
-                  strips, so they halve to fit; it ends up entirely covered,
-                  which is why a press that goes nowhere opens the note instead
-                  of counting as a resize. */}
-              {isDay && !day?.malformed && !previewId && wholes.map((piece) => {
-                const b = piece.block
-                const lane = {
-                  top: piece.lane === 0
-                    ? 'var(--block-inset)'
-                    : `${(piece.lane / piece.lanes) * 100}%`,
-                  height: `calc(${100 / piece.lanes}%`
-                    + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
-                    + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
-                  '--block-w': `${((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth}px`,
-                }
-                return (
-                  <span key={`h${b.id}`}>
-                    <span
-                      className="handle start"
-                      data-block-id={b.id}
-                      data-handle="start"
-                      style={{ left: edgeAt(b.startSlot), ...lane }}
-                    />
-                    <span
-                      className="handle end"
-                      data-block-id={b.id}
-                      data-handle="end"
-                      style={{ left: edgeAt(b.endSlot), ...lane }}
-                    />
-                  </span>
-                )
-              })}
-
-              {litBlocks.length > 0 && (
-                <svg className="finds" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {litBlocks.map(({ block, lit }) => (
-                    <polygon
-                      key={`f${block.id}`}
-                      className={lit.includes('current') ? 'current' : ''}
-                      points={silhouette(pieces.filter((p) => p.block === block), pieces)}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ))}
-                </svg>
-              )}
-
-              {selectedPieces.length > 0 && (
-                <svg className="selection" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <polygon points={silhouette(selectedPieces, pieces)} vectorEffect="non-scaling-stroke" />
-                </svg>
-              )}
-
-           </div>
-          )
-
-          if (!isDay) {
-            return (
-              <div
-                key={date}
-                ref={rowIndex === 0 ? firstRowRef : undefined}
-                className={`compactrow${isToday ? ' today' : ''}${dayOfWeek(date) === 0 ? ' weekedge' : ''}`
-                  + `${rowIndex === 0 ? ' measured' : ''}`}
-                data-festival={festival?.id}
-              >
-                <div className="gutter">
-                  <span className="gday">{weekdayOf(date)}</span>
-                  <span className="gdate">{formatShortDate(date)}</span>
-                </div>
-                {track}
-              </div>
-            )
-          }
-
           return (
-            <section
+            <DayRow
               key={date}
-              ref={rowIndex === 0 ? firstRowRef : undefined}
-              className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`
-                + `${rowIndex === 0 ? ' measured' : ''}`}
-              data-festival={festival?.id}
-            >
-              <h2 className="dayhead">
-                {/* Scriptorium opens every day with an illuminated initial,
-                    coloured by what filled it. */}
-                {scriptorium && (() => {
-                  const lit = illumination(day?.malformed ? [] : day?.blocks)
-                  return (
-                    <Initial
-                      letter={weekdayOf(date).charAt(0).toUpperCase()}
-                      level={lit.level}
-                      colours={lit.grounds.map((id) => tagById(id)?.colour ?? '#8a7a66')}
-                      gleam={isToday && lit.level === 'gilded'}
-                    />
-                  )
-                })()}
-                <span className="dayweekday" data-dow={dayOfWeek(date)}>{weekdayOf(date)}</span>
-                {festival ? (
-                  <>
-                    <span className="festdate">{formatDayHeading(date)}</span>
-                    {[festival, ...(festival.also ?? [])].map((f) => (
-                      <FestiveMark key={f.key ?? f.id} id={f.id} lit={isToday} nth={f.nth} />
-                    ))}
-                    <span className="festname">
-                      {[festival, ...(festival.also ?? [])]
-                        .map((f) => (f.age != null ? `${f.name} · ${f.age}` : f.name))
-                        .join(' · ')}
-                    </span>
-                  </>
-                ) : formatDayHeading(date)}
-                {starlit && !day?.malformed && isComplete(day?.blocks) && (
-                  <Moonweed title="Every hour of this day accounted for" />
-                )}
-                {isToday && <span className="todaymark">today</span>}
-                {blank && <span className="daysummary">{words.blank}</span>}
-                {scriptorium && !day?.malformed && (
-                  <Chronicle
-                    blocks={day?.blocks}
-                    isToday={isToday}
-                    nameOf={(id) => tagById(id)?.name ?? id}
-                    colourOf={(id) => tagById(id)?.colour ?? '#9e3122'}
-                  />
-                )}
-              </h2>
-
-              {track}
-
-              <div className="dayruler">
-                {Array.from({ length: 25 }, (_, h) => (
-                  <span
-                    key={h}
-                    data-hour={h}
-                    className={`rtick${h % 2 === 0 ? ' major' : ''}`}
-                    style={{ left: edgeAt(h * 6) }}
-                  >
-                    <i className="rmark" />
-                    {h % 2 === 0 && (
-                      <b className={`rlabel${h === 0 ? ' first' : ''}${h === 24 ? ' last' : ''}`}>
-                        {String(h).padStart(2, '0')}:00
-                      </b>
-                    )}
-                  </span>
-                ))}
-              </div>
-
-              <div className="daychips">
-                <div className="chipgroup">
-                {/* Hidden tags leave the row but not the bar: every day that
-                    already has one still draws it by the full list. */}
-                {tags.filter((t) => !t.hidden).map((t) => {
-                  const isArmed = armed?.date === date && armed?.tag === t.id
-                  return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`chip${isArmed ? ' armed' : ''}`}
-                    data-look={chipLook}
-                    style={{ '--chip': t.colour }}
-                    disabled={day?.malformed}
-                    onClick={() => onArm(date, t.id)}
-                    title={month ? rankTitle(t.name, month.get(t.id) ?? 0) : undefined}
-                  >
-                    {/* The glow of a picked-up tag, as its own element so it
-                        can pulse by fading — which the graphics card does on
-                        its own — rather than by redrawing its shadow, which
-                        makes the page redraw every day in the list with it. */}
-                    {isArmed && <i className="chip-aura" aria-hidden="true" />}
-                    {/* Starlit: a picked-up tag is a spell being readied, a
-                        circle turning behind it. */}
-                    {starlit && isArmed && (
-                      <i className="chip-circle" aria-hidden="true"><MagicCircle size="100%" /></i>
-                    )}
-                    {month && <RankGem minutes={month.get(t.id) ?? 0} />}
-                    <TagIcon tag={t} />
-                    {t.name}
-                    {/* Hearthfire sets a picked-up tag alight: flames along
-                        its top and an ember creeping round its edge. */}
-                    {theme === 'hearthfire' && isArmed && (
-                      <i className="chip-fire" aria-hidden="true"><i className="fuse"><i /></i></i>
-                    )}
-                  </button>
-                  )
-                })}
-                </div>
-
-                <button
-                  type="button"
-                  className={`wipe${confirmWipe === date ? ' confirming' : ''}`}
-                  disabled={day?.malformed || (day?.blocks.length ?? 0) === 0}
-                  title={confirmWipe === date ? 'Click again to clear' : 'Clear this whole day'}
-                  onClick={() => askWipe(date)}
-                >
-                  <TrashIcon />
-                  {confirmWipe === date ? words.wipeConfirm : words.wipe}
-                </button>
-              </div>
-            </section>
+              date={date}
+              day={days[date]}
+              isToday={date === today}
+              rowRef={rowIndex === shown.first ? firstRowRef : undefined}
+              mode={mode}
+              dense={dense}
+              barHeight={barHeight}
+              rowTotal={rowTotal}
+              trackWidth={trackWidth}
+              gridlines={gridlines}
+              theme={theme}
+              blockLook={blockLook}
+              keepPauses={keepPauses}
+              labels={labels}
+              chipLook={chipLook}
+              showCovers={showCovers}
+              covers={covers}
+              tags={tags}
+              firstDay={firstDay}
+              birthdays={birthdays}
+              month={month}
+              inPeriod={inPeriod(date)}
+              armedTagId={armed?.date === date ? armed.tag : null}
+              resizing={resizing?.date === date ? resizing : null}
+              paintSpan={span}
+              paintFrom={span ? { tag: armed.tag, date: drag.date, anchor: drag.anchor, lane: drag.lane } : null}
+              selectedId={selected?.date === date ? selected.id : null}
+              searching={searching}
+              marks={found.get(date)}
+              currentAt={find?.at}
+              confirming={confirmWipe === date}
+              wiping={wiping}
+              onArm={onArm}
+              askWipe={askWipe}
+            />
           )
         })}
+        <div className="rowspacer" aria-hidden="true" style={{ height: Math.max(0, dates.length - 1 - shown.last) * rowTotal }} />
       </div>
     </div>
   )
 }
+
+/**
+ * One day on the list: its bar, and in the Day view its heading, ruler and
+ * tags.
+ *
+ * Its own component so that it can be skipped. The list holds hundreds of
+ * days, and building every one of them again whenever anything changed —
+ * the next few weeks arriving as you scroll, one block being painted — was
+ * what made scrolling the Overview hitch. Everything it is given is either
+ * the same for every row or set only on the row it concerns, so a day with
+ * nothing new to show is left exactly as it was.
+ */
+const DayRow = memo(function DayRow({
+  date, day, isToday, rowRef, mode, dense, barHeight, rowTotal, trackWidth, gridlines,
+  theme, blockLook, keepPauses, labels, chipLook, showCovers, covers, tags,
+  firstDay, birthdays, month, inPeriod, armedTagId, resizing, paintSpan, paintFrom,
+  selectedId, searching, marks, currentAt, confirming, wiping, onArm, askWipe,
+}) {
+  const isDay = mode === 'day'
+  const starlit = theme === 'starlit'
+  const scriptorium = theme === 'scriptorium'
+  const words = wordsFor(theme)
+  const tagById = (id) => tags.find((t) => t.id === id)
+  // With covers off, a named block is drawn as though none had ever been
+  // found: its own cover set aside, and nothing borrowed.
+  const faceOf = (b) => blockFace(tagById(b.tag), showCovers ? b : { ...b, cover: '' }, showCovers ? covers : null)
+  // See the list's own xAt: every edge on a whole pixel, shared by the two
+  // blocks that meet there.
+  const xAt = (slot) => Math.round((slot / SLOTS_PER_DAY) * trackWidth)
+  const edgeAt = (slot) => (trackWidth ? `${xAt(slot)}px` : `${pct(slot)}%`)
+  const spanAt = (from, to) => (trackWidth
+    ? { left: `${xAt(from)}px`, width: `${xAt(to) - xAt(from)}px` }
+    : { left: `${pct(from)}%`, width: `${pct(to - from)}%` })
+  /** '', ' hit', or ' hit current' — what a search has to say about a block. */
+  const litFor = (_date, b) => {
+    const at = marks?.get(`${slotToTime(b.startSlot)}|${slotToTime(b.endSlot)}|${b.tag}|${b.game ?? ''}|${b.show ?? ''}`)
+    return at === undefined ? '' : at === currentAt ? ' hit current' : ' hit'
+  }
+
+  // Christmas Eve, the Sundays of Advent, Halloween, Easter, and
+  // whatever festivals follow them.
+  // Starlit only, so far.
+  const festival = starlit ? festivalOf(date, firstDay, birthdays) : null
+  let blocks = resizing?.date === date
+    ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
+    : day?.blocks ?? []
+
+  // While painting, lay the day out as it will be once the drag is
+  // released — so the new block shows at the height it will land at,
+  // and anything it overlaps shrinks to make room for it. A stretch
+  // that runs past midnight previews on every day it reaches, which
+  // is what shows you it is going to land as more than one block.
+  let previewId = null
+  const span = paintSpan
+  if (span) {
+    const before = blocks
+    blocks = applyPaint(
+      before,
+      {
+        id: PREVIEW_ID,
+        tag: paintFrom.tag,
+        startSlot: span.startSlot,
+        endSlot: span.endSlot,
+        note: '',
+      },
+      // Where the pointer went down decides the height on the day it
+      // went down on. The days it carried into take the same lane,
+      // measured from where the stretch enters them.
+      { slot: date === paintFrom.date ? paintFrom.anchor : span.startSlot, lane: paintFrom.lane },
+    )
+    // Usually the new block, but painting a tag over itself merges,
+    // in which case the survivor is what changed.
+    previewId = blocks.find((b) => {
+      const was = before.find((o) => o.id === b.id)
+      return !was || was.startSlot !== b.startSlot || was.endSlot !== b.endSlot
+    })?.id ?? null
+  }
+
+  // Counted after the paint preview is folded in, so the first drag
+  // on an empty day fills it in as you draw rather than after.
+  const blank = !day?.malformed && blocks.length === 0
+
+  const pieces = layoutLanes(blocks, { keepPauses })
+  // Which block covers which is the lane's business, not the DOM's.
+  //
+  // The list order is the stacking order, and dragging an edge
+  // rewrites it to keep a block at the height it already had. If the
+  // blocks were drawn in list order, that rewrite would shuffle the
+  // elements on screen — and moving an element is enough to start
+  // anything that plays on arrival over again, for every block in the
+  // day, twice: once on the way out and once on the way back.
+  //
+  // So they are drawn in an order that never changes, and depth is
+  // said out loud with a z-index instead. Sorting by id is arbitrary,
+  // which is the point: nothing about the day can reorder it.
+  const drawn = [...pieces].sort((a, b) =>
+    (a.block.id < b.block.id ? -1 : a.block.id > b.block.id ? 1 : a.index - b.index))
+  // One piece per block, for the grab strips: they belong to the
+  // block's own ends rather than to any slice of it.
+  const wholes = drawn.filter((p) => p.isFirst)
+  // Each piece by its place in its block, so one can find the pieces
+  // either side of it: a block looks at where its neighbours start to
+  // draw its steps.
+  const pieceAt = new Map(pieces.map((p) => [`${p.block.id}#${p.index}`, p]))
+  // Where a block's name sits across the line of runes in one of its
+  // pieces, in px along the bar; null where it is up or down out of
+  // the way, or there is no name.
+  const holeIn = (piece) => {
+    const band = labelOf.get(piece.block)
+    if (!band) return null
+    const row = (piece.top + 0.5) / piece.lanes
+    if (row < band.top || row > band.bottom) return null
+    const middle = (xAt(band.from) + xAt(band.to)) / 2
+    return [middle - band.label.width / 2, middle + band.label.width / 2]
+  }
+  // A name belongs to the block rather than to any slice of it, so it
+  // is centred on the whole block. Choosing a slice and centring in
+  // that instead is what pushed names off to one side: the roomiest
+  // slice of a two-hour block can sit right at one end of it.
+  //
+  // Each block keeps its pieces, though, because the band a name sits
+  // in has to be one the block holds along the whole width the name
+  // reaches — see below.
+  const named = [...drawn.reduce((byBlock, p) => {
+    const had = byBlock.get(p.block) ?? []
+    had.push(p)
+    byBlock.set(p.block, had)
+    return byBlock
+  }, new Map())].map(([block, mine]) => ({
+    block,
+    mine,
+    middle: (block.startSlot + block.endSlot) / 2,
+  }))
+  // Where each name goes, worked out ahead of the blocks: Grimoire's
+  // runes part around it.
+  const wordsOnly = labels === 'name'
+  const labelled = day?.malformed ? [] : named.map(({ block: b, mine, middle }) => {
+    // A named game wears its own name and its own cover here.
+    // Twenty Game blocks in a week all called "Game" say nothing
+    // the colour hasn't already said.
+    const tag = faceOf(b)
+    // "Name only" is laid out as a block with no picture at all,
+    // which the fitting already knows how to do: the name, where
+    // it fits, and nothing where it doesn't.
+    const band = wordsOnly
+      ? bandFor(mine, middle, null, tag?.name ?? b.tag, barHeight, trackWidth, drawn)
+      : bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn, labels !== 'icon')
+    return band && { block: b, tag, band }
+  }).filter(Boolean)
+  const labelOf = new Map(labelled.map((l) => [l.block, l.band]))
+  const selectedPieces = selectedId
+    ? pieces.filter((p) => p.block.id === selectedId)
+    : []
+
+  // Blocks a search has lit, and which of them it is standing on.
+  // Outlined rather than ringed: a block with something laid over it
+  // is several rectangles, and a ring on each of them draws lines
+  // through the middle of one block and leaves the shape it really
+  // has unmarked.
+  const litBlocks = searching
+    ? blocks.map((b) => ({ block: b, lit: litFor(date, b) })).filter((b) => b.lit)
+    : []
+
+  const track = (
+    <div
+      className={`track${dense ? ' dense' : ''}${blank ? ' empty' : ''}`
+        + `${searching ? ' finding' : ''}`}
+      data-track-date={date}
+      style={{ height: barHeight }}
+    >
+      {isToday && theme === 'hearthfire' && !day?.malformed && <Burnt date={date} />}
+      {/* Halloween's spider, let down from its web over the bar. */}
+      {festival?.id === 'halloween' && isDay && <Spider className="bar-spider" />}
+
+      {/* A line at each hour, on the same whole pixels the blocks use, so a
+          line sits exactly under the edge that covers it. */}
+      {!dense && <div className="gridlines" style={{ backgroundImage: gridlines }} />}
+
+      {/* Said out loud rather than left blank — but only in the Day
+          view, where there is room for it. In the Overview a row is
+          a few pixels tall and the hatching alone reads fine. */}
+      {blank && isDay && (
+        <span className="emptyday">{words.emptyDay}</span>
+      )}
+
+      {/* The blocks keep their depths to themselves, so a block three
+          lanes down still sits under every name and grab strip. */}
+      {day?.malformed ? (
+        <span className="rowbroken">needs fixing in Obsidian</span>
+      ) : (
+      <div className="blocks">
+        {drawn.map((piece) => {
+        const b = piece.block
+        const tag = tagById(b.tag)
+        const look = pieceLook(
+          piece,
+          pieceAt.get(`${b.id}#${piece.index - 1}`),
+          pieceAt.get(`${b.id}#${piece.index + 1}`),
+        )
+        // Grimoire's runes, whole ones only, through the middle of
+        // what shows of the piece; none where too little of it shows
+        // to hold a line. Where the block's name sits across that
+        // line, the runes part for it.
+        const runes = blockLook === 'grimoire' && trackWidth && barHeight / piece.lanes >= RUNES_MIN_BAND
+          ? runeSpans(xAt(b.startSlot), xAt(b.endSlot), xAt(piece.from), xAt(piece.to), holeIn(piece))
+          : []
+        return (
+          <div
+            // Named for which piece of its block it is, not for where
+            // it happens to start. Dragging an edge moves where a
+            // piece begins, and a key built from that would make every
+            // step look like a different element: React would replace
+            // it, and anything that plays on arrival would play again.
+            key={`${b.id}#${piece.index}`}
+            data-block-id={b.id}
+            className={
+              'block' + (b.id === previewId ? ' preview' : '')
+              + litFor(date, b)
+              // Only on the way in. A piece that appears because
+              // something else moved is not an arrival.
+              + (wiping(date, b) ? '' : ' settled')
+              // Square where the block carries on: a block cut where
+              // it steps up has to read as one shape.
+              + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
+              + `${look.stepStart ? ' step-start' : ''}${look.stepEnd ? ' step-end' : ''}`
+              + (look.stepStart && look.stepEnd && trackWidth
+                && xAt(piece.to) - xAt(piece.from) <= PEEK_MAX ? ' peek' : '')
+              + (runes.length > 0 ? ' runes' : '') + (runes.length > 1 ? ' runes2' : '')
+            }
+            style={{
+              ...spanAt(piece.from, piece.to),
+              // Where the piece starts along the bar, for the looks
+              // with a pattern: drawn from the bar's own start, the
+              // pattern runs on unbroken across the cut where a block
+              // steps around an overlap.
+              '--x': trackWidth ? `${xAt(piece.from)}px` : '0px',
+              ...look.vars,
+              ...Object.fromEntries(runes.flatMap((r, i) => [
+                [`--runes${i ? 2 : ''}-l`, `${r.left}px`],
+                [`--runes${i ? 2 : ''}-r`, `${r.right}px`],
+                [`--runes${i ? 2 : ''}-shift`, `${r.shift}px`],
+              ])),
+              // Every block runs from wherever it starts to the floor
+              // of the bar. Whatever is layered over it covers the
+              // lower part, so nothing is left standing in empty
+              // space. Inset only against the edges of the bar itself.
+              top: piece.top === 0
+                ? 'var(--block-inset)'
+                : `${(piece.top / piece.lanes) * 100}%`,
+              bottom: 'var(--block-inset)',
+              // How deep the block sits is how it stacks.
+              zIndex: piece.lane,
+              '--tag': tag?.colour ?? '#555',
+            }}
+            title={`${b.game || b.show || tag?.name || b.tag} · ${slotToTime(b.startSlot)}–${slotToTime(b.endSlot)}${b.note ? `
+${b.note}` : ''}`}
+          />
+        )
+        })}
+      </div>
+      )}
+
+      {/* Over the blocks, so it can be found against a full day, but
+          under the names and grab strips, which you have to be able to
+          read and grab through it. */}
+      {isToday && <NowLine date={date} />}
+
+      {/* Names are drawn over the blocks, one per block rather than
+          one per piece: a block cut where it steps up is still one
+          thing with one name, sitting in its own lane across the whole
+          of it. */}
+      {labelled.map(({ block: b, tag, band }) => {
+        const { label, top, bottom, from, to } = band
+        return (
+          <span
+            key={`l${b.id}`}
+            className={`block-label${litFor(date, b)}`}
+            // Names its block, the way the block itself does. It is
+            // not always drawn across the whole of it, so there is
+            // otherwise no way to tell from the page which is which.
+            data-block-id={b.id}
+            style={{
+              ...spanAt(from, to),
+              top: `${top * 100}%`,
+              height: `${(bottom - top) * 100}%`,
+            }}
+          >
+            {!wordsOnly && <TagIcon tag={tag} scale={label.iconPx / baseIconPx()} />}
+            {label.mode === 'full' && (tag ? tag.name : b.tag)}
+          </span>
+        )
+      })}
+
+      {/* Handles are drawn over the blocks so they are never buried,
+          but only as tall as the block itself — a full-height strip
+          would reach into whatever is stacked above or below and steal
+          its clicks. A ten-minute block is narrower than two grab
+          strips, so they halve to fit; it ends up entirely covered,
+          which is why a press that goes nowhere opens the note instead
+          of counting as a resize. */}
+      {isDay && !day?.malformed && !previewId && wholes.map((piece) => {
+        const b = piece.block
+        const lane = {
+          top: piece.lane === 0
+            ? 'var(--block-inset)'
+            : `${(piece.lane / piece.lanes) * 100}%`,
+          height: `calc(${100 / piece.lanes}%`
+            + `${piece.lane === 0 ? ' - var(--block-inset)' : ''}`
+            + `${piece.lane === piece.lanes - 1 ? ' - var(--block-inset)' : ''})`,
+          '--block-w': `${((b.endSlot - b.startSlot) / SLOTS_PER_DAY) * trackWidth}px`,
+        }
+        return (
+          <span key={`h${b.id}`}>
+            <span
+              className="handle start"
+              data-block-id={b.id}
+              data-handle="start"
+              style={{ left: edgeAt(b.startSlot), ...lane }}
+            />
+            <span
+              className="handle end"
+              data-block-id={b.id}
+              data-handle="end"
+              style={{ left: edgeAt(b.endSlot), ...lane }}
+            />
+          </span>
+        )
+      })}
+
+      {litBlocks.length > 0 && (
+        <svg className="finds" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {litBlocks.map(({ block, lit }) => (
+            <polygon
+              key={`f${block.id}`}
+              className={lit.includes('current') ? 'current' : ''}
+              points={silhouette(pieces.filter((p) => p.block === block), pieces)}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      )}
+
+      {selectedPieces.length > 0 && (
+        <svg className="selection" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <polygon points={silhouette(selectedPieces, pieces)} vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
+
+   </div>
+  )
+
+  if (!isDay) {
+    return (
+      <div
+        key={date}
+        ref={rowRef}
+        className={`compactrow${isToday ? ' today' : ''}${dayOfWeek(date) === 0 ? ' weekedge' : ''}`
+          + `${rowRef ? ' measured' : ''}${inPeriod ? ' inperiod' : ''}`}
+        // Its height, for when it is out of sight: the browser skips drawing
+        // it and holds its place at exactly this. See app.css.
+        style={{ '--row-total': `${rowTotal}px` }}
+        data-festival={festival?.id}
+      >
+        <div className="gutter">
+          <span className="gday">{weekdayOf(date)}</span>
+          <span className="gdate">{formatShortDate(date)}</span>
+        </div>
+        {track}
+      </div>
+    )
+  }
+
+  return (
+    <section
+      key={date}
+      ref={rowRef}
+      className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`
+        + `${rowRef ? ' measured' : ''}`}
+      style={{ '--row-total': `${rowTotal}px` }}
+      data-festival={festival?.id}
+    >
+      <h2 className="dayhead">
+        {/* Scriptorium opens every day with an illuminated initial,
+            coloured by what filled it. */}
+        {scriptorium && (() => {
+          const lit = illumination(day?.malformed ? [] : day?.blocks)
+          return (
+            <Initial
+              letter={weekdayOf(date).charAt(0).toUpperCase()}
+              level={lit.level}
+              colours={lit.grounds.map((id) => tagById(id)?.colour ?? '#8a7a66')}
+              gleam={isToday && lit.level === 'gilded'}
+            />
+          )
+        })()}
+        <span className="dayweekday" data-dow={dayOfWeek(date)}>{weekdayOf(date)}</span>
+        {festival ? (
+          <>
+            <span className="festdate">{formatDayHeading(date)}</span>
+            {[festival, ...(festival.also ?? [])].map((f) => (
+              <FestiveMark key={f.key ?? f.id} id={f.id} lit={isToday} nth={f.nth} />
+            ))}
+            <span className="festname">
+              {[festival, ...(festival.also ?? [])]
+                .map((f) => (f.age != null ? `${f.name} · ${f.age}` : f.name))
+                .join(' · ')}
+            </span>
+          </>
+        ) : formatDayHeading(date)}
+        {starlit && !day?.malformed && isComplete(day?.blocks) && (
+          <Moonweed title="Every hour of this day accounted for" />
+        )}
+        {isToday && <span className="todaymark">today</span>}
+        {blank && <span className="daysummary">{words.blank}</span>}
+        {scriptorium && !day?.malformed && (
+          <Chronicle
+            blocks={day?.blocks}
+            isToday={isToday}
+            nameOf={(id) => tagById(id)?.name ?? id}
+            colourOf={(id) => tagById(id)?.colour ?? '#9e3122'}
+          />
+        )}
+      </h2>
+
+      {track}
+
+      <div className="dayruler">
+        {Array.from({ length: 25 }, (_, h) => (
+          <span
+            key={h}
+            data-hour={h}
+            className={`rtick${h % 2 === 0 ? ' major' : ''}`}
+            style={{ left: edgeAt(h * 6) }}
+          >
+            <i className="rmark" />
+            {h % 2 === 0 && (
+              <b className={`rlabel${h === 0 ? ' first' : ''}${h === 24 ? ' last' : ''}`}>
+                {String(h).padStart(2, '0')}:00
+              </b>
+            )}
+          </span>
+        ))}
+      </div>
+
+      <div className="daychips">
+        <div className="chipgroup">
+        {/* Hidden tags leave the row but not the bar: every day that
+            already has one still draws it by the full list. */}
+        {tags.filter((t) => !t.hidden).map((t) => {
+          const isArmed = armedTagId === t.id
+          return (
+          <button
+            key={t.id}
+            type="button"
+            className={`chip${isArmed ? ' armed' : ''}`}
+            data-look={chipLook}
+            style={{ '--chip': t.colour }}
+            disabled={day?.malformed}
+            onClick={() => onArm(date, t.id)}
+            title={month ? rankTitle(t.name, month.get(t.id) ?? 0) : undefined}
+          >
+            {/* The glow of a picked-up tag, as its own element so it
+                can pulse by fading — which the graphics card does on
+                its own — rather than by redrawing its shadow, which
+                makes the page redraw every day in the list with it. */}
+            {isArmed && <i className="chip-aura" aria-hidden="true" />}
+            {/* Starlit: a picked-up tag is a spell being readied, a
+                circle turning behind it. */}
+            {starlit && isArmed && (
+              <i className="chip-circle" aria-hidden="true"><MagicCircle size="100%" /></i>
+            )}
+            {month && <RankGem minutes={month.get(t.id) ?? 0} />}
+            <TagIcon tag={t} />
+            {t.name}
+            {/* Hearthfire sets a picked-up tag alight: flames along
+                its top and an ember creeping round its edge. */}
+            {theme === 'hearthfire' && isArmed && (
+              <i className="chip-fire" aria-hidden="true"><i className="fuse"><i /></i></i>
+            )}
+          </button>
+          )
+        })}
+        </div>
+
+        <button
+          type="button"
+          className={`wipe${confirming ? ' confirming' : ''}`}
+          disabled={day?.malformed || (day?.blocks.length ?? 0) === 0}
+          title={confirming ? 'Click again to clear' : 'Clear this whole day'}
+          onClick={() => askWipe(date)}
+        >
+          <TrashIcon />
+          {confirming ? words.wipeConfirm : words.wipe}
+        </button>
+      </div>
+    </section>
+  )
+})
 
 // Built again only when something it is given changes. Scrolling tells the
 // app which days are in view, the app redraws to say so beside the list, and

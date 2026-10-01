@@ -451,6 +451,16 @@ h1 {
   padding-top: var(--daysep-after);
   padding-bottom: var(--daysep-before);
 }
+/* Each row's own height, set on the row. Not passed down: the rows' contents
+   never read it, and a value every element inherits makes the browser go
+   over every one of them again whenever it changes — a step of zoom cost
+   twenty to forty milliseconds for that alone. */
+@property --row-total {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 /* Days out of sight are not drawn at all. There can be hundreds of them
    loaded, and without this every frame anything on screen moves — a glow,
    the time line, a theme's scene — the browser walks all of them again.
@@ -458,7 +468,7 @@ h1 {
    A skipped day still has to take up exactly the room it would, or every
    position worked out from the row height lands on the wrong day. So its
    stand-in height is the row height the list already keeps (--row-total,
-   set by DayList), less the day's own padding. Deliberately not "auto": a
+   set on each row by DayList), less the day's own padding. Deliberately not "auto": a
    remembered size would go stale the moment the rows are zoomed. */
 .daysection {
   content-visibility: auto;
@@ -693,6 +703,8 @@ h1 {
 }
 .gdate { color: var(--c-text); }
 .compactrow.today .gdate { color: var(--c-accent); font-weight: var(--w-bold); }
+.compactrow.inperiod .gutter { box-shadow: inset 2px 0 0 rgb(var(--glow-rgb, 201 168 106) / 0.55); }
+.compactrow.inperiod .gdate { color: var(--c-text-bright); }
 
 /* ============ the bar itself, shared by both views ============ */
 .track {
@@ -718,7 +730,7 @@ h1 {
 }
 /* The hours are still marked out underneath, but there is nothing in there
    to measure against them, and hatching plus a grid is two patterns. */
-.track.empty .gridline { display: none; }
+.track.empty .gridlines { display: none; }
 .emptyday {
   position: absolute;
   inset: 0;
@@ -738,7 +750,7 @@ h1 {
 .compactrow.today .track { border-color: var(--c-line-strong); }
 .scroller.armed .track { cursor: crosshair; }
 
-.gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--c-line-soft); }
+.gridlines { position: absolute; inset: 0; pointer-events: none; }
 
 /* Holds the blocks and nothing else. Its whole job is to be a stacking
    context: the blocks say how deep they sit with a z-index, and this keeps
@@ -1753,18 +1765,18 @@ h1 {
 .workspace { flex: 1; display: flex; min-height: 0; gap: var(--s-7); }
 .workspace .daylist { min-width: 0; }
 
-.totals {
-  flex: 0 0 260px;
+/* The ledger: a stretch of days you pick, and what was done in them. */
+.ledger {
+  flex: 0 0 304px;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  padding-left: var(--s-6);
+  padding: 0 var(--s-4) var(--s-8) var(--s-6);
   border-left: 1px solid var(--c-line-soft);
 }
-
-.totalshead { flex: none; margin-bottom: var(--s-6); }
-.totalshead .eyebrow {
+.ledger[hidden] { display: none; }
+.ledger .eyebrow {
   display: block;
   font-family: var(--font-display);
   font-size: var(--f-xs);
@@ -1772,14 +1784,191 @@ h1 {
   letter-spacing: var(--ls-eyebrow);
   color: var(--c-accent);
 }
-.totalsrange {
-  display: block;
-  font-family: var(--font-meta);
-  font-size: var(--f-lg);
-  font-weight: var(--w-medium);
-  font-variant-numeric: tabular-nums;
+.ledgerhead { flex: none; display: grid; gap: var(--s-4); margin-bottom: var(--s-6); }
+
+/* Which kind of stretch: the same gold leaf as the Day / Overview switch. */
+.ledgertabs { display: grid; grid-template-columns: repeat(4, 1fr); }
+.ledgertabs button {
+  padding: var(--s-2) 0;
+  font: inherit;
+  font-size: var(--f-sm);
+  letter-spacing: 0.04em;
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-left-width: 0;
+  cursor: pointer;
 }
-.totalsdays { font-size: var(--f-sm); color: var(--c-text-dim); }
+.ledgertabs button:first-child { border-left-width: 1px; border-radius: var(--r-md) 0 0 var(--r-md); }
+.ledgertabs button:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.ledgertabs button:hover { color: var(--c-text); }
+.ledgertabs button.on {
+  color: var(--on-gold);
+  background: linear-gradient(var(--gold-hi), var(--c-accent));
+  border-color: var(--gold-edge);
+}
+.ledgertabs button:focus-visible,
+.ledgerstep:focus-visible,
+.ledgerfigure:focus-visible,
+.calday:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 1px; }
+
+/* The stretch itself, with a step either side of it. */
+.ledgerperiod { display: flex; align-items: center; gap: var(--s-3); min-height: 32px; }
+.ledgertitle {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--f-lg);
+  letter-spacing: var(--ls-display);
+  color: var(--c-text-bright);
+}
+.ledgerstep {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--c-text-dim);
+  background: none;
+  border: 1px solid var(--c-line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ledgerstep:hover { color: var(--c-text-bright); border-color: var(--c-text-faint); }
+.ledgerstep svg { width: 10px; height: 10px; }
+.ledgerrange { flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--s-2); }
+.ledgerdash { color: var(--c-text-faint); }
+.ledgerdate {
+  position: relative;
+  padding: 3px var(--s-3);
+  font-size: var(--f-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.ledgerdate:hover { border-color: var(--c-text-dim); }
+.ledgerdate input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.ledgersub {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--s-1);
+  font-size: var(--f-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-dim);
+}
+.ledgernow {
+  margin-left: var(--s-3);
+  padding: 0;
+  font: inherit;
+  color: var(--c-accent);
+  background: none;
+  border: none;
+  border-bottom: 1px dotted currentColor;
+  cursor: pointer;
+}
+
+/* The four figures that say the most at a glance. */
+.ledgerfigures { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); margin-bottom: var(--s-7); }
+.ledgerfigure {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--s-4) var(--s-5);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-soft);
+  border-radius: var(--r-md);
+}
+.ledgerfigure.jumps { cursor: pointer; }
+.ledgerfigure.jumps:hover { border-color: var(--c-text-faint); }
+.figlabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--f-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--c-text-faint);
+}
+.figvalue {
+  font-family: var(--font-meta);
+  font-size: 22px;
+  font-weight: var(--w-medium);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-bright);
+}
+.figvalue small { font-size: var(--f-md); font-weight: var(--w-normal); color: var(--c-text-dim); }
+.fignote {
+  min-height: 1.2em;
+  overflow: hidden;
+  font-size: var(--f-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--c-text-dim);
+}
+
+.ledgersection { margin-bottom: var(--s-7); }
+.ledgersection > .eyebrow { margin-bottom: var(--s-4); }
+
+/* The calendar: each day tinted with what it mostly was, as deep as it was
+   full. --day and --full are set per day. */
+.calweeks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.calhead { padding-bottom: 2px; text-align: center; font-size: var(--f-xs); color: var(--c-text-faint); }
+.calday {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: var(--f-xs);
+  font-variant-numeric: tabular-nums;
+  /* White on the colour of the day, in every theme: the days are tinted
+     with tag colours, which are dark on the light themes too. */
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  background: color-mix(in srgb, var(--day, var(--c-surface)) var(--full, 100%), var(--c-surface));
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.calday:hover { box-shadow: inset 0 0 0 1px var(--c-text-dim); }
+.calday.empty { color: var(--c-text-faint); text-shadow: none; }
+.calday.ahead { color: var(--c-text-faint); text-shadow: none; background: none; box-shadow: inset 0 0 0 1px var(--c-line-soft); }
+.calday.today { box-shadow: inset 0 0 0 2px var(--c-accent); }
+.calday.none, .calday.outside { background: none; cursor: default; }
+.calmonths { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-5) var(--s-4); }
+.calmonthname { display: block; margin-bottom: 3px; font-size: var(--f-xs); letter-spacing: 0.04em; color: var(--c-text-dim); }
+.calmini { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calmini .calday { border-radius: 2px; }
+.calmini .calday.today { box-shadow: inset 0 0 0 1px var(--c-accent); }
+
+/* A typical day: how often something was on at each half hour, and what. */
+.rhythm {
+  display: block;
+  width: 100%;
+  height: 72px;
+  border-bottom: 1px solid var(--c-line);
+}
+.rhythmhit { fill: transparent; }
+.rhythmhit:hover { fill: rgba(255, 255, 255, 0.12); }
+.rhythmaxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  font-size: var(--f-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-faint);
+}
+
 .totalsempty { color: var(--c-text-dim); font-size: var(--f-md); }
 
 .totalslist { list-style: none; margin: 0; padding: 0; }
@@ -1800,10 +1989,17 @@ h1 {
 .totalsfill { display: block; height: 100%; border-radius: 3px; }
 
 .totalsavg {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
   font-size: var(--f-xs);
   color: var(--c-text-faint);
   font-variant-numeric: tabular-nums;
 }
+/* More or less of it a day than the stretch before. Neither is good or bad
+   in itself, so neither is green or red. */
+.totalschange { flex: none; color: var(--c-text-dim); }
+.totalschange.down { color: var(--c-text-faint); }
 
 /* --- what you played, under the hours --- */
 .played { margin-top: var(--s-8); }
