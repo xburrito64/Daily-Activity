@@ -1000,14 +1000,19 @@ export function makeFolkRims() {
     draw(g, w, h)
     c.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null))
   })
-  // Bunting: a string sagging between two points, pennants hanging off it
-  // in turn, each a little shaded down one side.
+  // Bunting: a string sagging between two points it is tied to, a gold
+  // knot at each, and pennants hanging off it in turn, spaced evenly along
+  // the whole of it, each a little shaded down one side.
   const bunting = (g, x0, y0, x1, y1, sag, width, drop) => {
     const at = (t) => [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t + sag * 4 * t * (1 - t)]
-    const n = Math.floor((x1 - x0) / (width + 4))
+    const span = x1 - x0
+    const gap = 4
+    const n = Math.floor((span - 12) / (width + gap))
+    const start = (span - (n * width + (n - 1) * gap)) / 2 / span
     for (let i = 0; i < n; i++) {
-      const [ax, ay] = at((i + 0.1) / n)
-      const [bx, by] = at((i + 0.1) / n + width / (x1 - x0))
+      const t0 = start + (i * (width + gap)) / span
+      const [ax, ay] = at(t0)
+      const [bx, by] = at(t0 + width / span)
       const rgb = BALLOON_TONES[i % BALLOON_TONES.length]
       const fill = g.createLinearGradient(ax, ay, bx, by)
       fill.addColorStop(0, `rgba(${rgb}, 0.95)`)
@@ -1028,6 +1033,13 @@ export function makeFolkRims() {
       if (t === 0) g.moveTo(x, y); else g.lineTo(x, y)
     }
     g.stroke()
+    for (const [x, y] of [[x0, y0], [x1, y1]]) {
+      const knot = g.createRadialGradient(x - 0.6, y - 0.6, 0, x, y, 2.4)
+      knot.addColorStop(0, '#fff3c4')
+      knot.addColorStop(1, '#b08a44')
+      g.fillStyle = knot
+      g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill()
+    }
   }
   const fadeRight = (g, w, h, from = 0.55) => {
     g.globalCompositeOperation = 'destination-in'
@@ -1138,8 +1150,9 @@ export function makeFolkRims() {
   }
   folkRimsMade = Promise.all([
     picture(treats), picture(roses), picture(streamers),
-    picture((g, w) => bunting(g, -4, 7, w * 0.86, 12, 18, 16, 18)),
-    wide(480, 60, (g) => bunting(g, 0, 3, 480, 3, 34, 24, 22)),
+    // Tied at the bar's top corner and again further along its top edge.
+    picture((g, w) => bunting(g, 4, 3, w * 0.8, 3, 20, 16, 18)),
+    wide(480, 60, (g) => bunting(g, 5, 3, 475, 3, 34, 24, 22)),
   ]).then(([t, r, c, flags, swag]) => {
     const root = document.documentElement.style
     if (flags) root.setProperty('--bunting-rim', `url(${flags})`)

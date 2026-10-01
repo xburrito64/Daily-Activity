@@ -8,8 +8,8 @@
 const WORDS = {
   starlit: {
     recorded: (n) => (n === 1 ? 'one day journeyed' : `${n} days journeyed`),
-    emptyDay: 'an untrodden road — nothing written here yet',
-    blank: 'untrodden',
+    emptyDay: 'a page of the journey not yet written',
+    blank: 'unwritten',
     wipe: 'Dispel',
     wipeConfirm: 'Dispel it?',
   },

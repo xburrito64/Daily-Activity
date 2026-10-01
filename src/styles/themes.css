@@ -2081,7 +2081,9 @@
     inset 0 0 0 3px rgb(var(--mana-rgb) / 0.08),
     0 0 22px -6px rgb(var(--mana-rgb) / 0.4);
 }
-/* An untrodden day: the road not yet walked, a faint line of it down the middle. */
+/* An unwritten day: the road not yet walked, a faint line of it down the
+   middle. Where the day says so in words, the line is drawn either side of
+   them rather than through them. */
 [data-theme="starlit"] .track.empty {
   border-style: solid;
   border-color: rgb(var(--gilt-rgb) / 0.12);
@@ -2089,7 +2091,16 @@
     linear-gradient(90deg, rgb(var(--gilt-rgb) / 0.16) 50%, transparent 0) 0 50% / 14px 1px repeat-x,
     rgba(12, 15, 24, 0.7);
 }
-[data-theme="starlit"] .emptyday { color: rgb(var(--gilt-rgb) / 0.4); }
+[data-theme="starlit"] .track.empty:has(> .emptyday) { background: rgba(12, 15, 24, 0.7); }
+[data-theme="starlit"] .emptyday { gap: 16px; color: rgb(var(--gilt-rgb) / 0.4); }
+[data-theme="starlit"] .emptyday::before,
+[data-theme="starlit"] .emptyday::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(var(--gilt-rgb) / 0.16) 50%, transparent 0) 100% 0 / 14px 1px repeat-x;
+}
+[data-theme="starlit"] .emptyday::after { background-position: 0 0; }
 
 /* The time now: a thread of mana, a crystal at its head. */
 [data-theme="starlit"] .nowline {
