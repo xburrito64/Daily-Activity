@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getIconSets, refillCovers } from './api.js'
 import TagIcon from './TagIcon.jsx'
 import TagEditor from './TagEditor.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import BirthdayEditor from './BirthdayEditor.jsx'
+import { pieceLook, runeSpans } from './blockLooks.js'
 import {
   BAR_WIDTH, NO_LIMIT, CHIP_LOOKS, BLOCK_LOOKS, LABEL_STYLES, DEFAULTS, THEMES,
 } from './appearance.js'
@@ -349,31 +350,61 @@ function Toggle({ on, onFlip, label, note }) {
  */
 function BlockSample({ look, tags }) {
   const [a, b, c] = unlike(tags.map((tag) => tag.colour), ['#7b8fd6', '#d68a5c', '#5fb38a'])
+  // Measured, for the runes: they are laid out in whole pixels, as on the bar.
+  const ref = useRef(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const track = ref.current
+    if (!track) return undefined
+    const watch = new ResizeObserver(() => setWidth(track.clientWidth))
+    watch.observe(track)
+    return () => watch.disconnect()
+  }, [])
+  // In percent of the bar, as layoutLanes would hand them over.
+  const blocks = { a: [2, 30], b: [33, 80], c: [58, 97] }
   const pieces = [
-    { tag: a, from: 2, to: 30, top: 0, z: 0 },
-    { tag: b, from: 33, to: 58, top: 0, z: 0, end: true },
-    { tag: b, from: 58, to: 80, top: 0, z: 0, start: true },
-    { tag: c, from: 58, to: 80, top: 50, z: 1, end: true },
-    { tag: c, from: 80, to: 97, top: 0, z: 0, start: true },
+    { id: 'a', tag: a, from: 2, to: 30, top: 0, lanes: 1, index: 0 },
+    { id: 'b', tag: b, from: 33, to: 58, top: 0, lanes: 1, index: 0 },
+    { id: 'b', tag: b, from: 58, to: 80, top: 0, lanes: 2, index: 1 },
+    { id: 'c', tag: c, from: 58, to: 80, top: 1, lanes: 2, index: 0 },
+    { id: 'c', tag: c, from: 80, to: 97, top: 0, lanes: 1, index: 1 },
   ]
+  const px = (percent) => Math.round((percent / 100) * width)
   return (
     <span className="blocksample" data-blocks={look}>
-      <span className="sampletrack">
+      <span className="sampletrack" ref={ref}>
         <span className="blocks">
-          {pieces.map((p, i) => (
-            <span
-              key={i}
-              className={`block settled${p.start ? ' joined-start' : ''}${p.end ? ' joined-end' : ''}`}
-              style={{
-                left: `${p.from}%`,
-                width: `${p.to - p.from}%`,
-                top: p.top ? `${p.top}%` : 'var(--block-inset)',
-                bottom: 'var(--block-inset)',
-                zIndex: p.z,
-                '--tag': p.tag,
-              }}
-            />
-          ))}
+          {pieces.map((p) => {
+            const mine = pieces.filter((q) => q.id === p.id)
+            const start = p.index > 0
+            const end = p.index < mine.length - 1
+            const { vars, stepStart, stepEnd } = pieceLook(p, mine[p.index - 1], mine[p.index + 1])
+            const [runes] = look === 'grimoire' && width
+              ? runeSpans(px(blocks[p.id][0]), px(blocks[p.id][1]), px(p.from), px(p.to))
+              : []
+            return (
+              <span
+                key={`${p.id}${p.index}`}
+                className={`block settled${start ? ' joined-start' : ''}${end ? ' joined-end' : ''}`
+                  + `${stepStart ? ' step-start' : ''}${stepEnd ? ' step-end' : ''}${runes ? ' runes' : ''}`}
+                style={{
+                  left: `${p.from}%`,
+                  width: `${p.to - p.from}%`,
+                  top: p.top ? `${(p.top / p.lanes) * 100}%` : 'var(--block-inset)',
+                  bottom: 'var(--block-inset)',
+                  zIndex: p.top,
+                  '--tag': p.tag,
+                  '--x': `${px(p.from)}px`,
+                  ...vars,
+                  ...(runes && {
+                    '--runes-l': `${runes.left}px`,
+                    '--runes-r': `${runes.right}px`,
+                    '--runes-shift': `${runes.shift}px`,
+                  }),
+                }}
+              />
+            )
+          })}
         </span>
       </span>
     </span>

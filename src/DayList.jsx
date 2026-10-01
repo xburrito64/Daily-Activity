@@ -14,6 +14,7 @@ import { monthByTag, isComplete } from './scenes/starlit.js'
 import { festivalOf } from './scenes/festivals.js'
 import { FestiveMark, Spider } from './scenes/Festive.jsx'
 import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
+import { pieceLook, runeSpans, RUNES_MIN_BAND } from './blockLooks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
 import { wordsFor } from './themeWords.js'
@@ -309,7 +310,7 @@ function fitLabel(tag, fallback, widthPx, lanePx, withNames = true) {
   if (!tag) {
     if (!named) return null
     const width = textWidth(fallback)
-    return width <= room ? { mode: 'full', iconPx: 0 } : null
+    return width <= room ? { mode: 'full', iconPx: 0, width } : null
   }
 
   const iconPx = baseIconPx()
@@ -365,7 +366,7 @@ function fitLabel(tag, fallback, widthPx, lanePx, withNames = true) {
   // however much room there is for one.
   const withName = widthAt(wanted) + ICON_GAP + textWidth(tag.name)
   if (withNames && named && withName <= room) {
-    return { mode: 'full', iconPx: wanted }
+    return { mode: 'full', iconPx: wanted, width: withName }
   }
 
   // Only now does the icon give any ground, and only because at this width
@@ -373,7 +374,7 @@ function fitLabel(tag, fallback, widthPx, lanePx, withNames = true) {
   // the block right up to the share it is allowed — the room a cover keeps
   // clear at its sides is room for a name, and there is no name here.
   const alone = Math.min(wanted, sizeFor(widthPx * ICON_FILL))
-  return alone >= floor ? { mode: 'icon', iconPx: alone } : null
+  return alone >= floor ? { mode: 'icon', iconPx: alone, width: widthAt(alone) } : null
 }
 
 /**
@@ -1202,6 +1203,21 @@ function DayList({
           // One piece per block, for the grab strips: they belong to the
           // block's own ends rather than to any slice of it.
           const wholes = drawn.filter((p) => p.isFirst)
+          // Each piece by its place in its block, so one can find the pieces
+          // either side of it: a block looks at where its neighbours start to
+          // draw its steps.
+          const pieceAt = new Map(pieces.map((p) => [`${p.block.id}#${p.index}`, p]))
+          // Where a block's name sits across the line of runes in one of its
+          // pieces, in px along the bar; null where it is up or down out of
+          // the way, or there is no name.
+          const holeIn = (piece) => {
+            const band = labelOf.get(piece.block)
+            if (!band) return null
+            const row = (piece.top + 0.5) / piece.lanes
+            if (row < band.top || row > band.bottom) return null
+            const middle = (xAt(band.from) + xAt(band.to)) / 2
+            return [middle - band.label.width / 2, middle + band.label.width / 2]
+          }
           // A name belongs to the block rather than to any slice of it, so it
           // is centred on the whole block. Choosing a slice and centring in
           // that instead is what pushed names off to one side: the roomiest
@@ -1220,6 +1236,23 @@ function DayList({
             mine,
             middle: (block.startSlot + block.endSlot) / 2,
           }))
+          // Where each name goes, worked out ahead of the blocks: Grimoire's
+          // runes part around it.
+          const wordsOnly = labels === 'name'
+          const labelled = day?.malformed ? [] : named.map(({ block: b, mine, middle }) => {
+            // A named game wears its own name and its own cover here.
+            // Twenty Game blocks in a week all called "Game" say nothing
+            // the colour hasn't already said.
+            const tag = faceOf(b)
+            // "Name only" is laid out as a block with no picture at all,
+            // which the fitting already knows how to do: the name, where
+            // it fits, and nothing where it doesn't.
+            const band = wordsOnly
+              ? bandFor(mine, middle, null, tag?.name ?? b.tag, barHeight, trackWidth, drawn)
+              : bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn, labels !== 'icon')
+            return band && { block: b, tag, band }
+          }).filter(Boolean)
+          const labelOf = new Map(labelled.map((l) => [l.block, l.band]))
           const selectedPieces = selected?.date === date
             ? pieces.filter((p) => p.block.id === selected.id)
             : []
@@ -1266,6 +1299,18 @@ function DayList({
                 {drawn.map((piece) => {
                 const b = piece.block
                 const tag = tagById(b.tag)
+                const look = pieceLook(
+                  piece,
+                  pieceAt.get(`${b.id}#${piece.index - 1}`),
+                  pieceAt.get(`${b.id}#${piece.index + 1}`),
+                )
+                // Grimoire's runes, whole ones only, through the middle of
+                // what shows of the piece; none where too little of it shows
+                // to hold a line. Where the block's name sits across that
+                // line, the runes part for it.
+                const runes = blockLook === 'grimoire' && trackWidth && barHeight / piece.lanes >= RUNES_MIN_BAND
+                  ? runeSpans(xAt(b.startSlot), xAt(b.endSlot), xAt(piece.from), xAt(piece.to), holeIn(piece))
+                  : []
                 return (
                   <div
                     // Named for which piece of its block it is, not for where
@@ -1284,6 +1329,8 @@ function DayList({
                       // Square where the block carries on: a block cut where
                       // it steps up has to read as one shape.
                       + `${piece.isFirst ? '' : ' joined-start'}${piece.isLast ? '' : ' joined-end'}`
+                      + `${look.stepStart ? ' step-start' : ''}${look.stepEnd ? ' step-end' : ''}`
+                      + (runes.length > 0 ? ' runes' : '') + (runes.length > 1 ? ' runes2' : '')
                     }
                     style={{
                       ...spanAt(piece.from, piece.to),
@@ -1292,6 +1339,12 @@ function DayList({
                       // pattern runs on unbroken across the cut where a block
                       // steps around an overlap.
                       '--x': trackWidth ? `${xAt(piece.from)}px` : '0px',
+                      ...look.vars,
+                      ...Object.fromEntries(runes.flatMap((r, i) => [
+                        [`--runes${i ? 2 : ''}-l`, `${r.left}px`],
+                        [`--runes${i ? 2 : ''}-r`, `${r.right}px`],
+                        [`--runes${i ? 2 : ''}-shift`, `${r.shift}px`],
+                      ])),
                       // Every block runs from wherever it starts to the floor
                       // of the bar. Whatever is layered over it covers the
                       // lower part, so nothing is left standing in empty
@@ -1321,19 +1374,7 @@ ${b.note}` : ''}`}
                   one per piece: a block cut where it steps up is still one
                   thing with one name, sitting in its own lane across the whole
                   of it. */}
-              {!day?.malformed && named.map(({ block: b, mine, middle }) => {
-                // A named game wears its own name and its own cover here.
-                // Twenty Game blocks in a week all called "Game" say nothing
-                // the colour hasn't already said.
-                const tag = faceOf(b)
-                // "Name only" is laid out as a block with no picture at all,
-                // which the fitting already knows how to do: the name, where
-                // it fits, and nothing where it doesn't.
-                const wordsOnly = labels === 'name'
-                const band = wordsOnly
-                  ? bandFor(mine, middle, null, tag?.name ?? b.tag, barHeight, trackWidth, drawn)
-                  : bandFor(mine, middle, tag, b.tag, barHeight, trackWidth, drawn, labels !== 'icon')
-                if (!band) return null
+              {labelled.map(({ block: b, tag, band }) => {
                 const { label, top, bottom, from, to } = band
                 return (
                   <span

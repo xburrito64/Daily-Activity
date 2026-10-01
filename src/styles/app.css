@@ -856,148 +856,194 @@ h1 {
    What every look has to survive:
    - Any length, from ten minutes to a whole day, and any height. The bar
      zooms from 46px to 200px, and a block can get a third of that.
-   - The cut. A block that steps around an overlap is several pieces side by
-     side, marked joined-start / joined-end where it carries on. Nothing is
-     drawn down a joined side, and a pattern is measured from the start of the
-     bar (--x, set per piece) rather than of the piece, so it runs straight on
-     across the cut.
-   - Being covered. A block runs to the floor of the bar, and whatever is
+   - Being covered. A block runs to the floor of the bar and whatever is
      layered over it hides its lower part, so the top edge is the one that
-     always shows, and it carries the most.
+     always shows. What sits in the middle of a block sits in the middle of
+     --band, the part of it that shows.
+   - The cut. A block that steps around an overlap is several pieces side by
+     side, marked joined-start / joined-end where it carries on. So the
+     shading and the patterns are measured on the whole bar (100cqh, from
+     --top and --x) rather than on the piece, and run straight on across a
+     cut. What belongs to an edge stays with the piece: the top edge, and an
+     end. A joined end is no edge unless it stands clear of a lower piece
+     beside it (step-start / step-end), and then it is one for --step-l or
+     --step-r down from the top.
    - The Overview, where a row is a few pixels tall: no look applies there.
    - Painting: the stretch being painted keeps its plain outline.
+   The values a piece cannot work out for itself come from blockLooks.js.
    Nothing here moves, so none of it costs anything once it is drawn. */
+
+/* The bar, for the shading to be measured on. */
+[data-blocks]:not([data-blocks="classic"]) :not(.dense) > .blocks { container-type: size; }
 
 /* The themes' own grain on a block (vellum, phosphor dots) belongs to the
    classic look; the others bring their own surface. */
 [data-blocks]:not([data-blocks="classic"]) :not(.dense) > .blocks > .block::after { content: none; }
 
 /* --- Mana crystal --------------------------------------------------------
-   A cut stone: corners bevelled off, a bright crown along the top with a
-   hard facet edge under it, the colour deepening toward the base, and long
-   slants of light caught inside. */
+   A cut stone: corners bevelled off, the light along its top edge, a bright
+   crown across the upper part of the bar with a hard facet under it, the
+   colour deepening toward the floor, and long slants of light inside. */
 [data-blocks="crystal"] :not(.dense) > .blocks > .block:not(.preview) {
-  --cut-l: min(6px, 24%);
-  --cut-r: min(6px, 24%);
-  --bevel-l: inset 3px 0 0 rgba(255, 255, 255, 0.18);
-  --bevel-r: inset -3px 0 0 rgba(0, 0, 0, 0.22);
-  --crown: min(32%, 24px);
+  --cut: min(6px, 24%);
+  --cut-tl: var(--cut);
+  --cut-bl: var(--cut);
+  --cut-tr: var(--cut);
+  --cut-br: var(--cut);
+  /* How far down from the top each end's bevel runs. */
+  --side-l: 100%;
+  --side-r: 100%;
   border-radius: 0;
   clip-path: polygon(
-    var(--cut-l) 0, calc(100% - var(--cut-r)) 0, 100% var(--cut-r),
-    100% calc(100% - var(--cut-r)), calc(100% - var(--cut-r)) 100%,
-    var(--cut-l) 100%, 0 calc(100% - var(--cut-l)), 0 var(--cut-l));
+    var(--cut-tl) 0, calc(100% - var(--cut-tr)) 0, 100% var(--cut-tr),
+    100% calc(100% - var(--cut-br)), calc(100% - var(--cut-br)) 100%,
+    var(--cut-bl) 100%, 0 calc(100% - var(--cut-bl)), 0 var(--cut-tl));
   background:
+    linear-gradient(180deg, color-mix(in oklab, var(--tag) 45%, white), transparent min(8px, 30%))
+      0 0 / 100% 100% no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2))
+      0 0 / 3px var(--side-l) no-repeat,
+    linear-gradient(rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.24))
+      100% 0 / 3px var(--side-r) no-repeat,
     repeating-linear-gradient(112deg,
       transparent 0 44px,
       rgba(255, 255, 255, 0.14) 44px 52px,
       transparent 52px 66px,
       rgba(255, 255, 255, 0.08) 66px 69px,
       transparent 69px 170px)
-      calc(var(--x, 0px) * -1) 0 / 8000px 100% no-repeat,
+      calc(var(--x, 0px) * -1) calc(var(--top, 0px) * -1) / 8000px 100cqh no-repeat,
     linear-gradient(180deg,
-      color-mix(in oklab, var(--tag) 52%, white) 0,
-      color-mix(in oklab, var(--tag) 78%, white) var(--crown),
-      color-mix(in oklab, var(--tag) 94%, black) var(--crown),
+      color-mix(in oklab, var(--tag) 55%, white) 0,
+      color-mix(in oklab, var(--tag) 80%, white) 28%,
+      color-mix(in oklab, var(--tag) 94%, black) 28%,
       var(--tag) 62%,
-      color-mix(in oklab, var(--tag) 70%, black) 100%);
+      color-mix(in oklab, var(--tag) 70%, black) 100%)
+      0 calc(var(--top, 0px) * -1) / 100% 100cqh no-repeat;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
-    var(--bevel-l),
-    var(--bevel-r);
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
 }
-[data-blocks="crystal"] :not(.dense) > .blocks > .block.joined-start { --cut-l: 0px; --bevel-l: 0 0 transparent; }
-[data-blocks="crystal"] :not(.dense) > .blocks > .block.joined-end { --cut-r: 0px; --bevel-r: 0 0 transparent; }
+[data-blocks="crystal"] :not(.dense) > .blocks > .block.joined-start { --cut-tl: 0px; --cut-bl: 0px; --side-l: 0px; }
+[data-blocks="crystal"] :not(.dense) > .blocks > .block.joined-end { --cut-tr: 0px; --cut-br: 0px; --side-r: 0px; }
+[data-blocks="crystal"] :not(.dense) > .blocks > .block.step-start { --cut-tl: var(--cut); --side-l: var(--step-l); }
+[data-blocks="crystal"] :not(.dense) > .blocks > .block.step-end { --cut-tr: var(--cut); --side-r: var(--step-r); }
 
 /* --- Grimoire ------------------------------------------------------------
    A spell set down in the tag's colour: dark ink tinted by it, a glowing
    line along the top, a double rule closing each end like a page border,
-   and a line of runes running the length of it. */
+   and a line of runes through the middle of what shows of it — whole runes
+   only, kept clear of the ends. */
 [data-blocks="grimoire"] :not(.dense) > .blocks > .block:not(.preview) {
-  --rim-l: inset 2px 0 0 var(--tag), inset 4px 0 0 rgba(0, 0, 0, 0.45),
-    inset 5px 0 0 color-mix(in srgb, var(--tag) 55%, transparent);
-  --rim-r: inset -2px 0 0 var(--tag), inset -4px 0 0 rgba(0, 0, 0, 0.45),
-    inset -5px 0 0 color-mix(in srgb, var(--tag) 55%, transparent);
+  --side-l: 100%;
+  --side-r: 100%;
+  --rim-l: linear-gradient(90deg, var(--tag) 0 2px, rgba(0, 0, 0, 0.45) 2px 4px,
+    color-mix(in srgb, var(--tag) 55%, transparent) 4px 5px, transparent 5px);
+  --rim-r: linear-gradient(270deg, var(--tag) 0 2px, rgba(0, 0, 0, 0.45) 2px 4px,
+    color-mix(in srgb, var(--tag) 55%, transparent) 4px 5px, transparent 5px);
   border-radius: 2px;
-  /* The glow under the top line is a gradient, not a blurred shadow: a blur
-     fades out toward the sides of every piece and would mark each cut. */
   background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--tag) 55%, transparent) 0,
-      transparent min(16px, 40%)),
+    var(--rim-l) 0 0 / 5px var(--side-l) no-repeat,
+    var(--rim-r) 100% 0 / 5px var(--side-r) no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--tag) 55%, transparent) 0, transparent min(12px, 34%))
+      0 0 / 100% 100% no-repeat,
     linear-gradient(180deg,
       color-mix(in oklab, var(--tag) 52%, #0b0d16) 0%,
       color-mix(in oklab, var(--tag) 32%, #090a12) 45%,
-      color-mix(in oklab, var(--tag) 22%, #07080e) 100%);
+      color-mix(in oklab, var(--tag) 22%, #07080e) 100%)
+      0 calc(var(--top, 0px) * -1) / 100% 100cqh no-repeat;
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, var(--tag) 55%, white),
     inset 0 2px 0 var(--tag),
-    inset 0 -1px 0 color-mix(in srgb, var(--tag) 50%, transparent),
-    var(--rim-l),
-    var(--rim-r);
+    inset 0 -1px 0 color-mix(in srgb, var(--tag) 50%, transparent);
 }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block:not(.preview)::before {
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-start { --side-l: 0px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-end { --side-r: 0px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.step-start { --side-l: var(--step-l); border-top-left-radius: 2px; }
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.step-end { --side-r: var(--step-r); border-top-right-radius: 2px; }
+/* The line of runes, and where it parts for a name, the rest of it after. */
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.runes:not(.preview)::before,
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.runes2:not(.preview)::after {
   content: "";
   position: absolute;
-  inset: 0 7px;
+  top: 0;
+  height: var(--band, 100%);
+  left: var(--runes-l);
+  right: var(--runes-r);
   pointer-events: none;
   background: color-mix(in oklab, var(--tag) 65%, white);
-  -webkit-mask: var(--runes) calc(var(--x, 0px) * -1 - 7px) 50% / auto min(11px, 36%) repeat-x;
-  mask: var(--runes) calc(var(--x, 0px) * -1 - 7px) 50% / auto min(11px, 36%) repeat-x;
+  -webkit-mask: var(--runes) var(--runes-shift, 0px) 50% / 80px 10px repeat-x;
+  mask: var(--runes) var(--runes-shift, 0px) 50% / 80px 10px repeat-x;
   opacity: 0.34;
 }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-start { --rim-l: 0 0 transparent; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-end { --rim-r: 0 0 transparent; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-start::before { left: 0; }
-[data-blocks="grimoire"] :not(.dense) > .blocks > .block.joined-end::before { right: 0; }
+[data-blocks="grimoire"] :not(.dense) > .blocks > .block.runes2:not(.preview)::after {
+  left: var(--runes2-l);
+  right: var(--runes2-r);
+  -webkit-mask-position: var(--runes2-shift, 0px) 50%;
+  mask-position: var(--runes2-shift, 0px) 50%;
+}
 [data-blocks="grimoire"] { --runes: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='12' viewBox='0 0 96 12'><g fill='none' stroke='%23000' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'><path d='M4 1V11M4 4.5L8 1.5M4 7.5L8 4.5'/><path d='M15 1V11M15 1L19 3.5L15 6L19 11'/><path d='M28 1V11M28 6L25 2M28 6L31 2'/><path d='M40 1L43 4.5L37.5 11M40 1L37 4.5L42.5 11'/><path d='M49 1V11M55 1V11M49 1L55 11M55 1L49 11'/><path d='M64 1V11M61 4L64 1L67 4'/><path d='M74 1V11M74 3.5L78 6L74 8.5'/><path d='M90 1L86 5L90 7L86 11'/></g></svg>"); }
 
 /* --- Woven ---------------------------------------------------------------
-   Cloth in the tag's colour: a twill weave, the light on its rounded top and
-   shadow at its foot, and a running stitch just inside the edge holding it
-   to the day. The stitch leaves off where the block carries on. */
+   Cloth in the tag's colour: a twill weave, light along its top and shadow
+   toward the floor, and a running stitch just inside the edge holding it to
+   the day. The stitch runs on across a cut and turns down a step. The top
+   stitch and the ends are drawn on ::after, the bottom stitch on ::before,
+   so each can stop where its own edge does. */
 [data-blocks="woven"] :not(.dense) > .blocks > .block:not(.preview) {
   --stitch: color-mix(in oklab, var(--tag) 28%, white);
-  --st-l: 4px;
-  --st-r: 4px;
-  --side-l: linear-gradient(180deg, var(--stitch) 0 5px, transparent 0 9px);
-  --side-r: linear-gradient(180deg, var(--stitch) 0 5px, transparent 0 9px);
-  --edge-l: inset 1px 0 0 rgba(0, 0, 0, 0.3);
-  --edge-r: inset -1px 0 0 rgba(0, 0, 0, 0.3);
+  --dash: linear-gradient(90deg, var(--stitch) 0 5px, transparent 0 9px);
+  /* Where the top and bottom stitches start and stop, in from each end. */
+  --st-tl: 4px;
+  --st-tr: 4px;
+  --st-bl: 4px;
+  --st-br: 4px;
+  /* How far down the stitch on each end runs. */
+  --side-l: 100%;
+  --side-r: 100%;
   border-radius: 3px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 24%, transparent 66%, rgba(0, 0, 0, 0.26)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent min(10px, 26%))
+      0 0 / 100% 100% no-repeat,
+    linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.26))
+      0 calc(var(--top, 0px) * -1) / 100% 100cqh no-repeat,
     repeating-linear-gradient(-56deg, rgba(0, 0, 0, 0.13) 0 1px, transparent 1px 4px)
-      calc(var(--x, 0px) * -1) 0 / 8000px 100% no-repeat,
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 3px),
+      calc(var(--x, 0px) * -1) calc(var(--top, 0px) * -1) / 8000px 100cqh no-repeat,
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 3px)
+      0 calc(var(--top, 0px) * -1) / 100% 100cqh,
     var(--tag);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    var(--edge-l),
-    var(--edge-r);
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
-[data-blocks="woven"] :not(.dense) > .blocks > .block:not(.preview)::after {
+[data-blocks="woven"] :not(.dense) > .blocks > .block:not(.preview)::after,
+[data-blocks="woven"] :not(.dense) > .blocks > .block:not(.preview)::before {
   content: "";
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: var(--st-l);
-  right: var(--st-r);
   pointer-events: none;
   mix-blend-mode: normal;
-  background:
-    linear-gradient(90deg, var(--stitch) 0 5px, transparent 0 9px)
-      calc(var(--x, 0px) * -1 - var(--st-l)) 0 / 9px 1px repeat-x,
-    linear-gradient(90deg, var(--stitch) 0 5px, transparent 0 9px)
-      calc(var(--x, 0px) * -1 - var(--st-l)) 100% / 9px 1px repeat-x,
-    var(--side-l) 0 0 / 1px 9px repeat-y,
-    var(--side-r) 100% 0 / 1px 9px repeat-y;
   opacity: 0.7;
 }
-[data-blocks="woven"] :not(.dense) > .blocks > .block.joined-start { --st-l: 0px; --side-l: none; --edge-l: 0 0 transparent; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-[data-blocks="woven"] :not(.dense) > .blocks > .block.joined-end { --st-r: 0px; --side-r: none; --edge-r: 0 0 transparent; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+[data-blocks="woven"] :not(.dense) > .blocks > .block:not(.preview)::after {
+  inset: 4px var(--st-tr) 4px var(--st-tl);
+  background:
+    var(--dash) calc(var(--x, 0px) * -1 - var(--st-tl)) 0 / 9px 1px repeat-x,
+    repeating-linear-gradient(180deg, var(--stitch) 0 5px, transparent 0 9px)
+      0 0 / 1px var(--side-l) no-repeat,
+    repeating-linear-gradient(180deg, var(--stitch) 0 5px, transparent 0 9px)
+      100% 0 / 1px var(--side-r) no-repeat;
+  background-clip: border-box;
+}
+[data-blocks="woven"] :not(.dense) > .blocks > .block:not(.preview)::before {
+  left: var(--st-bl);
+  right: var(--st-br);
+  bottom: 4px;
+  height: 1px;
+  background: var(--dash) calc(var(--x, 0px) * -1 - var(--st-bl)) 0 / 9px 1px repeat-x;
+}
+[data-blocks="woven"] :not(.dense) > .blocks > .block.joined-start { --st-tl: 0px; --st-bl: 0px; --side-l: 0px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+[data-blocks="woven"] :not(.dense) > .blocks > .block.joined-end { --st-tr: 0px; --st-br: 0px; --side-r: 0px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+[data-blocks="woven"] :not(.dense) > .blocks > .block.step-start { --st-tl: 4px; --side-l: var(--step-l); border-top-left-radius: 3px; }
+[data-blocks="woven"] :not(.dense) > .blocks > .block.step-end { --st-tr: 4px; --side-r: var(--step-r); border-top-right-radius: 3px; }
 
 /* The samples in the settings: a short bar to show each look on. */
 .blocksample { display: block; margin-top: var(--s-2); }

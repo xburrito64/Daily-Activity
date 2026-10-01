@@ -285,6 +285,22 @@ export function layoutLanes(blocks) {
     const here = running[slot]
     if (here.length === 0) continue
 
+    // Ten minutes between two things above a block is not a reason for it to
+    // rise into the gap. It would stand at full height for exactly those ten
+    // minutes and drop back — a thin spike up the bar, read as something
+    // happening, when all that happened is a pause above it. So where every
+    // block here is drawn the same just before and just after, and the slot
+    // between is the only one that differs, they keep the place they had and
+    // the pause shows as the gap it was.
+    const bridged = here.every((b) => {
+      const share = shareAt(b, slot - 1)
+      return share >= 0 && share === shareAt(b, slot + 1) && open.get(b)?.to === from
+    }) && here.some((b) => shareAt(b, slot) !== shareAt(b, slot - 1))
+    if (bridged) {
+      for (const block of here) open.get(block).to = to
+      continue
+    }
+
     // The bar makes its change ten minutes early and holds it ten minutes
     // late: a lane is kept for a block that starts next, and kept a moment
     // longer for one that has just stopped. So a block steps aside once,
