@@ -14,9 +14,9 @@ const WORDS = {
     wipeConfirm: 'Dispel it?',
   },
   scriptorium: {
-    recorded: (n) => (n === 1 ? 'one leaf inscribed' : `${n} leaves inscribed`),
-    emptyDay: 'a blank leaf — nothing yet inscribed',
-    blank: 'blank leaf',
+    recorded: (n) => (n === 1 ? 'one leaf written in gold' : `${n} leaves written in gold`),
+    emptyDay: 'a black leaf, waiting for its gold',
+    blank: 'unwritten leaf',
     // Scribes took a mistake off the vellum by scraping it with a knife.
     wipe: 'Scrape',
     wipeConfirm: 'Scrape it clean?',

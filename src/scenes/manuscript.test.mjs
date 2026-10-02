@@ -1,8 +1,8 @@
-// Scriptorium's book: the hours, the initials, the chronicle, the sun.
+// Black Hours' book: the hours, the initials, the chronicle, the ivy border.
 
 import assert from 'node:assert/strict'
 import {
-  hourOf, illumination, chronicle, chronicleWords, duration, sunOf, GILDED_FROM,
+  hourOf, illumination, chronicle, chronicleWords, duration, keptUp, ivy, GILDED_FROM,
 } from './manuscript.js'
 
 let passed = 0
@@ -88,12 +88,34 @@ t('durations read as a person would say them', () => {
   assert.equal(duration(40), '40m')
 })
 
-t('the sun rises on the left, stands highest at one, and sets on the right', () => {
-  assert.deepEqual(sunOf(3 * 60), { day: 0, from: -1 })
-  assert.deepEqual(sunOf(22 * 60), { day: 0, from: 1 })
-  const noon = sunOf(13 * 60)
-  assert.ok(Math.abs(noon.day - 1) < 1e-9 && Math.abs(noon.from) < 1e-9)
-  assert.ok(sunOf(8 * 60).from < 0 && sunOf(18 * 60).from > 0)
+t('the border is gilded as far as today has been kept up with', () => {
+  // Nine in the morning: nine hours gone by.
+  assert.equal(keptUp([], 9 * 60), 0)
+  assert.equal(keptUp([block('sleep', 0, 54)], 9 * 60), 1, 'all nine written')
+  assert.equal(keptUp([block('sleep', 0, 27)], 9 * 60), 0.5, 'half of them')
+  // Overlaps count once, and what lies ahead of now does not count yet.
+  assert.equal(keptUp([block('sleep', 0, 27), block('music', 0, 27), block('game', 60, 90)], 9 * 60), 0.5)
+  // Five past midnight is measured against a whole hour, not five minutes.
+  assert.ok(keptUp([block('sleep', 0, 1)], 5) < 0.2)
+})
+
+t('the ivy grows the same every time, and stays inside its box', () => {
+  const a = ivy(640, 96, 7)
+  const b = ivy(640, 96, 7)
+  assert.deepEqual(a, b, 'the same seed, the same border')
+  assert.notDeepEqual(ivy(640, 96, 8).leaves, a.leaves, 'another seed, another border')
+  assert.ok(a.leaves.length > 20, 'leafy enough to be a border')
+  for (const p of [...a.leaves, ...a.flowers, ...a.bezants]) {
+    assert.ok(p.x >= 0 && p.x <= 640 && p.y >= 0 && p.y <= 96, `in the box: ${p.x}, ${p.y}`)
+    assert.ok(p.rank >= 0 && p.rank < 1)
+  }
+  for (const line of a.stems) for (const [x, y] of line) assert.ok(x >= 0 && x <= 640 && y >= 0 && y <= 96)
+})
+
+t('half kept up is about half the leaves gilded', () => {
+  const { leaves } = ivy(900, 110, 3)
+  const gilded = leaves.filter((l) => l.rank < 0.5).length / leaves.length
+  assert.ok(gilded > 0.3 && gilded < 0.7, `${gilded}`)
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

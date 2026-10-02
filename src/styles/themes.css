@@ -16,91 +16,77 @@
  */
 
 /* ======================================================================
-   Scriptorium — vellum, iron-gall ink, red rubrics and burnished gold.
-   The one light theme: a day as a page of an illuminated manuscript.
+   Black Hours — a book of hours written in gold and silver on black vellum,
+   read by candlelight. (Kept as "scriptorium" underneath, so a choice made
+   before it was redrawn still finds it.)
    ====================================================================== */
 [data-theme="scriptorium"] {
-  --scheme: light;
-  --c-bg:            #efe4cc;
-  --c-surface:       #f7eedb;
-  --c-surface-hi:    #e9d8b6;
-  --c-surface-hover: #f3e7ce;
-  --c-line:          #cbb58c;
-  --c-line-soft:     #dccaa3;
-  --c-line-strong:   #a33a2a;
-  --c-text:          #2d2114;
-  --c-text-bright:   #1c140b;
-  --c-text-dim:      #6e5a41;
-  --c-text-faint:    #9a8463;
+  --c-bg:            #0d0c10;
+  --c-surface:       #17151b;
+  --c-surface-hi:    #221f27;
+  --c-surface-hover: #1c1a21;
+  --c-line:          #2e2a34;
+  --c-line-soft:     #201d25;
+  --c-line-strong:   #8a6d34;
+  /* Silver ink for what is read, gold for what is lit. */
+  --c-text:          #d8d5de;
+  --c-text-bright:   #f2e7c9;
+  --c-text-dim:      #8f8b99;
+  --c-text-faint:    #5e5a67;
   --c-text-on-block: #ffffff;
-  --c-accent:        #9e3122;
-  --c-ok:            #4c6a33;
-  --c-danger:        #a33224;
-  --c-danger-soft:   #8c2a1e;
-  --c-warn:          #86610f;
-  --c-focus-ring:    #d9a53a;
+  --c-accent:        #d6b05a;
+  --c-ok:            #8fb07a;
+  --c-danger:        #c9503a;
+  --c-danger-soft:   #e08a76;
+  --c-warn:          #e2c27a;
+  --c-focus-ring:    #f3dc95;
+  /* The red of a rubric, for the names of days and hours. */
+  --rubric:          #d4573f;
 
-  --font-display: "Gabriola", "Cormorant Garamond", Georgia, serif;
-  --font-ui:      "Sitka Text", "Crimson Pro", Georgia, serif;
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-ui:      "Crimson Pro", Georgia, serif;
   --font-meta:    "Cormorant Garamond", Georgia, serif;
   --f-title: 42px;
-  --f-dayhead: 27px;
-  --ls-display: 0.01em;
-  --ls-eyebrow: 0.2em;
+  --f-dayhead: 26px;
+  --ls-display: 0.015em;
+  --ls-eyebrow: 0.24em;
 
   --r-sm: 2px;
   --r-md: 3px;
   --r-lg: 4px;
 
-  --glow-rgb: 190 128 24;
-  --gold-hi: #d9a750;
-  --gold-edge: #a8741e;
-  --on-gold: #fffaf0;
-  --chip-mix: 18%;
-  --chip-mix-hover: 30%;
-  --chip-text: #2d2114;
-  --sky-wash: rgba(255, 250, 236, 0.9);
-  --track-bg: #e5d4b0;
-  --track-border: 1px solid #b89f72;
-  --track-well: inset 0 2px 6px rgba(90, 55, 20, 0.18);
-  --empty-line: #c3aa7d;
-  --empty-a: #eadcbc;
-  --empty-b: #e3d2ae;
-  --empty-text: #a38c66;
-  --rule-gold: linear-gradient(90deg, transparent, #a33a2a 14%, #a33a2a 86%, transparent);
-  --rule-faint: linear-gradient(90deg, transparent, #c7ad7c, transparent);
-  --block-ring: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
-  --glow-armed: 0 0 0 1px rgb(var(--glow-rgb) / 0.95), 0 0 14px 2px rgb(var(--glow-rgb) / 0.35);
+  --glow-rgb: 214 176 90;
+  --gold-hi: #f3dc95;
+  --gold-edge: #b08a3e;
+  --on-gold: #1c1405;
+  --chip-mix: 30%;
+  --chip-mix-hover: 44%;
+  --chip-text: #ece8f1;
+  --sky-wash: #1a1620;
+  --track-bg: #121016;
+  --track-border: 1px solid #2c2731;
+  --track-well: inset 0 1px 8px rgba(0, 0, 0, 0.65);
+  --empty-line: #26222c;
+  --empty-a: #100e13;
+  --empty-b: #121015;
+  --empty-text: #6f6a7a;
+  --rule-gold: linear-gradient(90deg, transparent, #6b5528 8%, #d6b05a 50%, #6b5528 92%, transparent);
+  --rule-faint: linear-gradient(90deg, transparent, #3a3122, transparent);
+  /* A gilded edge along the top of every block, as a painted panel has. */
+  --block-ring: inset 0 1px 0 rgba(255, 226, 160, 0.34), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  --glow-armed: 0 0 0 1px rgb(var(--glow-rgb) / 0.95), 0 0 16px 1px rgb(var(--glow-rgb) / 0.4);
 }
-/* Vellum has a grain, and a page darkens toward its edges. */
+/* Black vellum: a fine grain of the skin under the dye, the page darker at
+   its edges, and warm where the candle is. */
 [data-theme="scriptorium"] .app > .sky {
   background:
-    radial-gradient(ellipse at 50% 38%, transparent 52%, rgba(110, 70, 28, 0.2) 100%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.36  0 0 0 0 0.24  0 0 0 0 0.1  0 0 0 0.1 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
-    radial-gradient(1400px 600px at 18% -10%, var(--sky-wash) 0%, transparent 65%),
-    var(--c-bg);
+    radial-gradient(ellipse 75% 70% at 52% 46%, transparent 52%, rgba(0, 0, 0, 0.6) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.8  0 0 0 0 0.78  0 0 0 0 0.86  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+    radial-gradient(1300px 700px at 30% -20%, var(--sky-wash), transparent 70%),
+    linear-gradient(180deg, #111014 0%, #0c0b0e 100%);
 }
 [data-theme="scriptorium"] .sky i { display: none; }
-[data-theme="scriptorium"] h1 { line-height: 1.05; font-weight: 400; }
-[data-theme="scriptorium"] .dayhead { line-height: 1; }
-[data-theme="scriptorium"] .dayweekday { color: var(--c-accent); font-family: var(--font-ui); }
-/* A double rule under the header, the way a scribe ruled a page. */
-[data-theme="scriptorium"] .goldrule {
-  height: 4px;
-  background:
-    var(--rule-gold) top / 100% 1px no-repeat,
-    var(--rule-gold) bottom / 100% 1px no-repeat;
-  opacity: 0.8;
-}
-/* Today, framed in gold leaf like a capital on the page. */
-[data-theme="scriptorium"] .daysection.today .track {
-  box-shadow: var(--track-well), 0 0 0 3px var(--c-bg), 0 0 0 4px rgb(var(--glow-rgb) / 0.7);
-}
-/* Chips that are not filled are written in ink, not white. */
-[data-theme="scriptorium"] .chip[data-look="stub"].armed,
-[data-theme="scriptorium"] .chip[data-look="seal"].armed,
-[data-theme="scriptorium"] .chip[data-look="ink"].armed { color: var(--c-text-bright); }
-[data-theme="scriptorium"] .settings { box-shadow: -14px 0 36px rgba(80, 50, 20, 0.25); }
+[data-theme="scriptorium"] .settings { box-shadow: -14px 0 36px rgba(0, 0, 0, 0.65); }
 
 /* ======================================================================
    Hearthfire — charred wood, a fire just out of frame, embers rising.
@@ -500,6 +486,48 @@
   font-style: italic;
   font-size: 12px;
   color: var(--c-text-dim);
+}
+
+/* Black Hours' card: the black leaf ruled in gold, its title gilded, and the
+   tags with their painted lozenges, as on the page. */
+.themepreview[data-theme="scriptorium"] {
+  background:
+    radial-gradient(ellipse 60% 80% at 0% 110%, rgba(255, 178, 92, 0.12), transparent 70%),
+    linear-gradient(180deg, #121015, #0c0b0e);
+  box-shadow: inset 0 0 0 1px rgb(var(--glow-rgb) / 0.35), inset 0 0 0 4px #0c0b0e, inset 0 0 0 5px rgba(206, 204, 216, 0.08);
+}
+.themepreview[data-theme="scriptorium"] .tp-title {
+  color: transparent;
+  background: linear-gradient(180deg, #fbf0cf 0%, #e2bd62 52%, #a8823a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.themepreview[data-theme="scriptorium"] .tp-title::first-letter {
+  padding: 0 3px;
+  margin-right: 1px;
+  font-size: 22px;
+  color: #f3dc95;
+  -webkit-text-fill-color: #f3dc95;
+  background: #27458f;
+  box-shadow: 0 0 0 1.5px #d6b05a;
+}
+.themepreview[data-theme="scriptorium"] .tp-chip {
+  position: relative;
+  padding-left: 15px;
+  color: var(--c-text);
+  background: #17151b;
+  border-color: rgb(var(--glow-rgb) / 0.3);
+}
+.themepreview[data-theme="scriptorium"] .tp-chip::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--chip);
+  box-shadow: 0 0 0 1px rgb(var(--glow-rgb) / 0.8);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 /* Movement is decoration; anyone who has asked their machine for less of it
@@ -1586,30 +1614,141 @@
 }
 
 /* ----------------------------------------------------------------------
-   Scriptorium, in full. The initials and the chronicle are
-   scenes/ScriptParts.jsx, the light and the ink scenes/ScriptScene.jsx;
-   everything here is the book.
+   Black Hours, in full. The initials and the chronicle are
+   scenes/ScriptParts.jsx; the candle, the frame, the ivy border and the gold
+   leaf are scenes/ScriptScene.jsx; everything here is the book.
    ---------------------------------------------------------------------- */
 [data-theme="scriptorium"] { --dayruler-height: 36px; }
 
-/* The title opens on the book's own initial. */
-[data-theme="scriptorium"] h1 { display: flex; align-items: center; }
+/* --- the page: ruled in gold at its edge, and a candle at the corner ----- */
+.app > .hours-frame {
+  position: fixed;
+  inset: 7px;
+  z-index: 24;
+  pointer-events: none;
+  border: 1px solid rgb(var(--glow-rgb) / 0.3);
+}
+.hours-frame::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(206, 204, 216, 0.09);
+}
+/* A gold lozenge at each corner, a dark bead set in it. */
+.hours-frame i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: radial-gradient(circle, #1a1206 0 1.3px, transparent 1.6px), linear-gradient(135deg, #fff0b8, #d6b05a 45%, #8a6420);
+  transform: rotate(45deg);
+  box-shadow: 0 0 6px rgb(var(--glow-rgb) / 0.35);
+}
+.hours-frame i:nth-child(1) { top: -5px; left: -5px; }
+.hours-frame i:nth-child(2) { top: -5px; right: -5px; }
+.hours-frame i:nth-child(3) { bottom: -5px; left: -5px; }
+.hours-frame i:nth-child(4) { bottom: -5px; right: -5px; }
+
+/* The candle: a pool of warm light low at the corner of the desk, moving a
+   little as the flame does. Only its strength changes, which the graphics
+   card does by itself. */
+.app > .hours-candle {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 75% at 2% 106%, rgba(255, 178, 92, 0.15), rgba(255, 150, 60, 0.05) 45%, transparent 72%),
+    radial-gradient(ellipse 40% 30% at 0% 100%, rgba(255, 210, 140, 0.08), transparent 70%);
+  animation: hours-flicker 7s steps(70) infinite;
+}
+@keyframes hours-flicker {
+  0%, 100% { opacity: 1; }
+  12% { opacity: 0.82; }
+  20% { opacity: 0.96; }
+  33% { opacity: 0.78; }
+  46% { opacity: 1; }
+  60% { opacity: 0.86; }
+  73% { opacity: 0.97; }
+  87% { opacity: 0.8; }
+}
+
+/* --- the border of ivy along the head of the page ------------------------ */
+.app > .hours-border {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+}
+.hours-border canvas { display: block; }
+/* The snail on it, as one lived in every margin. */
+.hours-snail {
+  position: absolute;
+  width: 30px;
+  height: 19px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 21'><path d='M2 19.5c4-2 13-2.4 20-2.6 3.6-.1 5.4-1.6 5.8-4.2l.3-3.4c.1-1.2 1.6-1.4 2 0l.2 3c.2 3.4-1.4 6.4-5.3 7.4-6.5 1.4-15.7.9-23 .8Z' fill='%23aeabbb' stroke='%2314121a' stroke-width='0.9'/><path d='M28.4 9.4 27.6 4M29.6 9.4l1-5.2' stroke='%23aeabbb' stroke-width='0.8' stroke-linecap='round'/><circle cx='27.5' cy='3.8' r='0.9' fill='%23aeabbb'/><circle cx='30.7' cy='4' r='0.9' fill='%23aeabbb'/><circle cx='13' cy='10.5' r='7.6' fill='%23c9962e' stroke='%233a2810' stroke-width='0.9'/><path d='M13 10.5c.9-.2 1.3.9.6 1.5-1.1.9-2.8 0-2.7-1.5.1-2 2.6-3 4.3-1.9 2.2 1.4 1.9 4.8-.4 6-2.9 1.5-6.4-.5-6.5-3.8-.1-3.8 3.7-6 7-4.9' fill='none' stroke='%233a2810' stroke-width='0.9' stroke-linecap='round'/><path d='M8.4 6.4c1.8-1.6 4.4-1.9 6.4-1.2' stroke='%23fff0c0' stroke-width='0.9' fill='none' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  transform-origin: 0 100%;
+  animation: hours-crawl 3.4s steps(48) infinite;
+}
+@keyframes hours-crawl {
+  0%, 100% { transform: scaleX(1); }
+  45% { transform: scaleX(1.08) scaleY(0.96); }
+}
+
+/* --- the head of the page --------------------------------------------------- */
+/* The title opens on the book's own initial, the rest of it in gold. */
+[data-theme="scriptorium"] h1 {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  line-height: 1.05;
+  color: transparent;
+  background: linear-gradient(180deg, #fbf0cf 0%, #e2bd62 52%, #a8823a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
 .titleinitial {
   flex: none;
-  margin: -8px 3px -8px -2px;
+  margin: -10px 4px -10px -2px;
 }
-/* The shadow is the picture's, not the frame's: the light moving over it
-   would otherwise have the shadow worked out again every frame. */
-.titleinitial .initial { filter: drop-shadow(0 1px 1.5px rgba(90, 55, 20, 0.35)); }
+.titleinitial .initial { filter: drop-shadow(0 0 6px rgb(var(--glow-rgb) / 0.3)); }
 .script-hour { font-style: italic; }
-.script-hour em { font-style: normal; color: var(--c-accent); letter-spacing: 0.04em; }
+.script-hour em { font-style: normal; color: var(--rubric); letter-spacing: 0.04em; }
+/* Ruled twice under the head: once in gold, and a hair of silver under it. */
+[data-theme="scriptorium"] .goldrule {
+  height: 4px;
+  background:
+    var(--rule-gold) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, rgba(206, 204, 216, 0.16), transparent) bottom / 100% 1px no-repeat;
+}
 
-/* --- the initials ------------------------------------------------------- */
-[data-theme="scriptorium"] .dayhead { align-items: center; }
+/* --- each day ---------------------------------------------------------------- */
+[data-theme="scriptorium"] .dayhead {
+  align-items: center;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--c-text-bright);
+}
+/* The name of the day in red, as a calendar of the hours wrote its feasts. */
+[data-theme="scriptorium"] .dayweekday {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--rubric);
+}
+[data-theme="scriptorium"] .daysection.today .dayhead { color: var(--c-accent); }
+[data-theme="scriptorium"] .daysection.blank .dayhead { color: var(--c-text-dim); }
+[data-theme="scriptorium"] .todaymark {
+  font-family: var(--font-meta);
+  font-size: var(--f-base);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--rubric);
+}
+
+/* The initials. */
 .dayhead .initial {
   flex: none;
   margin: -5px 0;
-  filter: drop-shadow(0 1px 1.5px rgba(90, 55, 20, 0.3));
+  filter: drop-shadow(0 0 4px rgb(var(--glow-rgb) / 0.22));
   transition: transform 0.3s ease;
 }
 .dayhead .initial.sketch { filter: none; }
@@ -1625,9 +1764,9 @@
 .initial-shine {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(255, 248, 225, 0.32) 50%, transparent 60%);
+  background: linear-gradient(135deg, transparent 40%, rgba(255, 248, 225, 0.38) 50%, transparent 60%);
   transform: translate(-100%, -100%);
-  animation: initial-shine 4.5s steps(60) infinite;
+  animation: initial-shine 5s steps(60) infinite;
   pointer-events: none;
 }
 @keyframes initial-shine {
@@ -1646,7 +1785,8 @@
   font-style: italic;
 }
 
-/* --- the chronicle beside each day -------------------------------------- */
+/* The chronicle beside each day, in silver, with what the day was given to
+   in its own colours brightened to read on the black. */
 .chronicle {
   flex: 1 1 0;
   min-width: 0;
@@ -1657,6 +1797,7 @@
   white-space: nowrap;
   font-family: var(--font-meta);
   font-size: var(--f-md);
+  font-weight: 500;
   font-style: italic;
   letter-spacing: 0;
   color: var(--c-text-dim);
@@ -1664,20 +1805,21 @@
 .chronicle em {
   font-style: normal;
   font-weight: 600;
-  color: color-mix(in oklab, var(--rubric) 70%, #2d2114);
+  color: color-mix(in oklab, var(--rubric) 52%, #f2e7c9);
 }
 
-/* --- the canonical hours under every day -------------------------------- */
+/* The canonical hours under every day, in red. */
 [data-theme="scriptorium"] .rtick::after {
   position: absolute;
   top: 22px;
   transform: translateX(-50%);
   font-family: var(--font-meta);
-  font-size: 12px;
+  font-size: 13px;
   font-style: italic;
+  font-weight: 600;
   white-space: nowrap;
-  color: var(--c-accent);
-  opacity: 0.85;
+  color: var(--rubric);
+  opacity: 0.9;
 }
 [data-theme="scriptorium"] .rtick[data-hour="0"]::after { content: "Matins"; transform: none; }
 [data-theme="scriptorium"] .rtick[data-hour="3"]::after { content: "Lauds"; }
@@ -1690,184 +1832,153 @@
 [data-theme="scriptorium"] .rtick[data-hour="3"] .rmark,
 [data-theme="scriptorium"] .rtick[data-hour="9"] .rmark,
 [data-theme="scriptorium"] .rtick[data-hour="15"] .rmark,
-[data-theme="scriptorium"] .rtick[data-hour="21"] .rmark { height: 7px; background: var(--c-accent); }
+[data-theme="scriptorium"] .rtick[data-hour="21"] .rmark { height: 7px; background: var(--rubric); }
 
-/* --- the page ------------------------------------------------------------- */
-/* Pigment laid on vellum takes the grain of the skin under it. */
-[data-theme="scriptorium"] .block::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='v'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.2  0 0 0 0 0.1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23v)'/></svg>");
-  mix-blend-mode: multiply;
-  opacity: 0.55;
+/* --- the bar ------------------------------------------------------------------ */
+/* Today, set in a frame of gold. */
+[data-theme="scriptorium"] .daysection.today .track,
+[data-theme="scriptorium"] .compactrow.today .track {
+  border-color: rgb(var(--glow-rgb) / 0.75);
+  box-shadow: var(--track-well), 0 0 22px -6px rgb(var(--glow-rgb) / 0.5);
 }
-/* A leaf not yet written on: ruled, and waiting. */
+/* A leaf not yet written on: ruled in silver, and waiting. */
 [data-theme="scriptorium"] .track.empty {
   border-style: solid;
+  border-color: var(--empty-line);
   background:
-    repeating-linear-gradient(180deg, transparent 0 13px, rgba(163, 58, 42, 0.13) 13px 14px),
-    #f3e9d2;
+    repeating-linear-gradient(180deg, transparent 0 15px, rgba(206, 204, 216, 0.045) 15px 16px),
+    #100e13;
 }
-[data-theme="scriptorium"] .emptyday { font-style: italic; }
+/* Its words between two line-fillers of gold, as a scribe filled the end of
+   a short line rather than leave it bare. */
+[data-theme="scriptorium"] .emptyday { gap: 18px; padding: 0 18px; color: var(--empty-text); }
+[data-theme="scriptorium"] .emptyday::before,
+[data-theme="scriptorium"] .emptyday::after {
+  content: "";
+  flex: 1;
+  height: 6px;
+  background: radial-gradient(circle, rgb(var(--glow-rgb) / 0.42) 0 1.3px, transparent 1.8px) 0 50% / 16px 6px repeat-x;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 30%);
+  mask: linear-gradient(90deg, transparent, #000 30%);
+}
+[data-theme="scriptorium"] .emptyday::after {
+  -webkit-mask: linear-gradient(-90deg, transparent, #000 30%);
+  mask: linear-gradient(-90deg, transparent, #000 30%);
+}
 
-/* The time now is a snail, the one every margin had, crawling along the foot
-   of today and leaving a silver trail over everything the day has done. */
+/* The time now: a line of gold, and on it a goldfinch, the bird of every
+   other margin, looking back over the day. It sleeps from Compline to Prime. */
 [data-theme="scriptorium"] .nowline {
   width: 1.5px;
-  background: rgba(45, 33, 20, 0.5);
-  box-shadow: none;
+  background: linear-gradient(180deg, #fff0c0, #d6b05a 30%, rgb(var(--glow-rgb) / 0.75));
+  /* Edged in black, so it still reads where it crosses a block of gold. */
+  box-shadow: 0 0 0 1px rgba(10, 8, 6, 0.55), 0 0 7px rgb(var(--glow-rgb) / 0.55);
 }
 [data-theme="scriptorium"] .nowline::before {
-  top: auto;
-  bottom: 1px;
+  top: 0;
   left: auto;
-  right: -3px;
-  width: 32px;
-  height: 21px;
+  right: -4px;
+  width: 26px;
+  height: 22px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 22'><path d='M3.6 20.4h18' stroke='%23d6b05a' stroke-width='1.4' stroke-linecap='round'/><path d='M12.6 16.6v3.6M15.2 16.6v3.6' stroke='%23a07c34' stroke-width='0.9'/><path d='M18.6 11.6 25.4 8.8 24.6 13.8Z' fill='%23231d1a' stroke='%23d6b05a' stroke-width='0.5'/><ellipse cx='14' cy='12.4' rx='7' ry='5' fill='%23c49a5e' stroke='%233a2810' stroke-width='0.6'/><ellipse cx='12.8' cy='14.4' rx='4.6' ry='2.5' fill='%23f1e6cc'/><path d='M11.6 10.5c3-1.4 7-1 8.6.9-1.6 2.6-5.6 3.6-8.4 2.2Z' fill='%23221c18'/><path d='M12.4 12.3c2.4-.6 5.2-.5 7 .3' stroke='%23f3cc35' stroke-width='1.4' stroke-linecap='round' fill='none'/><circle cx='7.6' cy='8.4' r='3.9' fill='%23ece4d2' stroke='%233a2810' stroke-width='0.6'/><path d='M6.3 4.8c2-.8 4.3.1 5.1 2-1.7.4-3.6.1-5.1-2Z' fill='%23201a17'/><path d='M3.9 9.9c-.5-2 .7-3.9 2.7-4.2.2 1.9-.8 3.6-2.7 4.2Z' fill='%23cf3a2c'/><circle cx='7.1' cy='7.9' r='0.8' fill='%23110d0b'/><path d='M4.1 8.7 1.2 9.6 4.1 10.5Z' fill='%23eadfc6' stroke='%233a2810' stroke-width='0.4'/></svg>") center / contain no-repeat;
   transform: none;
-  transform-origin: 100% 100%;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 21'><path d='M2 19.5c4-2 13-2.4 20-2.6 3.6-.1 5.4-1.6 5.8-4.2l.3-3.4c.1-1.2 1.6-1.4 2 0l.2 3c.2 3.4-1.4 6.4-5.3 7.4-6.5 1.4-15.7.9-23 .8Z' fill='%23c9b089' stroke='%232d2114' stroke-width='0.9'/><path d='M28.4 9.4 27.6 4M29.6 9.4l1-5.2' stroke='%232d2114' stroke-width='0.8' stroke-linecap='round'/><circle cx='27.5' cy='3.8' r='0.9' fill='%232d2114'/><circle cx='30.7' cy='4' r='0.9' fill='%232d2114'/><circle cx='13' cy='10.5' r='7.6' fill='%23b0662e' stroke='%232d2114' stroke-width='0.9'/><path d='M13 10.5c.9-.2 1.3.9.6 1.5-1.1.9-2.8 0-2.7-1.5.1-2 2.6-3 4.3-1.9 2.2 1.4 1.9 4.8-.4 6-2.9 1.5-6.4-.5-6.5-3.8-.1-3.8 3.7-6 7-4.9' fill='none' stroke='%232d2114' stroke-width='0.9' stroke-linecap='round'/><path d='M8.4 6.4c1.8-1.6 4.4-1.9 6.4-1.2' stroke='%23f2d9a0' stroke-width='0.9' fill='none' stroke-linecap='round'/></svg>") center / contain no-repeat;
-  animation: script-crawl 3.2s steps(48) infinite;
+  transform-origin: 70% 100%;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+  animation: hours-finch 7s steps(70) infinite;
 }
-[data-theme="scriptorium"] .nowline::after {
-  content: "";
-  position: absolute;
-  right: 28px;
-  bottom: 2px;
-  width: 4000px;
-  height: 1.5px;
-  background: linear-gradient(to left, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.35) 260px, rgba(255, 255, 255, 0.12));
+[data-theme="scriptorium"][data-vigil="night"] .nowline::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 22'><path d='M3.6 20.4h18' stroke='%23d6b05a' stroke-width='1.4' stroke-linecap='round'/><path d='M12.6 17v3.2M15.2 17v3.2' stroke='%23a07c34' stroke-width='0.9'/><path d='M18.6 12.6 25 10.6 24.4 15Z' fill='%23231d1a' stroke='%23d6b05a' stroke-width='0.5'/><ellipse cx='14' cy='13.2' rx='7.2' ry='5' fill='%23c49a5e' stroke='%233a2810' stroke-width='0.6'/><ellipse cx='12.6' cy='15.2' rx='4.6' ry='2.4' fill='%23f1e6cc'/><path d='M11.8 11.4c3-1.3 7-.9 8.6 1-1.6 2.5-5.6 3.4-8.4 2Z' fill='%23221c18'/><path d='M12.6 13.1c2.4-.5 5.2-.4 7 .3' stroke='%23f3cc35' stroke-width='1.4' stroke-linecap='round' fill='none'/><circle cx='9.4' cy='10.6' r='3.7' fill='%23ece4d2' stroke='%233a2810' stroke-width='0.6'/><path d='M8 7.1c2-.7 4 .1 4.8 1.8-1.6.4-3.4.1-4.8-1.8Z' fill='%23201a17'/><path d='M7.8 10.6q.9.8 1.8 0' stroke='%23110d0b' stroke-width='0.7' fill='none' stroke-linecap='round'/><path d='M6.4 12 5 13.6 7.2 13.4Z' fill='%23cf3a2c'/><path d='M19.4 3.4a2.3 2.3 0 1 0 2.7 3.2 1.8 1.8 0 1 1-2.7-3.2Z' fill='%23cfcde0'/></svg>");
+  animation: none;
 }
-@keyframes script-crawl {
-  0%, 100% { transform: scaleX(1); }
-  45% { transform: scaleX(1.07) scaleY(0.97); }
+@keyframes hours-finch {
+  0%, 78%, 100% { transform: none; }
+  81% { transform: rotate(-9deg); }
+  86% { transform: rotate(4deg); }
+  90% { transform: rotate(-3deg); }
+  94% { transform: none; }
 }
+/* A row of the Overview is too short for a bird to sit in. */
+[data-theme="scriptorium"] .compactrow .nowline::before { display: none; }
 
 /* While a tag is picked up, the pointer over a day is a quill. */
-[data-theme="scriptorium"] .scroller.armed .track {
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M8.6 23.4C9.8 14.6 17.6 5.8 30 2c-2.8 7.4-9.4 15.6-18.2 23.4Z' fill='%23fffaf0' stroke='%232d2114' stroke-width='1'/><path d='M10.6 23.6C15.2 16.8 21 10 29.2 3.2M14 17l2.4 1.4M16.6 13.8l2.6 1.2M19.4 10.8l2.4 1M22.4 8l2.2.8' stroke='%232d2114' stroke-width='0.7' fill='none'/><path d='M2 30l6.4-6.6 2.6 2.4Z' fill='%232d2114'/></svg>") 2 30, crosshair;
-}
+[data-theme="scriptorium"] .scroller.armed .track { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><path d='M8.6 23.4C9.8 14.6 17.6 5.8 30 2c-2.8 7.4-9.4 15.6-18.2 23.4Z' fill='%23f1e2b4' stroke='%237a5a1e' stroke-width='1'/><path d='M10.6 23.6C15.2 16.8 21 10 29.2 3.2M14 17l2.4 1.4M16.6 13.8l2.6 1.2M19.4 10.8l2.4 1M22.4 8l2.2.8' stroke='%237a5a1e' stroke-width='0.7' fill='none'/><path d='M2 30l6.4-6.6 2.6 2.4Z' fill='%23d6b05a' stroke='%237a5a1e' stroke-width='0.6'/></svg>") 2 30, crosshair; }
 
-/* --- ink ------------------------------------------------------------------ */
-.app > .script-ink {
+/* --- gold where a stroke ends ------------------------------------------------- */
+.app > .hours-leaf {
   position: fixed;
   inset: 0;
   z-index: 35;
   pointer-events: none;
 }
-.script-blot {
+.hours-flakes { position: absolute; width: 0; height: 0; }
+.hours-flakes i {
   position: absolute;
-  overflow: visible;
-  animation: script-blot 2.6s ease-out forwards;
+  left: 0;
+  top: 0;
+  width: var(--size);
+  height: var(--size);
+  background: linear-gradient(135deg, #fff3c0, #d6b05a 50%, #8a6420);
+  clip-path: polygon(50% 0, 100% 38%, 72% 100%, 8% 82%, 0 24%);
+  opacity: 0;
+  animation: hours-flake 1.7s cubic-bezier(0.2, 0.7, 0.35, 1) both;
 }
-@keyframes script-blot {
-  0% { transform: scale(0.2); opacity: 1; }
-  7% { transform: scale(1.1); }
-  12% { transform: scale(1); }
-  65% { opacity: 0.85; }
-  100% { transform: scale(1); opacity: 0; }
+@keyframes hours-flake {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.3); }
+  30% { opacity: 1; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(calc(var(--turn) * 0.4)); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + var(--fall))) rotate(var(--turn)); }
 }
 
-/* --- the light through the window ----------------------------------------- */
-.app > .script-light {
-  --beam-angle: 90deg;
-  --beam-at: 50%;
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  pointer-events: none;
-  opacity: 0;
-  /* Two panes of light with the mullion's shadow between them. Multiplied
-     over the page, so the room around the beam is what falls into shade
-     and the light is the page itself, untouched. */
-  background: linear-gradient(var(--beam-angle),
-    #dcc7a6 calc(var(--beam-at) - 26%),
-    #fffaf0 calc(var(--beam-at) - 13%),
-    #ffffff calc(var(--beam-at) - 3.5%),
-    #e6d4b6 calc(var(--beam-at) - 1.8%),
-    #e6d4b6 calc(var(--beam-at) + 0.8%),
-    #ffffff calc(var(--beam-at) + 2.5%),
-    #fffaf0 calc(var(--beam-at) + 12%),
-    #dcc7a6 calc(var(--beam-at) + 25%));
-  mix-blend-mode: multiply;
-  transition: opacity 3s ease;
-}
-/* After dark, a candle down at the corner of the desk, and the room beyond
-   the page going brown and dim. */
-.app > .script-night {
-  position: fixed;
-  inset: -4%;
-  z-index: 30;
-  pointer-events: none;
-  opacity: 0;
-  background:
-    radial-gradient(ellipse 55% 65% at 90% 100%, rgba(255, 196, 120, 0.5), transparent 70%),
-    radial-gradient(ellipse 80% 78% at 52% 50%, rgba(255, 255, 255, 0) 45%, rgba(80, 44, 16, 0.55) 100%);
-  mix-blend-mode: multiply;
-  transition: opacity 3s ease;
-}
-.app > .script-motes {
-  position: fixed;
-  inset: 0;
-  z-index: 31;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-/* --- tag boxes, Classic look: pigments ------------------------------------ */
-/* Each tag is a label on a pot of pigment, with a dab of the colour laid on
-   beside its name. Picked up, it is edged in burnished gold that catches the
-   light as it moves — the colour loaded on the brush. */
+/* --- tag boxes, Classic look: illuminated labels ------------------------------ */
+/* Each tag a label written in silver on the black, edged in a hair of gold,
+   with its colour laid as a little painted lozenge beside the name. Picked
+   up, it is washed in its colour and framed in burnished gold that catches
+   the light. */
 [data-theme="scriptorium"] .chip[data-look="classic"] {
   position: relative;
-  padding-left: calc(var(--s-5) + 12px);
+  padding-left: calc(var(--s-5) + 14px);
   color: var(--c-text);
-  background: linear-gradient(180deg, #fbf5e6, #f0e3c6);
-  border: 1px solid #c9b187;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(90, 55, 20, 0.18);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(180deg, #1c1922, #141217);
+  border: 1px solid rgb(var(--glow-rgb) / 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 3px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 [data-theme="scriptorium"] .chip[data-look="classic"]::before {
   content: "";
   position: absolute;
-  left: 7px;
+  left: 10px;
   top: 50%;
-  width: 11px;
-  height: 64%;
-  background: var(--chip);
-  border-radius: 45% 60% 50% 40% / 55% 45% 60% 40%;
-  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.35);
-  transform: translateY(-50%) rotate(-5deg);
-  transition: transform 0.25s ease, width 0.25s ease;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--chip) 70%, white), var(--chip) 55%);
+  box-shadow: 0 0 0 1px rgb(var(--glow-rgb) / 0.8), 0 0 7px -1px var(--chip);
+  transform: translateY(-50%) rotate(45deg);
+  transition: transform 0.25s ease;
 }
 [data-theme="scriptorium"] .chip[data-look="classic"]:hover:not(:disabled) {
-  background: linear-gradient(180deg, #fffaf0, #f4e8cd);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 3px 8px -2px rgba(90, 55, 20, 0.3);
+  background: linear-gradient(180deg, #221f29, #18161c);
+  border-color: rgb(var(--glow-rgb) / 0.55);
   transform: translateY(-1px);
 }
 [data-theme="scriptorium"] .chip[data-look="classic"]:hover:not(:disabled)::before {
-  transform: translateY(-50%) rotate(-5deg) scale(1.2);
+  transform: translateY(-50%) rotate(45deg) scale(1.2);
 }
 [data-theme="scriptorium"] .chip[data-look="classic"].armed {
-  color: var(--c-text-bright);
-  border: 2px solid transparent;
+  color: #fff;
+  border: 1px solid transparent;
   background:
-    linear-gradient(180deg, #fffaf0, #f6ead0) padding-box,
-    linear-gradient(135deg, #8a5a12, #f3d98a 28%, #c28f2e 48%, #fff0b3 66%, #9c6a1c) border-box;
-  box-shadow: 0 2px 10px -2px rgba(160, 110, 20, 0.55), 0 0 0 1px rgba(90, 60, 10, 0.25);
+    linear-gradient(180deg, color-mix(in oklab, var(--chip) 46%, #1c1922), color-mix(in oklab, var(--chip) 28%, #131117)) padding-box,
+    linear-gradient(135deg, #8a6420, #f3dc95 28%, #c79a3e 48%, #fff0b8 66%, #9c6a1c) border-box;
+  box-shadow: 0 0 16px -3px rgb(var(--glow-rgb) / 0.6);
   animation: none;
 }
 [data-theme="scriptorium"] .chip[data-look="classic"].armed::before {
-  width: 13px;
-  transform: translateY(-50%) rotate(-5deg) scale(1.25);
+  transform: translateY(-50%) rotate(45deg) scale(1.3);
+  box-shadow: 0 0 0 1px #f3dc95, 0 0 9px var(--chip);
 }
 /* The gold catching the light: a band of it crossing the label, carried by
    the aura so it moves rather than being repainted. */
 [data-theme="scriptorium"] .chip[data-look="classic"] .chip-aura {
-  inset: -2px;
+  inset: -1px;
   z-index: 1;
   overflow: hidden;
   box-shadow: none;
@@ -1882,9 +1993,9 @@
   bottom: 0;
   left: 0;
   width: 55%;
-  background: linear-gradient(105deg, transparent 10%, rgba(255, 255, 255, 0.9) 50%, transparent 90%);
+  background: linear-gradient(105deg, transparent 10%, rgba(255, 240, 200, 0.8) 50%, transparent 90%);
   transform: translateX(-110%);
-  animation: script-gleam 3s ease-in-out infinite;
+  animation: script-gleam 3.2s ease-in-out infinite;
 }
 @keyframes script-gleam {
   0% { transform: translateX(-110%); }
@@ -1894,6 +2005,8 @@
 @media (prefers-reduced-motion: reduce) {
   [data-theme="scriptorium"] .nowline::before,
   [data-theme="scriptorium"] .chip-aura::before,
+  .app > .hours-candle,
+  .hours-snail,
   .initial-shine { animation: none; }
 }
 

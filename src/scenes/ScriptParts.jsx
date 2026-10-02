@@ -2,12 +2,13 @@ import { useId } from 'react'
 import { chronicle, chronicleWords, hourOf } from './manuscript.js'
 import { useMinute } from '../useMinute.js'
 
-// The pieces of Scriptorium that live inside the page rather than over it:
+// The pieces of Black Hours that live inside the page rather than over it:
 // the illuminated initials, the line of chronicle beside each day, and the
 // canonical hour in the title. See manuscript.js for what decides them.
 
-const INK = '#2d2114'
-const VERMILION = '#9e3122'
+// The dark line round a painted initial, and the silver of one only drawn.
+const INK = '#2a1d08'
+const SILVER = '#8f8b99'
 
 /** The ground of an initial, quartered like arms in up to four colours. */
 function Ground({ colours }) {
@@ -35,9 +36,11 @@ function Ground({ colours }) {
 
 /**
  * An illuminated initial. 'sketch' is how a scribe left it for the
- * illuminator: a ruled frame and a small guide letter in the corner saying
- * which capital goes there. 'painted' has its ground in the day's colours and
- * white vinework; 'gilded' adds burnished gold, which catches the light.
+ * illuminator: drawn in silverpoint, a ruled frame and a small guide letter
+ * in the corner saying which capital goes there. 'painted' sets it in a frame
+ * of gold leaf with its ground in the day's colours and white vinework;
+ * 'gilded' lays the letter and the vines in burnished gold as well, which
+ * catches the light.
  */
 export function Initial({ letter, level, colours = [], size = 34, gleam = false, className = '' }) {
   const id = useId().replace(/:/g, '')
@@ -70,13 +73,13 @@ export function Initial({ letter, level, colours = [], size = 34, gleam = false,
 
       {sketch ? (
         <>
-          <rect x="3.5" y="3.5" width="41" height="41" fill="none" stroke="#a38c66" strokeWidth="0.9" strokeDasharray="2.2 1.6" />
-          <text x="24" y="35" textAnchor="middle" className="initial-letter" fill="none" stroke="#b9a37b" strokeWidth="0.6">{letter}</text>
-          <text x="7" y="13" className="initial-guide" fill="#6e5a41">{letter.toLowerCase()}</text>
+          <rect x="3.5" y="3.5" width="41" height="41" fill="none" stroke={SILVER} strokeOpacity="0.7" strokeWidth="0.8" strokeDasharray="2.2 1.6" />
+          <text x="24" y="35" textAnchor="middle" className="initial-letter" fill="none" stroke={SILVER} strokeWidth="0.6">{letter}</text>
+          <text x="7" y="13" className="initial-guide" fill={SILVER}>{letter.toLowerCase()}</text>
         </>
       ) : (
         <>
-          <rect x="2" y="2" width="44" height="44" fill={gilded ? `url(#${gold})` : VERMILION} />
+          <rect x="2" y="2" width="44" height="44" fill={`url(#${gold})`} />
           <rect x="2" y="2" width="44" height="44" fill="none" stroke={INK} strokeWidth="0.8" />
           <Ground colours={colours} />
           <rect x="5" y="5" width="38" height="38" fill={`url(#${diaper})`} />

@@ -1,13 +1,14 @@
-// The arithmetic of Scriptorium, apart from the drawing so it can be checked.
+// The arithmetic of Black Hours, apart from the drawing so it can be checked.
 //
-// Scriptorium keeps your days as a monk kept a book. Each day opens with an
-// illuminated initial: its ground quartered like a coat of arms in the
-// colours of what filled the day, painted when the day has something in it
-// and gilded when it is nearly all accounted for, left as a bare frame with
-// a guide letter when nothing has been written yet. A line of chronicle
-// beside it says what the day was given to. The day is kept by the canonical
-// hours — Matins, Lauds, Prime, Terce, Sext, None, Vespers, Compline — and
-// the light through the window follows the sun.
+// Black Hours keeps your days as a book of hours written in gold on black
+// vellum, the way the finest were in fifteenth-century Bruges. Each day opens
+// with an illuminated initial: its ground quartered like a coat of arms in the
+// colours of what filled the day, painted when the day has something in it and
+// gilded when it is nearly all accounted for, left drawn in silver when
+// nothing has been written yet. A line of chronicle beside it says what the
+// day was given to. The day is kept by the canonical hours — Matins, Lauds,
+// Prime, Terce, Sext, None, Vespers, Compline — and the border of gold ivy
+// along the head of the page is gilded leaf by leaf as today is kept up with.
 
 import { MINUTES_PER_SLOT } from '../time.js'
 
@@ -108,12 +109,129 @@ export function chronicleWords(c, nameOf) {
 }
 
 /**
- * Where the sun is, for the light through the window: how strong it is
- * (0 at night, 1 at noon) and which side it comes from (-1 morning, from the
- * left, to 1 evening, from the right). Up at six, down at eight.
+ * How well today has been kept up with, from 0 to 1: of the time gone by
+ * since midnight, how much has something written on it. The first hour
+ * counts as a whole hour, so the border is not all or nothing at five past
+ * twelve.
  */
-export function sunOf(minute) {
-  const t = (minute / 60 - 6) / 14
-  if (t <= 0 || t >= 1) return { day: 0, from: t <= 0 ? -1 : 1 }
-  return { day: Math.sin(Math.PI * t), from: t * 2 - 1 }
+export function keptUp(blocks, minute) {
+  const list = blocks ?? []
+  const gone = Math.max(60, minute)
+  const upto = Math.ceil(minute / MINUTES_PER_SLOT)
+  return Math.min(1, covered(list, upto) / gone)
+}
+
+/** A small seeded random, so the ivy grows the same way every time it is drawn. */
+function seeded(seed) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * The gold ivy of the border, grown by rule in a box `width` by `height`:
+ * one hairline stem running the length of it in a slow wave, and off each
+ * crest and each trough a tendril curling into a spiral — above the stem
+ * from a crest, below it from a trough — with ivy leaves along stem and
+ * tendrils by turns, and a gold bezant or a little flower where each spiral
+ * closes. The ivy-leaf rinceaux of the French books of hours.
+ *
+ * Every leaf, flower and bezant carries a `rank` between 0 and 1, so the
+ * border can be gilded a share at a time: everything below the share in gold,
+ * the rest still only drawn.
+ *
+ * Returns { stems: [[x, y], ...][], leaves: [{ x, y, angle, size, rank }],
+ *           flowers: [{ x, y, r, hue, rank }], bezants: [{ x, y, r, rank }] }.
+ */
+export function ivy(width, height, seed = 7) {
+  const rand = seeded(seed)
+  const stems = []
+  const leaves = []
+  const flowers = []
+  const bezants = []
+  const inside = (x, y, pad = 3) => x > pad && x < width - pad && y > pad && y < height - pad
+
+  const leafAt = (x, y, angle, size) => {
+    // On a short stalk, pointing out from where it grows.
+    const sx = x + Math.cos(angle) * 2.5
+    const sy = y + Math.sin(angle) * 2.5
+    if (!inside(sx + Math.cos(angle) * size, sy + Math.sin(angle) * size, 2) || !inside(sx, sy, 2)) return
+    stems.push([[x, y], [sx, sy]])
+    leaves.push({ x: sx, y: sy, angle, size, rank: rand() })
+  }
+
+  // The stem: a slow wave along the middle of the box.
+  const mid = height * 0.62
+  const swing = Math.min(height * 0.13, 14)
+  const wave = 170 + rand() * 30
+  const phase = rand() * Math.PI * 2
+  const yAt = (x) => mid + swing * Math.sin((x / wave) * Math.PI * 2 + phase)
+  const slope = (x) => (swing * Math.PI * 2 / wave) * Math.cos((x / wave) * Math.PI * 2 + phase)
+  const stem = []
+  for (let x = 0; x <= width; x += 3) stem.push([x, yAt(x)])
+  stems.push(stem)
+
+  // Leaves along the stem, by turns above and below.
+  let side = -1
+  for (let x = 10 + rand() * 8; x < width - 8; x += 15 + rand() * 9) {
+    const along = Math.atan(slope(x))
+    leafAt(x, yAt(x), along + side * (1.05 + rand() * 0.35), 7 + rand() * 2.5)
+    side = -side
+  }
+
+  /** A tendril from x, y heading `angle`, turning `turn` (+1 or -1) as it
+   *  goes, opening out at `open` px across before it coils. */
+  const tendril = (x, y, angle, length, turn, open) => {
+    const line = [[x, y]]
+    const lead = length * 0.45
+    let side2 = -turn
+    let nextLeaf = 8 + rand() * 4
+    for (let s = 0; s < length; s += 1.5) {
+      const radius = s < lead ? open * 1.5 : open * (1 - (s - lead) / (length - lead)) + 2.2
+      angle += (turn * 1.5) / radius
+      x += Math.cos(angle) * 1.5
+      y += Math.sin(angle) * 1.5
+      if (!inside(x, y, 1.5)) break
+      line.push([x, y])
+      if (s >= nextLeaf && s < length * 0.62) {
+        // Leaves on the outside of the curl, where there is room for them.
+        leafAt(x, y, angle + side2 * (1.15 + rand() * 0.3), 6 + rand() * 2.2)
+        side2 = -side2
+        nextLeaf = s + 10 + rand() * 5
+      }
+    }
+    stems.push(line)
+    const [ex, ey] = line[line.length - 1]
+    if (line.length > 8 && inside(ex, ey, 4)) {
+      if (rand() < 0.4) {
+        flowers.push({ x: ex, y: ey, r: 3 + rand() * 0.8, hue: rand() < 0.5 ? 'lapis' : 'vermilion', rank: rand() })
+      } else {
+        bezants.push({ x: ex, y: ey, r: 1.8 + rand() * 0.6, rank: rand() })
+      }
+    }
+  }
+
+  // Off each crest a tendril rising away from the stem and coiling above it,
+  // off each trough one falling away and coiling below. They start a little
+  // before the turn of the wave, run on the way it is going, and turn back
+  // against it — the C of a vine scroll.
+  for (let k = 0; ; k++) {
+    // Where the wave tops out and bottoms out: sin = -1 at a crest (smaller y).
+    const crestAt = ((0.75 - phase / (Math.PI * 2) + k * 0.5) % 1 + 1) % 1
+    const x = (Math.floor(k / 2) + crestAt) * wave - wave * 0.12
+    if (x > width - 20) break
+    if (x < 14) continue
+    const up = Math.abs(Math.sin((x / wave) * Math.PI * 2 + phase) + 1) < Math.abs(Math.sin((x / wave) * Math.PI * 2 + phase) - 1)
+    const along = Math.atan(slope(x))
+    // The ones above have the room; the ones below are short curls that keep
+    // clear of the rule.
+    if (up) tendril(x, yAt(x), along + 0.2, 78 + rand() * 20, -1, 13 + rand() * 3)
+    else tendril(x, yAt(x), along - 0.25, 34 + rand() * 8, 1, 7 + rand() * 2)
+  }
+  return { stems, leaves, flowers, bezants }
 }

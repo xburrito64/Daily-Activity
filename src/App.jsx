@@ -485,7 +485,7 @@ export default function App() {
       {/* A theme with more to it than colours brings its own scene. */}
       {appearance.theme === 'tidewater' && <TideScene days={daysDown(visible, todayISO())} />}
       {appearance.theme === 'starlit' && <StarScene days={days} tags={tags} />}
-      {appearance.theme === 'scriptorium' && <ScriptScene />}
+      {appearance.theme === 'scriptorium' && <ScriptScene days={days} />}
       {appearance.theme === 'petalfall' && (
         <PetalScene branch={branch} onPick={(date) => { setView('day'); setJumpTo(date) }} />
       )}
@@ -496,7 +496,7 @@ export default function App() {
             {appearance.theme === 'scriptorium' ? (
               // The book's own initial: gilded, on lapis, catching the light.
               <h1 aria-label="Daily Documentation">
-                <Initial letter="D" level="gilded" colours={['#27458f']} size={60} gleam className="titleinitial" />
+                <Initial letter="D" level="gilded" colours={['#27458f']} size={66} gleam className="titleinitial" />
                 aily Documentation
               </h1>
             ) : (

@@ -22,7 +22,7 @@ export const NO_LIMIT = BAR_WIDTH.max
  */
 export const THEMES = [
   { id: 'starlit', name: 'Starlit', note: 'A mage’s journal under a living night sky: logging is spellcasting, tags rise through the ranks of magic, and a finished day brings a meteor shower.' },
-  { id: 'scriptorium', name: 'Scriptorium', note: 'An illuminated manuscript that writes itself: an initial for every day in its colours, a chronicle, and the light of the hour.' },
+  { id: 'scriptorium', name: 'Black Hours', note: 'A book of hours written in gold on black vellum, by candlelight: an initial for every day in its colours, the canonical hours, and a border of ivy gilded as you keep up with today.' },
   { id: 'hearthfire', name: 'Hearthfire', note: 'A fire you keep going by logging. Leave it and it burns down; the hours you missed turn to ash.' },
   { id: 'tidewater', name: 'Tidewater', note: 'Deep water by moonlight, with light rippling slowly across the dark.' },
   { id: 'petalfall', name: 'Petalfall', note: 'Plum twilight and rose haze, sakura petals drifting down.' },
