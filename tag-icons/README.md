@@ -106,5 +106,5 @@ The loose files in this folder are the set called *Current icons*.
 Refresh the app — no restart needed.
 
 If you are running the **installed** app, this folder is the one inside
-`%APPDATA%\Daily Documentation\`, not the one in the project. The app's menu
+`%APPDATA%\The Chronicle\`, not the one in the project. The app's menu
 has *Open settings folder*, which takes you straight there.

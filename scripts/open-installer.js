@@ -14,9 +14,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const releaseDir = path.join(root, 'release')
 const silent = process.argv.includes('--silent')
 
-const EXE = 'Daily Documentation.exe'
+const EXE = 'The Chronicle.exe'
+// What it was called before, so the first update after the rename can close
+// a copy still running under the old name.
+const FORMER_EXE = 'Daily Documentation.exe'
 const installedApp = path.join(
-  process.env.LOCALAPPDATA ?? '', 'Programs', 'Daily Documentation', 'resources', 'app',
+  process.env.LOCALAPPDATA ?? '', 'Programs', 'The Chronicle', 'resources', 'app',
 )
 
 let names = []
@@ -44,7 +47,7 @@ if (!silent) {
   console.log(`
   Opening ${installer.name}
 
-  Close Daily Documentation first if it is open, then install to the same
+  Close The Chronicle first if it is open, then install to the same
   folder it offers. It replaces the version you have — your settings, your
   icons and everything you have logged are left alone.
 `)
@@ -62,10 +65,10 @@ function read(file) {
   try { return fs.readFileSync(file, 'utf8') } catch { return null }
 }
 
-function running() {
+function running(exe = EXE) {
   try {
-    return execFileSync('tasklist', ['/FI', `IMAGENAME eq ${EXE}`], { encoding: 'utf8' })
-      .includes(EXE)
+    return execFileSync('tasklist', ['/FI', `IMAGENAME eq ${exe}`], { encoding: 'utf8' })
+      .includes(exe)
   } catch {
     return false
   }
@@ -75,14 +78,15 @@ function pause(ms) {
   execFileSync('powershell', ['-NoProfile', '-Command', `Start-Sleep -Milliseconds ${ms}`])
 }
 
-if (running()) {
+for (const exe of [EXE, FORMER_EXE]) {
+  if (!running(exe)) continue
   // Ask it to close properly first: a day saves a moment after you stop
   // typing, and a forced kill could land inside that gap.
-  console.log(`\n  Closing ${EXE} so it can be replaced.`)
-  try { execFileSync('taskkill', ['/IM', EXE], { stdio: 'ignore' }) } catch { /* already gone */ }
-  for (let i = 0; i < 10 && running(); i++) pause(500)
-  if (running()) {
-    try { execFileSync('taskkill', ['/IM', EXE, '/F'], { stdio: 'ignore' }) } catch { /* already gone */ }
+  console.log(`\n  Closing ${exe} so it can be replaced.`)
+  try { execFileSync('taskkill', ['/IM', exe], { stdio: 'ignore' }) } catch { /* already gone */ }
+  for (let i = 0; i < 10 && running(exe); i++) pause(500)
+  if (running(exe)) {
+    try { execFileSync('taskkill', ['/IM', exe, '/F'], { stdio: 'ignore' }) } catch { /* already gone */ }
     pause(500)
   }
 }

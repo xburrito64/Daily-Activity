@@ -504,12 +504,12 @@ export default function App() {
           <div className="titleblock">
             {appearance.theme === 'scriptorium' ? (
               // The book's own initial: gilded, on lapis, catching the light.
-              <h1 aria-label="Daily Documentation">
-                <Initial letter="D" level="gilded" colours={['#27458f']} size={66} gleam className="titleinitial" />
-                aily Documentation
+              <h1 aria-label="The Chronicle">
+                <Initial letter="T" level="gilded" colours={['#27458f']} size={66} gleam className="titleinitial" />
+                he Chronicle
               </h1>
             ) : (
-              <h1>Daily Documentation</h1>
+              <h1>The Chronicle</h1>
             )}
             <span className="subtitle">
               {wordsFor(appearance.theme).recorded(recorded)}

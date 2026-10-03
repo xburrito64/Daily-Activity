@@ -149,7 +149,7 @@ function Look({ appearance, onChange, tags, onResetRows, onCoversFound }) {
               {/* A little room in that theme: it sets its own names, so
                   everything in here wears it whatever the page is wearing. */}
               <span className="themepreview" data-theme={theme.id} aria-hidden="true">
-                <span className="tp-title">Daily Documentation</span>
+                <span className="tp-title">The Chronicle</span>
                 <span className="tp-rule" />
                 <span className="tp-bar">
                   {barTags.map((tag, i) => (

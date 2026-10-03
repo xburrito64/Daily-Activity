@@ -1,4 +1,4 @@
-# Daily Documentation
+# The Chronicle
 
 A personal day tracker. One horizontal bar per day, 00:00 to 24:00. Pick a tag,
 drag across the bar, and that stretch of time is logged. Runs locally, no
@@ -20,8 +20,8 @@ app says so and refuses to write over it.
 
 ## Installing
 
-Download `Daily Documentation Setup <version>.exe` from the
-[Releases](https://github.com/xburrito64/Daily-Activity/releases) page and run
+Download `The Chronicle Setup <version>.exe` from the
+[Releases](https://github.com/xburrito64/The-Chronicle/releases) page and run
 it. Windows only.
 
 The installer isn't signed, so Windows may say *"Windows protected your PC"*
@@ -63,7 +63,7 @@ npm run stop
 
 ## Setup
 
-**The installed app keeps its settings in `%APPDATA%/Daily Documentation/`**,
+**The installed app keeps its settings in `%APPDATA%/The Chronicle/`**,
 not in the project folder, so they survive reinstalling. Both `config.json`
 and `tags.json` live there, copied from the project versions the first time it
 runs. The app's menu has *Open settings folder*.

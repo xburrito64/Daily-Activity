@@ -13,7 +13,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const settingsDir = path.join(process.env.APPDATA ?? '', 'Daily Documentation')
+const settingsDir = path.join(process.env.APPDATA ?? '', 'The Chronicle')
 
 if (!fs.existsSync(path.join(settingsDir, 'tags.json'))) {
   // Never installed, or installed somewhere else. The app copies both in

@@ -1,6 +1,6 @@
 {
-  "name": "daily-documenter",
-  "productName": "Daily Documentation",
+  "name": "the-chronicle",
+  "productName": "The Chronicle",
   "description": "A personal daily activity tracker that writes into an Obsidian vault",
   "author": "Burrito",
   "license": "MIT",
@@ -34,7 +34,7 @@
   },
   "build": {
     "appId": "com.raild.daily-documentation",
-    "productName": "Daily Documentation",
+    "productName": "The Chronicle",
     "asar": false,
     "directories": {
       "output": "release"
@@ -54,7 +54,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Daily Documentation"
+      "shortcutName": "The Chronicle"
     }
   }
 }

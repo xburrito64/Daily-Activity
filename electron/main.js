@@ -14,11 +14,39 @@ const projectRoot = path.resolve(here, '..')
  * first run they are copied from the versions in the project.
  */
 const settingsDir = app.getPath('userData')
+// Where the settings were kept before the app was renamed to The Chronicle.
+const formerSettingsDir = path.join(app.getPath('appData'), 'Daily Documentation')
+// The page is served from this port, so that it is always the same page to
+// the browser inside the window — and what it keeps, the look you picked
+// among it, is still there next time. A port picked fresh each start was a
+// new page every time, and the look went back to the default with it. Only
+// if something else already has this port is another one taken, for that
+// run.
+const DESKTOP_PORT = 47863
 const configFile = path.join(settingsDir, 'config.json')
 const tagsFile = path.join(settingsDir, 'tags.json')
 const tagIconsDir = path.join(settingsDir, 'tag-icons')
 
+/**
+ * The app was called Daily Documentation, and its settings were kept in a
+ * folder of that name. The first time it starts as The Chronicle they are
+ * copied across — the settings, the tags, the birthdays, the tag pictures —
+ * so nothing has to be set up again. Copied, not moved: the old folder stays
+ * where it was, as it was, and can be deleted by hand once all is well.
+ */
+function carryOverFromFormerName() {
+  if (fs.existsSync(configFile) || !fs.existsSync(path.join(formerSettingsDir, 'config.json'))) return
+  fs.mkdirSync(settingsDir, { recursive: true })
+  for (const name of ['config.json', 'tags.json', 'tags.previous.json', 'birthdays.json', 'birthdays.previous.json']) {
+    const from = path.join(formerSettingsDir, name)
+    if (fs.existsSync(from)) fs.copyFileSync(from, path.join(settingsDir, name))
+  }
+  const icons = path.join(formerSettingsDir, 'tag-icons')
+  if (fs.existsSync(icons)) fs.cpSync(icons, tagIconsDir, { recursive: true })
+}
+
 function seedSettings() {
+  carryOverFromFormerName()
   fs.mkdirSync(settingsDir, { recursive: true })
 
   // config.json is kept out of git, so fall back to the example. An
@@ -87,18 +115,22 @@ function startServer() {
     settingsFile: configFile,
     staticDir: path.join(projectRoot, 'dist'),
   })
-  return new Promise((resolve, reject) => {
-    // Port 0: let the OS pick a free one, so this never collides with a dev
-    // server or a second copy of anything.
-    const listener = server.listen(0, '127.0.0.1', () => resolve(listener))
-    listener.on('error', reject)
+  const listen = (port) => new Promise((resolve, reject) => {
+    const listener = server.listen(port, '127.0.0.1', () => resolve(listener))
+    listener.once('error', reject)
+  })
+  // Its own port if it is free; any free one if not (port 0 lets the system
+  // choose), so the app still starts beside whatever has taken it.
+  return listen(DESKTOP_PORT).catch((err) => {
+    if (err.code !== 'EADDRINUSE') throw err
+    return listen(0)
   })
 }
 
 function buildMenu(reload) {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
-      label: 'Daily Documentation',
+      label: 'The Chronicle',
       submenu: [
         { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: reload },
         {
@@ -131,7 +163,7 @@ async function main() {
     listener = await startServer()
   } catch (err) {
     dialog.showErrorBox(
-      'Daily Documentation could not start',
+      'The Chronicle could not start',
       `${err.message}\n\nSettings folder:\n${settingsDir}`,
     )
     app.quit()
