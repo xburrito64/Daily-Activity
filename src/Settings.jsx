@@ -32,9 +32,12 @@ let lastTab = 'tags'
  * is made and is kept from then on; closing the panel is only closing it.
  */
 export default function Settings({
-  appearance, onChange, tags, onClose, onTagsSaved, onPictureChanged, onResetRows, onCoversFound,
+  appearance, onChange, tags, onClose, onTagsSaved, onPictureChanged, onResetRows, onCoversFound, openOn = null,
 }) {
-  const [tab, setTab] = useState(lastTab)
+  const [tab, setTab] = useState(() => {
+    if (openOn) lastTab = openOn
+    return lastTab
+  })
   const pick = (id) => { lastTab = id; setTab(id) }
 
   return (

@@ -15,3 +15,14 @@ birthdays.previous.json
 .playwright-mcp/
 *.log
 release/
+
+# Ideas and sketches: kept on this machine, not part of the app.
+Idea/
+
+# Icons for tags that are only this machine's own. The pictures stay here and
+# in the installed app's settings folder; the repo's starter tags don't use
+# them.
+tag-icons/**/[Ss]moke*
+tag-icons/**/[Dd][Gg][Gg]*
+tag-icons/**/[Vv]ibe-[Cc]oding*
+tag-icons/**/[Ww]alk-[Cc]oco*

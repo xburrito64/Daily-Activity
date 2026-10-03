@@ -240,6 +240,28 @@ h1 {
   color: var(--c-danger-soft);
 }
 
+/* A fresh install, with no notes folder picked yet: an invitation, not an
+   error. */
+.banner.setup {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  background: color-mix(in srgb, var(--c-accent) 10%, var(--c-bg));
+  border-color: color-mix(in srgb, var(--c-accent) 45%, var(--c-line));
+  color: var(--c-text);
+}
+.bannerbutton {
+  margin-left: auto;
+  padding: var(--s-3) var(--s-6);
+  font: inherit;
+  color: var(--on-gold);
+  background: linear-gradient(var(--gold-hi), var(--c-accent));
+  border: 1px solid var(--gold-edge);
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.bannerbutton:focus-visible { outline: 2px solid var(--c-focus-ring); outline-offset: 2px; }
+
 /* ============ list header: readout + hour ruler ============ */
 .daylist { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .listbar { flex: none; }

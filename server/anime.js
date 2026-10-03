@@ -510,7 +510,9 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
       if (bytes.length === 0) throw upstream('the cover came back empty')
       if (bytes.length > MAX_COVER_BYTES) throw upstream('the cover is far too big')
 
-      await fs.mkdir(coversDir, { recursive: true })
+      // Only the covers folder itself, never the vault above it: a fresh
+      // install's placeholder vault must not be made up on someone's drive.
+      await fs.mkdir(coversDir).catch((err) => { if (err.code !== 'EEXIST') throw err })
       // Beside it then swapped over, the same as a note: a half-written
       // picture should never be something the vault has in it.
       const tmp = `${target}.tmp-${process.pid}`
@@ -568,7 +570,9 @@ export function createAnime({ coversDir, token = '', clientId = '' }) {
     },
 
     async write(all) {
-      await fs.mkdir(coversDir, { recursive: true })
+      // Only the covers folder itself, never the vault above it: a fresh
+      // install's placeholder vault must not be made up on someone's drive.
+      await fs.mkdir(coversDir).catch((err) => { if (err.code !== 'EEXIST') throw err })
       const target = path.join(coversDir, FACTS_FILE)
       const tmp = `${target}.tmp-${process.pid}`
       await fs.writeFile(tmp, `${JSON.stringify(all, null, 1)}\n`, 'utf8')

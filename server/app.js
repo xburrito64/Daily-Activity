@@ -230,6 +230,8 @@ export function createApp({
     const kept = String(saved.vaultDailyDir ?? '').replace(/\\/g, '/')
     res.json({
       vault: vaultDailyDir.replace(/\\/g, '/'),
+      // Whether that folder is there: a fresh install points at a placeholder.
+      vaultFound: fs.existsSync(vaultDailyDir),
       // A folder picked in the settings only takes over at the next start.
       nextVault: kept && kept !== vaultDailyDir.replace(/\\/g, '/') ? kept : '',
       keys: Object.fromEntries(KEY_NAMES.map((name) => [name, Boolean(String(saved[name] ?? '').trim())])),

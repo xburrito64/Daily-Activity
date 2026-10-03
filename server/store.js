@@ -140,6 +140,16 @@ export function createStore(dailyDir) {
     async writeDay(date, entries) {
       const clean = validateEntries(entries)
       const file = fileFor(date)
+
+      // The notes folder has to be there already. A fresh install points at
+      // a placeholder until a folder is picked in the settings, and saving
+      // into it would quietly make that folder up on someone's drive and put
+      // their days somewhere they never chose.
+      const folder = await fs.stat(dailyDir).catch(() => null)
+      if (!folder?.isDirectory()) {
+        throw Object.assign(new Error('there is no notes folder yet — pick the folder your daily notes are in under Settings → Setup'), { status: 409, noVault: true })
+      }
+
       const existing = await readRaw(date)
 
       // Never discard a block we failed to understand.
@@ -155,7 +165,6 @@ export function createStore(dailyDir) {
       const next = writeBlock(existing ?? '', formatEntries(clean))
       if (next === existing) return { entries: clean, unchanged: true }
 
-      await fs.mkdir(path.dirname(file), { recursive: true })
       // Write beside the target then swap, so a crash can't truncate the note.
       const tmp = `${file}.tmp-${process.pid}`
       await fs.writeFile(tmp, next, 'utf8')

@@ -16,8 +16,8 @@
  * Everything about a block a search may look at, as one lowercased string.
  *
  * The tag is in there twice on purpose — under the name you see on its chip
- * and under the id the vault writes down — so "Walking w/ Coco" and
- * "walk-coco" both find the same afternoons. What was played, what was
+ * and under the id the vault writes down — so "Walking the dog" and
+ * "walk-dog" both find the same afternoons. What was played, what was
  * watched, and whatever was written about it all count too: half of why a day
  * is worth finding again is the sentence attached to it.
  *

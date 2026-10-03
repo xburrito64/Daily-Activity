@@ -21,7 +21,10 @@ const tagIconsDir = path.join(settingsDir, 'tag-icons')
 function seedSettings() {
   fs.mkdirSync(settingsDir, { recursive: true })
 
-  // config.json is kept out of git, so fall back to the example.
+  // config.json is kept out of git, so fall back to the example. An
+  // installer only ever carries the example (see "files" in package.json):
+  // the real one holds API keys and an AniList token, and an installer is
+  // something handed to other people.
   const configSource = ['config.json', 'config.example.json']
     .map((name) => path.join(projectRoot, name))
     .find((file) => fs.existsSync(file))

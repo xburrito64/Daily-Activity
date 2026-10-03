@@ -20,7 +20,7 @@ export function readJson(file) {
     return JSON.parse(text)
   } catch (err) {
     const hint = text.includes('\\')
-      ? `\n\nLooks like a Windows path with backslashes. Write it with forward slashes instead, like "C:/Vaults/Vault 420/Daily".`
+      ? `\n\nLooks like a Windows path with backslashes. Write it with forward slashes instead, like "C:/Vaults/MyVault/Daily".`
       : ''
     throw new Error(`${path.basename(file)} is not valid JSON: ${err.message}${hint}`)
   }

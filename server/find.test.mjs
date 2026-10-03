@@ -11,7 +11,7 @@ const TAGS = [
   { id: 'anime', name: 'Anime' },
   { id: 'game', name: 'Game' },
   { id: 'food', name: 'Food' },
-  { id: 'walk-coco', name: 'Walking w/ Coco' },
+  { id: 'walk-dog', name: 'Walking the dog' },
 ]
 
 const days = [
@@ -27,7 +27,7 @@ const days = [
     entries: [
       { tag: 'game', start: '12:30', end: '13:20', game: 'Bodycam', note: 'Tried it out, refunded' },
       { tag: 'anime', start: '19:00', end: '19:50', show: "JoJo's Bizarre Adventure (TV)" },
-      { tag: 'walk-coco', start: '07:50', end: '08:20' },
+      { tag: 'walk-dog', start: '07:50', end: '08:20' },
     ],
   },
   {
@@ -59,9 +59,9 @@ t('a whole category is a search too', () => {
 })
 
 t('a tag answers to what the vault calls it as well as to its name', () => {
-  assert.strictEqual(findIn(days, 'walk-coco', TAGS).length, 1)
-  assert.strictEqual(findIn(days, 'Walking w/ Coco', TAGS).length, 1)
-  assert.strictEqual(findIn(days, 'coco', TAGS).length, 1, 'and to a piece of either')
+  assert.strictEqual(findIn(days, 'walk-dog', TAGS).length, 1)
+  assert.strictEqual(findIn(days, 'Walking the dog', TAGS).length, 1)
+  assert.strictEqual(findIn(days, 'dog', TAGS).length, 1, 'and to a piece of either')
 })
 
 t('what was written down is searched with everything else', () => {
@@ -105,8 +105,8 @@ t('a hit carries enough to find the block it came from', () => {
 })
 
 t('without a tag list, tags answer to their id alone', () => {
-  assert.strictEqual(findIn(days, 'walk-coco').length, 1)
-  assert.strictEqual(findIn(days, 'Walking w/ Coco').length, 0)
+  assert.strictEqual(findIn(days, 'walk-dog').length, 1)
+  assert.strictEqual(findIn(days, 'Walking the dog').length, 0)
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

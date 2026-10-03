@@ -28,7 +28,7 @@ const touch = (...parts) => {
 touch('Sleep.png')
 touch('game.svg')
 touch('Fantasy - Simple', 'Sleep.png')
-touch('Fantasy - Simple', 'Walk-Coco.png')
+touch('Fantasy - Simple', 'Walk-Dog.png')
 touch('Fantasy - Simple', 'Fantasy Tag Icon Set Simple.png')
 touch('Empty Set', 'README.md')
 fs.mkdirSync(path.join(dir, '.hidden'))
@@ -36,7 +36,7 @@ fs.mkdirSync(path.join(dir, '.hidden'))
 const tags = [
   { id: 'sleep', name: 'Sleep', icon: '🌙' },
   { id: 'game', name: 'Game', icon: '🎮' },
-  { id: 'walk-coco', name: 'Walking w/ Coco', icon: '🐕' },
+  { id: 'walk-dog', name: 'Walking the dog', icon: '🐕' },
   { id: 'food', name: 'Food', icon: '🍜' },
 ]
 // Where each tag's picture is, without the stamp that says when it was made.
@@ -49,7 +49,7 @@ t('with no set, a tag wears the loose file named after it', () => {
   assert.deepEqual(images(withIcons(tags, dir)), {
     sleep: '/tag-icons/Sleep.png',
     game: '/tag-icons/game.svg',
-    'walk-coco': '🐕',
+    'walk-dog': '🐕',
     food: '🍜',
   })
 })
@@ -58,7 +58,7 @@ t('a set dresses every tag it has a picture for', () => {
   assert.deepEqual(images(withIcons(tags, dir, 'Fantasy - Simple')), {
     sleep: '/tag-icons/Fantasy%20-%20Simple/Sleep.png',
     game: '/tag-icons/game.svg',
-    'walk-coco': '/tag-icons/Fantasy%20-%20Simple/Walk-Coco.png',
+    'walk-dog': '/tag-icons/Fantasy%20-%20Simple/Walk-Dog.png',
     food: '🍜',
   }, 'and one it has none for keeps what it had')
 })
@@ -92,7 +92,7 @@ t('each set says how many tags it covers, and shows a few', () => {
   assert.deepEqual([fantasy.name, fantasy.covers], ['Fantasy - Simple', 2])
   assert.deepEqual(fantasy.preview.map((tag) => unstamped(tag.image)), [
     '/tag-icons/Fantasy%20-%20Simple/Sleep.png',
-    '/tag-icons/Fantasy%20-%20Simple/Walk-Coco.png',
+    '/tag-icons/Fantasy%20-%20Simple/Walk-Dog.png',
   ], 'its own pictures only, never the ones it borrows')
 })
 

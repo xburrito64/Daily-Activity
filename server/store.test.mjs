@@ -26,6 +26,17 @@ await t('entry order survives the round trip', async () => {
   assert.deepStrictEqual(back.entries.map((e) => e.tag), ['sleep', 'dgg', 'music'])
 })
 
+await t('a notes folder that is not there is never made up', async () => {
+  // A fresh install points at a placeholder until a folder is picked.
+  const nowhere = path.join(dir, 'not-a-folder-yet', 'Daily')
+  const missing = createStore(nowhere)
+  await assert.rejects(
+    missing.writeDay('2027-06-16', [{ tag: 'sleep', start: '00:00', end: '04:00' }]),
+    (err) => err.status === 409 && /Setup/.test(err.message),
+  )
+  await assert.rejects(fs.stat(path.join(dir, 'not-a-folder-yet')), 'and nothing was created on the way')
+})
+
 await t('validateEntries does not reorder', () => {
   const out = validateEntries([
     { tag: 'b', start: '10:00', end: '11:00' },

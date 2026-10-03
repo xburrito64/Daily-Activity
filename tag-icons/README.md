@@ -12,18 +12,18 @@ Not its display name. Ids are lowercase and use hyphens:
 | Tag              | id              | File to add          |
 | ---------------- | --------------- | -------------------- |
 | Sleep            | `sleep`         | `sleep.svg`          |
-| Walking w/ Coco  | `walk-coco`     | `walk-coco.svg`      |
-| Vibe Coding      | `vibe-coding`   | `vibe-coding.svg`    |
-| DGG              | `dgg`           | `dgg.svg`            |
+| Reading          | `reading`       | `reading.svg`        |
 | Anything Else?   | `anything-else` | `anything-else.svg`  |
 
 Current ids, ready to copy:
 
 ```
-sleep  bed  game  shower  smoke  smoke-mum  reading  walk
-walk-coco  anime  youtube  dgg  music  food  cleaning
-vibe-coding  documenting  research  planning  anything-else
+sleep  bed  game  shower  reading  walk  anime  youtube
+music  food  cleaning  documenting  research  planning  anything-else
 ```
+
+A tag you add yourself in the settings gets an id from its name; the tag
+editor shows it.
 
 Capitals don't matter — `Anime.gif` works as well as `anime.gif`. The rest of
 the name does: a typo isn't an error, the tag just quietly keeps its emoji. If

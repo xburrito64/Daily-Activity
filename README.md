@@ -18,6 +18,21 @@ Everything outside that block is left byte-for-byte alone. Times are `HH:MM`
 on ten-minute marks. If the JSON is hand-edited into something unparseable the
 app says so and refuses to write over it.
 
+## Installing
+
+Download `Daily Documentation Setup <version>.exe` from the
+[Releases](https://github.com/xburrito64/Daily-Activity/releases) page and run
+it. Windows only.
+
+The installer isn't signed, so Windows may say *"Windows protected your PC"*
+the first time. Click **More info**, then **Run anyway**.
+
+On first start, open the settings (the gear at the top right) and go to
+**Setup**: pick the folder your daily notes are in. That's all it needs. The
+RAWG and SteamGridDB keys there are optional and only fetch game covers;
+everything else works without them. It comes with a starter set of tags you can
+rename, recolour, hide or add to under **Tags**.
+
 ## Running it
 
 As a desktop app — its own window, no console, no browser:

@@ -21,7 +21,7 @@ const t = (name, fn) => {
 const before = [
   { id: 'sleep', name: 'Sleep', colour: 'oklch(0.34 0.055 258)', icon: '🌙' },
   { id: 'anything-else', name: 'Anything Else?', colour: '#cb4d80', icon: '❓', iconScale: 2 },
-  { id: 'walk-coco', name: 'Walking w/ Coco', colour: 'oklch(0.46 0.07 150)', icon: '🐕' },
+  { id: 'walk-dog', name: 'Walking the dog', colour: 'oklch(0.46 0.07 150)', icon: '🐕' },
 ]
 
 console.log('\ntags')
@@ -42,7 +42,7 @@ t('what the app adds on the way out is left behind', () => {
 
 t('the order sent is the order kept', () => {
   const next = cleanTags([before[2], before[0], before[1]], before)
-  assert.deepEqual(next.map((tag) => tag.id), ['walk-coco', 'sleep', 'anything-else'])
+  assert.deepEqual(next.map((tag) => tag.id), ['walk-dog', 'sleep', 'anything-else'])
 })
 
 t('hidden is kept, and only when it is true', () => {
@@ -97,7 +97,7 @@ t('an empty list is never written', () => {
 })
 
 t('what was taken away is known, so it can be checked against the days', () => {
-  assert.deepEqual(removedIds(before, [before[0]]), ['anything-else', 'walk-coco'])
+  assert.deepEqual(removedIds(before, [before[0]]), ['anything-else', 'walk-dog'])
   assert.deepEqual(removedIds(before, before), [])
 })
 

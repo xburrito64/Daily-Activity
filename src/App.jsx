@@ -19,7 +19,7 @@ import { branchDays } from './scenes/petals.js'
 import { wordsFor } from './themeWords.js'
 import { useDays } from './useDays.js'
 import { loadPeriod, savePeriod, periodOf } from './ledger.js'
-import { getTags, findBlocks, getPlayed, getWatched } from './api.js'
+import { getTags, findBlocks, getPlayed, getWatched, getSetup } from './api.js'
 import { Covers } from './face.js'
 import {
   Appearance, loadAppearance, saveAppearance, normalise, widthOf, wearTheme,
@@ -153,6 +153,15 @@ export default function App() {
     return kept
   })
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Which tab the settings open on, when something other than the gear opens
+  // them; the gear opens them wherever they were left.
+  const [settingsTab, setSettingsTab] = useState(null)
+  // A fresh install has no notes folder until one is picked. Asked once at
+  // the start: picking one takes effect at the next start anyway.
+  const [noVault, setNoVault] = useState(false)
+  useEffect(() => {
+    getSetup().then((setup) => setNoVault(setup.vaultFound === false && !setup.nextVault)).catch(() => {})
+  }, [])
   // The stretch the ledger beside the Overview adds up, kept between visits.
   const [ledgerChoice, setLedgerChoice] = useState(() => loadPeriod(todayISO()))
   const chooseLedger = useCallback((next) => {
@@ -576,6 +585,18 @@ export default function App() {
         />
       )}
 
+      {noVault && (
+        <div className="banner setup">
+          Pick the folder your daily notes are in, and your days will be kept there.
+          <button
+            type="button"
+            className="bannerbutton"
+            onClick={() => { setSettingsTab('setup'); setSettingsOpen(true) }}
+          >
+            Open Setup
+          </button>
+        </div>
+      )}
       {tagError && <div className="banner offline">Couldn't load tags.json — {tagError}</div>}
       {problem && <div className={`banner ${problem.kind}`}>{problem.message}</div>}
 
@@ -663,10 +684,11 @@ export default function App() {
       )}
       {settingsOpen && (
         <Settings
+          openOn={settingsTab}
           appearance={appearance}
           onChange={changeAppearance}
           tags={tags}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => { setSettingsOpen(false); setSettingsTab(null) }}
           onTagsSaved={setTags}
           onPictureChanged={() => getTags(appearance.iconSet).then(setTags).catch(() => {})}
           onResetRows={() => {

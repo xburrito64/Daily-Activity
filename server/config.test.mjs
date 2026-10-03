@@ -45,6 +45,19 @@ t('backslashes still get the hint they always did', () => {
   )
 })
 
+t('an installer never carries the real settings', () => {
+  // config.json holds API keys and an AniList token. What goes into an
+  // installer is listed in package.json; only the example may be among it.
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const files = pkg.build.files
+  assert.ok(files.includes('config.example.json'), 'the example goes in, for a first start')
+  for (const pattern of files) {
+    if (pattern.startsWith('!')) continue
+    const asRegex = new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*')}$`)
+    assert.ok(!asRegex.test('config.json'), `"${pattern}" would pack config.json`)
+  }
+})
+
 fs.rmSync(dir, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

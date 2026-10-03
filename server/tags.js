@@ -1,7 +1,7 @@
 // Changing the tag list from inside the app.
 //
 // The list is a file you used to edit by hand, and a day refers to a tag by
-// its id — "sleep", "walk-coco" — never by its name. That one fact is what
+// its id — "sleep", "walk-dog" — never by its name. That one fact is what
 // makes all of this safe: a tag can be renamed, recoloured, given a new icon
 // or moved without any note being touched, because none of those change the
 // id, and the id is all a note holds. So the id is fixed when a tag is made
@@ -24,7 +24,7 @@ const ICON_CHARS = 16
 const COLOUR_RE = /^(#[0-9a-f]{3}(?:[0-9a-f]{3})?|(?:oklch|oklab|rgb|rgba|hsl|hsla)\([0-9a-z.,%\s/+-]{1,60}\))$/i
 
 /**
- * An id for a new tag, from its name: "Walking w/ Coco" -> "walking-w-coco".
+ * An id for a new tag, from its name: "Walking the dog" -> "walking-the-dog".
  * One already taken gets a number on the end rather than being refused —
  * two tags may share a name, and they still need ids of their own.
  */
