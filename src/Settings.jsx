@@ -40,6 +40,29 @@ export default function Settings({
   })
   const pick = (id) => { lastTab = id; setTab(id) }
 
+  // A press anywhere beside the panel puts it away, so a change made at the
+  // foot of it doesn't mean scrolling back up for the cross. That press only
+  // closes: it is not also a click on whatever was under it, or putting the
+  // panel away could paint, move or open something on a day by accident.
+  // The gear is left to do its own toggling.
+  useEffect(() => {
+    const onDown = (e) => {
+      if (e.button !== 0 || !(e.target instanceof Element)) return
+      if (e.target.closest('.settings, .gear')) return
+      e.stopPropagation()
+      e.preventDefault()
+      const swallow = (c) => { c.stopPropagation(); c.preventDefault() }
+      window.addEventListener('click', swallow, true)
+      // The click a press turns into arrives straight after it is let go;
+      // past that, nothing is swallowed.
+      const release = () => setTimeout(() => window.removeEventListener('click', swallow, true), 0)
+      window.addEventListener('pointerup', release, { capture: true, once: true })
+      onClose()
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    return () => window.removeEventListener('pointerdown', onDown, true)
+  }, [onClose])
+
   return (
     <aside className="settings" aria-label="Settings">
       <div className="settingshead">

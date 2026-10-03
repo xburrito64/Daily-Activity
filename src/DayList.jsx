@@ -14,7 +14,7 @@ import { monthByTag, isComplete } from './scenes/starlit.js'
 import { festivalOf } from './scenes/festivals.js'
 import { FestiveMark, Spider } from './scenes/Festive.jsx'
 import { applyPaint, applyResize, layoutLanes, stripsOf, moveBlocks, clampShift, cutPartner } from './blocks.js'
-import Tools from './Tools.jsx'
+import Tools, { selects } from './Tools.jsx'
 import { pieceLook, runeSpans, RUNES_MIN_BAND, PEEK_MAX } from './blockLooks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -1049,7 +1049,7 @@ function DayList({
     if (!trackEl) {
       // Between the bars — a heading, the hours, the gap between days — is
       // as good a place as any to start a box. The buttons there are not.
-      if (isDay && tool === 'select' && !armed && !e.target.closest('button, input, textarea, label, a')) startMarquee(e)
+      if (isDay && selects(tool) && !armed && !e.target.closest('button, input, textarea, label, a')) startMarquee(e)
       return
     }
     const date = trackEl.dataset.trackDate
@@ -1083,24 +1083,38 @@ function DayList({
 
     const block = blockEl && days[date]?.blocks.find((b) => b.id === blockEl.dataset.blockId)
 
-    if (tool === 'select') {
+    if (selects(tool)) {
       if (!block) {
         startMarquee(e)
-        return
-      }
-      e.preventDefault()
-      // A double click is still how to read what was written on it.
-      if (e.detail === 2) {
-        handlers.current.onSelect(date, block.id)
         return
       }
       const mine = { date, id: block.id }
       const all = pickedRef.current
       const isPicked = all.some((p) => p.date === date && p.id === block.id)
       if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        e.preventDefault()
         handlers.current.onPick(isPicked
           ? all.filter((p) => !(p.date === date && p.id === block.id))
           : [...all, mine])
+        return
+      }
+    }
+
+    // Both tools in one: a block works the way the move tool works it —
+    // pressed for its note, dragged to move, stretched by an edge — unless
+    // it is one of several gathered up, which are carried together.
+    const carryMany = tool === 'both' && block && !e.target.dataset?.handle
+      && pickedRef.current.length > 1 && pickedRef.current.some((p) => p.date === date && p.id === block.id)
+    if (tool === 'both' && !carryMany && pickedRef.current.length > 0) handlers.current.onPick([])
+
+    if (tool === 'select' || carryMany) {
+      e.preventDefault()
+      const mine = { date, id: block.id }
+      const all = pickedRef.current
+      const isPicked = all.some((p) => p.date === date && p.id === block.id)
+      // A double click is still how to read what was written on it.
+      if (tool === 'select' && e.detail === 2) {
+        handlers.current.onSelect(date, block.id)
         return
       }
       // Pressing one that is gathered up carries all of them; pressing one
@@ -1113,6 +1127,8 @@ function DayList({
         picks,
         blocks: picks.map((p) => days[p.date]?.blocks.find((b) => b.id === p.id)).filter(Boolean),
         clicked: mine,
+        // In the tool that is both, a click is still a click on that block.
+        opens: tool === 'both',
         days: 0,
         slots: 0,
       })
@@ -1272,8 +1288,12 @@ function DayList({
       } else if (d.mode === 'group') {
         if (d.slots || d.days) h.onMoveMany(d.picks, { days: d.days, slots: d.slots })
       } else if (d.mode === 'grouppress') {
-        // A click, not a drag: that block alone.
-        h.onPick([d.clicked])
+        // A click, not a drag: that block alone — or, where a click opens a
+        // note, that block's note.
+        if (d.opens) {
+          h.onPick([])
+          h.onSelect(d.clicked.date, d.clicked.id)
+        } else h.onPick([d.clicked])
       } else if (d.mode === 'marquee') {
         pickKey.current = ''
       } else if (d.mode === 'resize' || d.mode === 'move') {
@@ -1558,10 +1578,12 @@ function DayList({
                     ? 'Click a day to open it · ctrl+f finds · ctrl+scroll to resize'
                     : tool === 'snip'
                       ? 'Click a block to snip it in two at the line · drag the cut with the move tool to shift it · V goes back to moving'
-                      : tool === 'select' && picked?.length
+                      : selects(tool) && picked?.length
                         ? `${many(picked.length)} selected, ${formatDuration(pickedSlots)} · drag to move them · delete removes them · ctrl+c copies, ctrl+v puts them where you point · esc lets go`
                         : tool === 'select'
                           ? 'Drag a box over blocks to select them, across as many days as you like · shift adds more · double-click opens a note'
+                          : tool === 'both'
+                            ? 'Drag a block to move it, or drag anywhere else to select · click a block for its note · shift-click adds to the selection'
                           : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+c copies a block, ctrl+v puts it at the time now · ctrl+f finds · ctrl+z undoes · ctrl+scroll to resize'}
             </span>
           )}

@@ -31,7 +31,7 @@ import {
 import {
   todayISO, formatDotted, minutesNow, shiftDate, daysBetween, MINUTES_PER_SLOT, SLOTS_PER_DAY,
 } from './time.js'
-import { TOOL_KEYS } from './Tools.jsx'
+import { TOOL_KEYS, selects } from './Tools.jsx'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
 
@@ -274,8 +274,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [view])
 
-  // What was gathered up belongs to the select tool, and goes when it does.
-  useEffect(() => { if (tool !== 'select') setPicked([]) }, [tool])
+  // What was gathered up belongs to the tools that gather, and goes with them.
+  useEffect(() => { if (!selects(tool)) setPicked([]) }, [tool])
 
   // Only what still exists: a delete, an undo, or two picked blocks moved
   // into one can each leave a pick pointing at nothing.
@@ -414,7 +414,7 @@ export default function App() {
       if (inBox(e.target)) return
       e.preventDefault()
 
-      const aimed = tool === 'select' && view === 'day' ? hoverRef.current : null
+      const aimed = selects(tool) && view === 'day' ? hoverRef.current : null
       const date = aimed?.date ?? todayISO()
       const slot = aimed?.slot ?? Math.floor(minutesNow() / MINUTES_PER_SLOT)
       const { days: landed, placed } = pasteBlocks(writable(days), copied.items, date, slot)

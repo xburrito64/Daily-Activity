@@ -139,6 +139,10 @@ one press:
   reaches (shift adds more). Then drag any of them to move them all, press
   Delete to remove them, or ctrl+c and ctrl+v to copy them to wherever the
   pointer is. Double-click a block to open its note.
+- **Move and select** (`A` or `4`) — on trial: Move over a block (click for
+  its note, drag to move, drag an edge to stretch) and Select everywhere else
+  (drag on empty space for a box). Shift-click adds a block to the selection,
+  and dragging one of several selected blocks carries them all.
 
 ### Games
 

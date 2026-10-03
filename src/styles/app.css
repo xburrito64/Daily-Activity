@@ -1151,10 +1151,13 @@ h1 {
    for the one in hand, like the view switch. */
 .tools {
   flex: none;
-  align-self: center;
+  align-self: flex-start;
   display: flex;
   margin-left: auto;
 }
+/* Room under the buttons, so they don't sit on the edge of whatever day has
+   scrolled up beneath them. */
+.daylist.day .listreadout { height: 34px; }
 .tools button {
   display: flex;
   align-items: center;
@@ -1197,10 +1200,14 @@ h1 {
 
 /* Select: a box can be started anywhere on the list, so the cross is
    everywhere there; over a block it is a hand, and over one already
-   gathered up it says it can be carried. */
-.scroller.tool-select { cursor: crosshair; }
-.scroller.tool-select .block { cursor: pointer; }
-.scroller.tool-select .block.picked { cursor: move; }
+   gathered up it says it can be carried. Move-and-select the same, with the
+   move tool's grab strips kept. */
+.scroller.tool-select,
+.scroller.tool-both { cursor: crosshair; }
+.scroller.tool-select .block,
+.scroller.tool-both .block { cursor: pointer; }
+.scroller.tool-select .block.picked,
+.scroller.tool-both .block.picked { cursor: move; }
 .marquee {
   position: fixed;
   z-index: 50;
