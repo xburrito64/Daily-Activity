@@ -3,6 +3,7 @@
   "productName": "Daily Documentation",
   "description": "A personal daily activity tracker that writes into an Obsidian vault",
   "author": "Burrito",
+  "license": "MIT",
   "private": true,
   "version": "0.1.0",
   "type": "module",

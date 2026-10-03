@@ -273,3 +273,10 @@ npm test
 ```
 
 covers the fence read/write and the block layout logic.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, change it, share it.
+
+The fonts in `public/fonts/` belong to their authors and come under the SIL
+Open Font License 1.1; see [public/fonts/OFL.txt](public/fonts/OFL.txt).
