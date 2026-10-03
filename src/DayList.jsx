@@ -13,7 +13,8 @@ import { MagicCircle, Moonweed, RankGem, rankTitle } from './scenes/StarParts.js
 import { monthByTag, isComplete } from './scenes/starlit.js'
 import { festivalOf } from './scenes/festivals.js'
 import { FestiveMark, Spider } from './scenes/Festive.jsx'
-import { applyPaint, applyResize, layoutLanes, stripsOf } from './blocks.js'
+import { applyPaint, applyResize, layoutLanes, stripsOf, moveBlocks, clampShift, cutPartner } from './blocks.js'
+import Tools from './Tools.jsx'
 import { pieceLook, runeSpans, RUNES_MIN_BAND, PEEK_MAX } from './blockLooks.js'
 import { blockFace, Covers } from './face.js'
 import { Appearance } from './appearance.js'
@@ -46,6 +47,10 @@ export const ZOOM = {
 const CHROME_GUESS = { day: 160, compact: 4 }
 
 const WIPE_CONFIRM_MS = 4000
+// How near the top or bottom of the list a box being drawn, or blocks being
+// carried, has to come before the list scrolls to follow — and how fast.
+const SCROLL_EDGE_PX = 40
+const SCROLL_MAX_PX = 22
 const PREVIEW_ID = '__preview' // the block being painted, not yet committed
 
 // How far a painted stretch may run past the day it started on. One, because
@@ -435,6 +440,13 @@ function DayList({
   onJumped,
   find,
   period,
+  tool = 'move', // 'move' | 'snip' | 'select' — see Tools.jsx
+  onTool,
+  picked, // [{ date, id }] gathered up by the select tool
+  onPick,
+  onSnip,
+  onMoveMany,
+  hoverRef, // where the pointer is over the bars, for a paste to land there
 }) {
   const today = todayISO()
   const scrollRef = useRef(null)
@@ -868,7 +880,15 @@ function DayList({
   const [drag, setDrag] = useState(null)
   const dragRef = useRef(null)
   const handlers = useRef({})
-  handlers.current = { onPaint, onResize, onSelect, onPickDay }
+  handlers.current = { onPaint, onResize, onSelect, onPickDay, onSnip, onPick, onMoveMany }
+  const pickedRef = useRef(picked)
+  pickedRef.current = picked ?? []
+
+  // The snip tool's line: which block it is over, and where it would cut.
+  const [snipHover, setSnipHover] = useState(null) // { date, id, slot }
+  const snipRef = useRef(snipHover)
+  snipRef.current = snipHover
+  useEffect(() => { if (tool !== 'snip' || !isDay) setSnipHover(null) }, [tool, isDay])
 
   function setDragState(next) {
     dragRef.current = next
@@ -919,11 +939,119 @@ function DayList({
     return Math.min(SLOTS_PER_DAY, Math.max(0, slot))
   }
 
+  /**
+   * Where the snip tool would cut, from where the pointer is: the ten-minute
+   * mark nearest to it inside the block it is over, never either end. Null
+   * off a block, or on one ten minutes long, which has nowhere to cut.
+   */
+  function snipFrom(e) {
+    const trackEl = e.target.closest?.('[data-track-date]')
+    const blockEl = e.target.closest?.('[data-block-id]')
+    if (!trackEl || !blockEl) return null
+    const date = trackEl.dataset.trackDate
+    if (days[date]?.malformed) return null
+    const block = days[date]?.blocks.find((b) => b.id === blockEl.dataset.blockId)
+    if (!block || block.endSlot - block.startSlot < 2) return null
+    const slot = Math.min(block.endSlot - 1, Math.max(block.startSlot + 1, boundaryFrom(trackEl, e.clientX)))
+    return { date, id: block.id, slot }
+  }
+
+  function handlePointerMove(e) {
+    if (hoverRef) {
+      const trackEl = isDay && e.target.closest?.('[data-track-date]')
+      hoverRef.current = trackEl
+        ? { date: trackEl.dataset.trackDate, slot: cellFrom(trackEl, e.clientX) }
+        : null
+    }
+    if (tool === 'snip' && isDay && !dragRef.current) {
+      const next = snipFrom(e)
+      const was = snipRef.current
+      if (next?.date !== was?.date || next?.id !== was?.id || next?.slot !== was?.slot) setSnipHover(next)
+    }
+  }
+
+  function handlePointerLeave() {
+    if (hoverRef) hoverRef.current = null
+    if (snipRef.current) setSnipHover(null)
+  }
+
+  /**
+   * Start drawing a box. Where it starts is kept in the list's own terms —
+   * scrolled distance included — so the corner stays on the day it was put
+   * down on while the list scrolls under it. Holding shift or ctrl adds to
+   * what is already gathered up; otherwise a box starts afresh.
+   */
+  function startMarquee(e) {
+    e.preventDefault()
+    const el = scrollRef.current
+    const rect = el.getBoundingClientRect()
+    const adding = e.shiftKey || e.ctrlKey || e.metaKey
+    if (!adding && pickedRef.current.length > 0) handlers.current.onPick([])
+    setDragState({
+      mode: 'marquee',
+      x0: e.clientX - rect.left,
+      y0: e.clientY - rect.top + el.scrollTop,
+      originX: e.clientX,
+      originY: e.clientY,
+      x: e.clientX,
+      y: e.clientY,
+      base: adding ? pickedRef.current : [],
+      moved: false,
+    })
+  }
+
+  /** The box on screen, in the window's own coordinates. */
+  function marqueeBox(d) {
+    const el = scrollRef.current
+    const rect = el.getBoundingClientRect()
+    const ax = rect.left + d.x0
+    const ay = rect.top + d.y0 - el.scrollTop
+    return {
+      left: Math.min(ax, d.x),
+      right: Math.max(ax, d.x),
+      top: Math.max(rect.top, Math.min(ay, d.y)),
+      bottom: Math.min(rect.bottom, Math.max(ay, d.y)),
+    }
+  }
+
+  /**
+   * Every block the box touches, on every day it reaches. Asked of the
+   * blocks as drawn, so whatever can be seen of a block is what can be caught.
+   */
+  const pickKey = useRef('')
+  function gatherIn(d) {
+    const el = scrollRef.current
+    const box = marqueeBox(d)
+    const top = d.y0 + el.getBoundingClientRect().top - el.scrollTop
+    const hits = new Map(d.base.map((p) => [`${p.date}|${p.id}`, p]))
+    for (const blockEl of el.querySelectorAll('[data-track-date] .block[data-block-id]')) {
+      const r = blockEl.getBoundingClientRect()
+      // Measured against the whole box rather than the part on screen, so a
+      // block scrolled out of sight stays caught.
+      const boxTop = Math.min(top, d.y)
+      const boxBottom = Math.max(top, d.y)
+      if (r.right < box.left || r.left > box.right || r.bottom < boxTop || r.top > boxBottom) continue
+      const date = blockEl.closest('[data-track-date]').dataset.trackDate
+      hits.set(`${date}|${blockEl.dataset.blockId}`, { date, id: blockEl.dataset.blockId })
+    }
+    const list = [...hits.values()]
+    const key = [...hits.keys()].sort().join(',')
+    if (key !== pickKey.current) {
+      pickKey.current = key
+      handlers.current.onPick(list)
+    }
+  }
+
   function handlePointerDown(e) {
     if (e.button !== 0) return
 
     const trackEl = e.target.closest?.('[data-track-date]')
-    if (!trackEl) return
+    if (!trackEl) {
+      // Between the bars — a heading, the hours, the gap between days — is
+      // as good a place as any to start a box. The buttons there are not.
+      if (isDay && tool === 'select' && !armed && !e.target.closest('button, input, textarea, label, a')) startMarquee(e)
+      return
+    }
     const date = trackEl.dataset.trackDate
 
     if (!isDay) {
@@ -942,18 +1070,70 @@ function DayList({
     }
 
     const blockEl = e.target.closest('[data-block-id]')
-    if (!blockEl) return
-    const block = days[date]?.blocks.find((b) => b.id === blockEl.dataset.blockId)
+
+    if (tool === 'snip') {
+      const at = blockEl && snipFrom(e)
+      if (!at) return
+      e.preventDefault()
+      handlers.current.onSnip(at.date, at.id, at.slot)
+      // Back on the next movement, over whichever half the pointer is on.
+      setSnipHover(null)
+      return
+    }
+
+    const block = blockEl && days[date]?.blocks.find((b) => b.id === blockEl.dataset.blockId)
+
+    if (tool === 'select') {
+      if (!block) {
+        startMarquee(e)
+        return
+      }
+      e.preventDefault()
+      // A double click is still how to read what was written on it.
+      if (e.detail === 2) {
+        handlers.current.onSelect(date, block.id)
+        return
+      }
+      const mine = { date, id: block.id }
+      const all = pickedRef.current
+      const isPicked = all.some((p) => p.date === date && p.id === block.id)
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        handlers.current.onPick(isPicked
+          ? all.filter((p) => !(p.date === date && p.id === block.id))
+          : [...all, mine])
+        return
+      }
+      // Pressing one that is gathered up carries all of them; pressing one
+      // that isn't gathers up that one alone, and carries it.
+      const picks = isPicked ? all : [mine]
+      if (!isPicked) handlers.current.onPick(picks)
+      setDragState({
+        mode: 'grouppress', date, originX: e.clientX, originY: e.clientY,
+        width: trackEl.getBoundingClientRect().width,
+        picks,
+        blocks: picks.map((p) => days[p.date]?.blocks.find((b) => b.id === p.id)).filter(Boolean),
+        clicked: mine,
+        days: 0,
+        slots: 0,
+      })
+      return
+    }
+
     if (!block) return
 
     e.preventDefault()
     const edge = e.target.dataset?.handle
     if (edge) {
+      // Where the block was snipped, the edge is the cut, and the other half
+      // follows it — but only as far as leaves that half ten minutes of its
+      // own (see applyResize). The readout says where it will really land.
+      const partner = cutPartner(days[date]?.blocks ?? [], block.id, edge)
       setDragState({
         mode: 'resize', date, trackEl, id: block.id, edge,
         startSlot: block.startSlot, endSlot: block.endSlot,
         // Kept so a press that goes nowhere can be told from a real drag.
         was: { startSlot: block.startSlot, endSlot: block.endSlot },
+        limit: partner ? (edge === 'start' ? partner.startSlot + 1 : partner.endSlot - 1) : null,
       })
     } else {
       // A press, until it moves far enough to be a drag. Everything a slide
@@ -1008,8 +1188,33 @@ function DayList({
         if (cell !== d.cell || toDate !== d.toDate) setDragState({ ...d, cell, toDate })
         return
       }
+      if (d.mode === 'marquee') {
+        const moved = d.moved || Math.abs(e.clientX - d.originX) > CLICK_SLOP_PX
+          || Math.abs(e.clientY - d.originY) > CLICK_SLOP_PX
+        const next = { ...d, x: e.clientX, y: e.clientY, moved }
+        setDragState(next)
+        if (moved) gatherIn(next)
+        return
+      }
+      if (d.mode === 'grouppress' || d.mode === 'group') {
+        const moved = d.mode === 'group' || Math.abs(e.clientX - d.originX) > CLICK_SLOP_PX
+          || Math.abs(e.clientY - d.originY) > CLICK_SLOP_PX
+        if (!moved) return
+        // Along the day by how far the pointer has gone, measured from where
+        // it was pressed, as one block slides; and from day to day by which
+        // day the pointer is over now.
+        const travelled = Math.round(((e.clientX - d.originX) / d.width) * SLOTS_PER_DAY)
+        const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-date]')?.dataset.date
+        const dayShift = over ? daysBetween(d.date, over) : d.days
+        const slots = clampShift(d.blocks, travelled)
+        if (d.mode !== 'group' || slots !== d.slots || dayShift !== d.days) {
+          setDragState({ ...d, mode: 'group', slots, days: dayShift })
+        }
+        return
+      }
       if (d.mode === 'resize') {
-        const at = boundaryFrom(d.trackEl, e.clientX)
+        let at = boundaryFrom(d.trackEl, e.clientX)
+        if (d.limit != null) at = d.edge === 'start' ? Math.max(at, d.limit) : Math.min(at, d.limit)
         const next = d.edge === 'start'
           ? { ...d, startSlot: Math.min(at, d.endSlot - 1) }
           : { ...d, endSlot: Math.max(at, d.startSlot + 1) }
@@ -1064,6 +1269,13 @@ function DayList({
         h.onPaint(d.date, paintSpans(d.date, d.anchor, d.toDate, d.cell), {
           slot: d.anchor, lane: d.lane,
         })
+      } else if (d.mode === 'group') {
+        if (d.slots || d.days) h.onMoveMany(d.picks, { days: d.days, slots: d.slots })
+      } else if (d.mode === 'grouppress') {
+        // A click, not a drag: that block alone.
+        h.onPick([d.clicked])
+      } else if (d.mode === 'marquee') {
+        pickKey.current = ''
       } else if (d.mode === 'resize' || d.mode === 'move') {
         // Landing back where it started isn't an edit — it's a click. Which is
         // the only way to open the note on a block too narrow to have anywhere
@@ -1090,15 +1302,41 @@ function DayList({
     const onCancel = () => setDragState(null)
     const onKey = (e) => { if (e.key === 'Escape') setDragState(null) }
 
+    // A box being drawn, or blocks being carried, can reach days that are not
+    // on screen yet: held near the top or bottom of the list, it scrolls to
+    // follow, faster the closer it is to the edge. Scrolled by hand meanwhile,
+    // the box and the blocks keep up with that too.
+    let last = null
+    const follows = () => ['marquee', 'group', 'grouppress'].includes(dragRef.current?.mode)
+    const track = (e) => { last = { clientX: e.clientX, clientY: e.clientY } }
+    let frame = requestAnimationFrame(function edge() {
+      const el = scrollRef.current
+      if (last && el && follows()) {
+        const r = el.getBoundingClientRect()
+        const into = last.clientY < r.top + SCROLL_EDGE_PX
+          ? last.clientY - (r.top + SCROLL_EDGE_PX)
+          : last.clientY > r.bottom - SCROLL_EDGE_PX ? last.clientY - (r.bottom - SCROLL_EDGE_PX) : 0
+        if (into) el.scrollTop += Math.max(-SCROLL_MAX_PX, Math.min(SCROLL_MAX_PX, into / 2))
+      }
+      frame = requestAnimationFrame(edge)
+    })
+    const onScroll = () => { if (last && follows()) onMove(last) }
+    const scroller = scrollRef.current
+
+    window.addEventListener('pointermove', track)
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onCancel)
     window.addEventListener('keydown', onKey)
+    scroller?.addEventListener('scroll', onScroll)
     return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('pointermove', track)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onCancel)
       window.removeEventListener('keydown', onKey)
+      scroller?.removeEventListener('scroll', onScroll)
     }
   }, [drag !== null])
 
@@ -1174,6 +1412,35 @@ function DayList({
   const resizingBlock = resizing
     ? days[resizing.date]?.blocks.find((b) => b.id === resizing.id)
     : null
+
+  // Blocks being carried by the select tool: every day they leave or land
+  // on, laid out as it will be once they are let go. Null while nothing has
+  // moved yet, or where they cannot land (a day not read in, or one that
+  // needs fixing in Obsidian).
+  const group = drag?.mode === 'group' ? drag : null
+  let groupOut = null
+  if (group && (group.slots || group.days)) {
+    const byDate = {}
+    for (const p of group.picks) {
+      for (const date of [p.date, shiftDate(p.date, group.days)]) {
+        if (days[date] && !days[date].malformed) byDate[date] = days[date].blocks
+      }
+    }
+    groupOut = moveBlocks(byDate, group.picks, { days: group.days, slots: group.slots })
+  }
+  // Which blocks are gathered up on each day, as one string per day so a day
+  // whose picks did not change is not drawn again. While they are carried,
+  // they are outlined where they are going.
+  const pickedOn = new Map()
+  for (const p of picked ?? []) {
+    const date = groupOut ? shiftDate(p.date, group.days) : p.date
+    pickedOn.set(date, pickedOn.has(date) ? `${pickedOn.get(date)},${p.id}` : p.id)
+  }
+  const snipBlockNow = snipHover ? days[snipHover.date]?.blocks.find((b) => b.id === snipHover.id) : null
+  const pickedSlots = (picked ?? []).reduce((sum, p) => {
+    const b = days[p.date]?.blocks.find((x) => x.id === p.id)
+    return sum + (b ? b.endSlot - b.startSlot : 0)
+  }, 0)
   const covers = useContext(Covers)
   const { chipLook, blockLook, keepPauses, labels, covers: showCovers, hints, theme } = useContext(Appearance)
   const starlit = theme === 'starlit'
@@ -1197,6 +1464,9 @@ function DayList({
   const readoutTag = painting
     ? armedTag
     : resizingBlock && faceOf(resizingBlock)
+  const snipTag = snipBlockNow && faceOf(snipBlockNow)
+  const many = (n) => `${n} block${n === 1 ? '' : 's'}`
+  const signed = (slots) => (slots < 0 ? `− ${formatDuration(-slots)}` : `+ ${formatDuration(slots)}`)
 
   // After every draw, and so after anything that has just moved the list —
   // opening on today, a jump, the place kept while days load above — the
@@ -1237,7 +1507,27 @@ function DayList({
     <div className={`daylist ${mode}`}>
       <div className="listbar">
         <div className="listreadout">
-          {readoutRange ? (
+          {group ? (
+            <>
+              <span className="readout-range">{many(group.picks.length)}</span>
+              {group.slots !== 0 && <span className="readout-dur">{signed(group.slots)}</span>}
+              {group.days !== 0 && (
+                <span className="readout-over">onto {formatDayHeading(shiftDate(group.date, group.days))}</span>
+              )}
+              {!groupOut && (group.slots || group.days) ? <span className="readout-over">can't land there</span> : null}
+            </>
+          ) : snipTag ? (
+            <>
+              <span className="readout-tag" style={{ '--tag': snipTag.colour }}>
+                <TagIcon tag={snipTag} />
+                {snipTag.name}
+              </span>
+              <span className="readout-range">snip at {slotToTime(snipHover.slot)}</span>
+              <span className="readout-dur">
+                {formatDuration(snipHover.slot - snipBlockNow.startSlot)} | {formatDuration(snipBlockNow.endSlot - snipHover.slot)}
+              </span>
+            </>
+          ) : readoutRange ? (
             <>
               <span className="readout-tag" style={{ '--tag': readoutTag?.colour }}>
                 <TagIcon tag={readoutTag} />
@@ -1266,9 +1556,16 @@ function DayList({
                   ? ''
                   : !isDay
                     ? 'Click a day to open it · ctrl+f finds · ctrl+scroll to resize'
-                    : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+c copies a block, ctrl+v puts it at the time now · ctrl+f finds · ctrl+z undoes · ctrl+scroll to resize'}
+                    : tool === 'snip'
+                      ? 'Click a block to snip it in two at the line · drag the cut with the move tool to shift it · V goes back to moving'
+                      : tool === 'select' && picked?.length
+                        ? `${many(picked.length)} selected, ${formatDuration(pickedSlots)} · drag to move them · delete removes them · ctrl+c copies, ctrl+v puts them where you point · esc lets go`
+                        : tool === 'select'
+                          ? 'Drag a box over blocks to select them, across as many days as you like · shift adds more · double-click opens a note'
+                          : 'Pick a tag under a day to add time · click a block for its note, drag its middle to move it · ctrl+c copies a block, ctrl+v puts it at the time now · ctrl+f finds · ctrl+z undoes · ctrl+scroll to resize'}
             </span>
           )}
+          {isDay && onTool && <Tools tool={tool} onTool={onTool} />}
         </div>
 
         {!isDay && (
@@ -1284,11 +1581,13 @@ function DayList({
       </div>
 
       <div
-        className={`scroller${armedTag ? ' armed' : ''}`}
+        className={`scroller${armedTag ? ' armed' : ''}${isDay ? ` tool-${tool}` : ''}`}
         ref={scrollRef}
         data-blocks={blockLook}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
       >
         <div className="rowspacer" aria-hidden="true" style={{ height: shown.first * rowTotal }} />
         {dates.slice(shown.first, shown.last + 1).map((date, i) => {
@@ -1335,11 +1634,24 @@ function DayList({
               wiping={wiping}
               onArm={onArm}
               askWipe={askWipe}
+              pickedIds={pickedOn.get(date)}
+              snipAt={snipHover?.date === date ? snipHover : null}
+              groupBlocks={groupOut?.[date]}
             />
           )
         })}
         <div className="rowspacer" aria-hidden="true" style={{ height: Math.max(0, dates.length - 1 - shown.last) * rowTotal }} />
       </div>
+      {drag?.mode === 'marquee' && drag.moved && (() => {
+        const box = marqueeBox(drag)
+        return (
+          <div
+            className="marquee"
+            aria-hidden="true"
+            style={{ left: box.left, top: box.top, width: box.right - box.left, height: Math.max(0, box.bottom - box.top) }}
+          />
+        )
+      })()}
     </div>
   )
 }
@@ -1360,6 +1672,7 @@ const DayRow = memo(function DayRow({
   theme, blockLook, keepPauses, labels, chipLook, showCovers, covers, tags,
   firstDay, birthdays, month, inPeriod, armedTagId, resizing, paintSpan, paintFrom,
   selectedId, searching, marks, currentAt, confirming, wiping, onArm, askWipe,
+  pickedIds, snipAt, groupBlocks,
 }) {
   const isDay = mode === 'day'
   const starlit = theme === 'starlit'
@@ -1386,9 +1699,9 @@ const DayRow = memo(function DayRow({
   // whatever festivals follow them.
   // Starlit only, so far.
   const festival = starlit ? festivalOf(date, firstDay, birthdays) : null
-  let blocks = resizing?.date === date
+  let blocks = groupBlocks ?? (resizing?.date === date
     ? applyResize(day?.blocks ?? [], resizing.id, resizing.startSlot, resizing.endSlot, resizing.at)
-    : day?.blocks ?? []
+    : day?.blocks ?? [])
 
   // While painting, lay the day out as it will be once the drag is
   // released — so the new block shows at the height it will land at,
@@ -1496,6 +1809,11 @@ const DayRow = memo(function DayRow({
   const selectedPieces = selectedId
     ? pieces.filter((p) => p.block.id === selectedId)
     : []
+  // Gathered up by the select tool.
+  const pickedSet = new Set(pickedIds ? pickedIds.split(',') : [])
+  const pickedBlocks = pickedSet.size > 0 ? blocks.filter((b) => pickedSet.has(b.id)) : []
+  // The snip tool's line, as tall as the block is where it would cut.
+  const snipPiece = snipAt && pieces.find((p) => p.block.id === snipAt.id && p.from < snipAt.slot && p.to >= snipAt.slot)
 
   // Blocks a search has lit, and which of them it is standing on.
   // Outlined rather than ringed: a block with something laid over it
@@ -1571,6 +1889,7 @@ const DayRow = memo(function DayRow({
               + (look.stepStart && look.stepEnd && trackWidth
                 && xAt(piece.to) - xAt(piece.from) <= PEEK_MAX ? ' peek' : '')
               + (runes.length > 0 ? ' runes' : '') + (runes.length > 1 ? ' runes2' : '')
+              + (pickedSet.has(b.id) ? ' picked' : '')
             }
             style={{
               ...spanAt(piece.from, piece.to),
@@ -1691,6 +2010,29 @@ ${b.note}` : ''}`}
         </svg>
       )}
 
+      {pickedBlocks.length > 0 && (
+        <svg className="selection picks" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {pickedBlocks.map((block) => (
+            <polygon
+              key={`p${block.id}`}
+              points={silhouette(pieces.filter((p) => p.block === block), pieces)}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      )}
+
+      {snipPiece && (
+        <span
+          className="snipline"
+          aria-hidden="true"
+          style={{
+            left: edgeAt(snipAt.slot),
+            top: snipPiece.top === 0 ? 'var(--block-inset)' : `${(snipPiece.top / snipPiece.lanes) * 100}%`,
+          }}
+        />
+      )}
+
    </div>
   )
 
@@ -1699,6 +2041,7 @@ ${b.note}` : ''}`}
       <div
         key={date}
         ref={rowRef}
+        data-date={date}
         className={`compactrow${isToday ? ' today' : ''}${dayOfWeek(date) === 0 ? ' weekedge' : ''}`
           + `${rowRef ? ' measured' : ''}${inPeriod ? ' inperiod' : ''}`}
         // Its height, for when it is out of sight: the browser skips drawing
@@ -1719,6 +2062,7 @@ ${b.note}` : ''}`}
     <section
       key={date}
       ref={rowRef}
+      data-date={date}
       className={`daysection${isToday ? ' today' : ''}${blank ? ' blank' : ''}`
         + `${rowRef ? ' measured' : ''}`}
       style={{ '--row-total': `${rowTotal}px` }}

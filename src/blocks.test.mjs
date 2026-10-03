@@ -1,5 +1,8 @@
 import assert from 'node:assert'
-import { applyPaint, applyResize, layoutLanes, stripsOf, overlapCluster, pasteAt, serialise, deserialise, setGame, setShow } from './blocks.js'
+import {
+  applyPaint, applyResize, layoutLanes, stripsOf, overlapCluster, pasteAt, serialise, deserialise, setGame, setShow,
+  snipBlock, cutsOf, cutPartner, moveBlocks, pasteBlocks,
+} from './blocks.js'
 import { paintSpans, SLOTS_PER_DAY } from './time.js'
 
 let pass = 0, fail = 0
@@ -690,7 +693,7 @@ const g = (id, name, startSlot, endSlot, cover = '') =>
   ({ ...b(id, 'game', startSlot, endSlot), game: name, cover })
 
 t('two stretches of the same game still fold together', () => {
-  const day = [g('a', 'Elden Ring', 60, 72), g('c', 'Elden Ring', 72, 84)]
+  const day = [g('a', 'Elden Ring', 60, 72), g('c', 'Elden Ring', 74, 90)]
   const after = applyResize(day, 'c', 72, 90)
   assert.equal(after.length, 1)
   assert.deepStrictEqual([after[0].startSlot, after[0].endSlot, after[0].game],
@@ -715,7 +718,7 @@ t('a game nobody has named does not fold into a named one', () => {
 })
 
 t('two unnamed Game blocks still fold together, as they always did', () => {
-  const after = applyResize([b('a', 'game', 60, 72), b('c', 'game', 72, 84)], 'c', 70, 84)
+  const after = applyResize([b('a', 'game', 60, 72), b('c', 'game', 74, 84)], 'c', 70, 84)
   assert.equal(after.length, 1)
 })
 
@@ -763,7 +766,7 @@ const a = (id, show, startSlot, endSlot, episodes = [], cover = '') =>
   ({ ...b(id, 'anime', startSlot, endSlot), show, episodes, cover })
 
 t('two stretches of the same show fold together', () => {
-  const day = [a('a', 'Frieren', 120, 126, [1]), a('c', 'Frieren', 126, 132, [2])]
+  const day = [a('a', 'Frieren', 120, 126, [1]), a('c', 'Frieren', 128, 138, [2])]
   const after = applyResize(day, 'c', 126, 138)
   assert.equal(after.length, 1)
   assert.deepStrictEqual([after[0].startSlot, after[0].endSlot, after[0].show],
@@ -771,7 +774,7 @@ t('two stretches of the same show fold together', () => {
 })
 
 t('and the episodes join up rather than one evening losing half of itself', () => {
-  const day = [a('a', 'Frieren', 120, 126, [1, 2]), a('c', 'Frieren', 126, 132, [3])]
+  const day = [a('a', 'Frieren', 120, 126, [1, 2]), a('c', 'Frieren', 128, 138, [3])]
   const after = applyResize(day, 'c', 126, 138)
   assert.deepStrictEqual(after[0].episodes, [1, 2, 3])
 })
@@ -833,6 +836,162 @@ t('episodes with no show are not written — they would number nothing', () => {
 t('a day written before any of this reads back with no show', () => {
   const back = deserialise([{ tag: 'anime', start: '20:00', end: '22:00' }])
   assert.deepStrictEqual([back[0].show, back[0].episodes], ['', []])
+})
+
+// --- snipping, and what a cut survives -------------------------------------
+
+const span = (x) => `${x.id ?? '?'} ${x.startSlot}-${x.endSlot}`
+/** [start, end] of each block, earliest first: list order is only stacking. */
+const times = (list) => list.map((x) => [x.startSlot, x.endSlot]).sort((p, q) => p[0] - q[0])
+
+t('a snipped hour is two half hours, side by side', () => {
+  const day = [a('w', 'Frieren', 120, 126, [3, 4])]
+  const after = snipBlock(day, 'w', 123)
+  assert.equal(after.length, 2)
+  assert.deepStrictEqual(after.map((x) => [x.startSlot, x.endSlot, x.show]), [[120, 123, 'Frieren'], [123, 126, 'Frieren']])
+  assert.deepStrictEqual(after.map((x) => x.episodes), [[3, 4], [3, 4]], 'both halves keep all of what it was')
+  assert.equal(after[0].id, 'w', 'the first half is the block it was')
+  assert.notEqual(after[1].id, 'w', 'and the second is a block of its own')
+  assert.ok(after[0].episodes !== after[1].episodes, 'each with its own list, so saying one does not say both')
+})
+
+t('a snip at either end, or outside the block, cuts nothing', () => {
+  const day = [b('w', 'walk', 10, 20)]
+  for (const at of [10, 20, 5, 30]) assert.strictEqual(snipBlock(day, 'w', at), day)
+})
+
+t('the second half stacks where the block did', () => {
+  const day = [b('top', 'music', 0, 30), b('w', 'walk', 10, 20), b('low', 'food', 0, 30)]
+  const after = snipBlock(day, 'w', 15)
+  assert.deepStrictEqual(after.map((x) => x.tag), ['music', 'walk', 'walk', 'food'])
+})
+
+t('two halves survive a save and reload, and stay two', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126)], 'w', 123)
+  const back = deserialise(serialise(day))
+  assert.equal(back.length, 2)
+  assert.deepStrictEqual([...cutsOf(back)], ['anime||@123'])
+})
+
+t('dragging the outer edge of one half leaves the cut where it is', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126)], 'w', 123)
+  const after = applyResize(day, 'w', 114, 123)
+  assert.deepStrictEqual(times(after), [[114, 123], [123, 126]])
+})
+
+t('dragging the cut itself moves it, and the other half follows', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126)], 'w', 123)
+  const later = applyResize(day, 'w', 120, 125)
+  assert.deepStrictEqual(times(later), [[120, 125], [125, 126]])
+  const earlier = applyResize(day, day[1].id, 121, 126)
+  assert.deepStrictEqual(times(earlier), [[120, 121], [121, 126]])
+})
+
+t('but never so far that the other half is gone', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126)], 'w', 123)
+  const after = applyResize(day, 'w', 120, 140)
+  assert.deepStrictEqual(times(after), [[120, 125], [125, 126]])
+})
+
+t('sliding one half up or down a lane keeps the cut', () => {
+  const day = [b('m', 'music', 100, 140), ...snipBlock([b('w', 'anime', 120, 126)], 'w', 123)]
+  const after = applyResize(day, 'w', 120, 123, { slot: 121, lane: 0 })
+  assert.equal(after.filter((x) => x.tag === 'anime').length, 2)
+})
+
+t('saying which episodes each half was keeps them halves', () => {
+  const day = snipBlock([a('w', 'Frieren', 120, 126, [3, 4])], 'w', 123)
+  const once = setShow(day, 'w', { name: 'Frieren', episodes: [3] })
+  const twice = setShow(once, day[1].id, { name: 'Frieren', episodes: [4] })
+  assert.deepStrictEqual(twice.map((x) => x.episodes), [[3], [4]])
+})
+
+t('painting up to a cut grows that half and leaves the other', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126)], 'w', 123)
+  const after = applyPaint(day, b('p', 'anime', 114, 123))
+  assert.deepStrictEqual(after.map((x) => [x.startSlot, x.endSlot]), [[114, 123], [123, 126]])
+})
+
+t('painting across a cut heals it, with nothing written twice', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126, 'with Sam')], 'w', 123)
+  const after = applyPaint(day, b('p', 'anime', 122, 124))
+  assert.equal(after.length, 1)
+  assert.deepStrictEqual([after[0].startSlot, after[0].endSlot, after[0].note], [120, 126, 'with Sam'])
+})
+
+t('a stretch brought up against a half from elsewhere still joins it', () => {
+  const day = [...snipBlock([b('w', 'anime', 120, 126)], 'w', 123), b('x', 'anime', 130, 136)]
+  const after = applyResize(day, 'x', 126, 136)
+  assert.deepStrictEqual(after.map((x) => [x.startSlot, x.endSlot]), [[120, 123], [123, 136]])
+})
+
+t('a cut edge knows its other half, and an ordinary edge has none', () => {
+  const day = snipBlock([b('w', 'anime', 120, 126)], 'w', 123)
+  assert.equal(cutPartner(day, 'w', 'end')?.id, day[1].id)
+  assert.equal(cutPartner(day, 'w', 'start'), null)
+})
+
+// --- moving and pasting several blocks at once ---------------------------
+
+t('blocks moved together all go the same way', () => {
+  const byDate = { d1: [b('x', 'walk', 10, 20), b('y', 'food', 30, 33), b('z', 'game', 50, 60)] }
+  const out = moveBlocks(byDate, [{ date: 'd1', id: 'x' }, { date: 'd1', id: 'y' }], { slots: 6 })
+  assert.deepStrictEqual(out.d1.map(span), ['x 16-26', 'y 36-39', 'z 50-60'])
+})
+
+t('a group slid against midnight stops there as a whole', () => {
+  const byDate = { d1: [b('x', 'walk', 100, 120), b('y', 'food', 130, 140)] }
+  const out = moveBlocks(byDate, [{ date: 'd1', id: 'x' }, { date: 'd1', id: 'y' }], { slots: 30 })
+  assert.deepStrictEqual(out.d1.map(span), ['x 104-124', 'y 134-144'])
+})
+
+t('two halves moved together stay two halves', () => {
+  const byDate = { d1: snipBlock([b('w', 'anime', 120, 126)], 'w', 123) }
+  const picks = byDate.d1.map((x) => ({ date: 'd1', id: x.id }))
+  const out = moveBlocks(byDate, picks, { slots: -12 })
+  assert.deepStrictEqual(out.d1.map((x) => [x.startSlot, x.endSlot]), [[108, 111], [111, 114]])
+})
+
+t('a moved block that lands on the same thing joins it', () => {
+  const byDate = { d1: [b('x', 'walk', 10, 20), b('y', 'walk', 30, 40)] }
+  const out = moveBlocks(byDate, [{ date: 'd1', id: 'y' }], { slots: -10 })
+  assert.deepStrictEqual(out.d1.map(span), ['x 10-30'])
+})
+
+t('blocks can be moved to another day, and leave the one they were on', () => {
+  const byDate = {
+    '2026-10-01': [b('x', 'walk', 10, 20), b('k', 'food', 0, 5)],
+    '2026-10-02': [b('m', 'music', 0, 50)],
+  }
+  const out = moveBlocks(byDate, [{ date: '2026-10-01', id: 'x' }], { days: 1, slots: 0 })
+  assert.deepStrictEqual(out['2026-10-01'].map(span), ['k 0-5'])
+  assert.deepStrictEqual(out['2026-10-02'].map(span), ['m 0-50', 'x 10-20'])
+})
+
+t('a day they cannot land on stops the whole move', () => {
+  const byDate = { '2026-10-01': [b('x', 'walk', 10, 20)] }
+  assert.strictEqual(moveBlocks(byDate, [{ date: '2026-10-01', id: 'x' }], { days: 1 }), null)
+})
+
+t('a pasted group keeps its spacing, starting where it is put', () => {
+  const items = [
+    { at: 60, slots: 6, tag: 'walk', note: '', game: '', show: '', episodes: [], cover: '' },
+    { at: 72, slots: 3, tag: 'food', note: 'soup', game: '', show: '', episodes: [], cover: '' },
+  ]
+  const { days, placed } = pasteBlocks({ '2026-10-02': [] }, items, '2026-10-02', 90)
+  assert.deepStrictEqual(days['2026-10-02'].map((x) => [x.tag, x.startSlot, x.endSlot, x.note]),
+    [['walk', 90, 96, ''], ['food', 102, 105, 'soup']])
+  assert.equal(placed.length, 2)
+})
+
+t('a pasted group carries on past midnight into the next day', () => {
+  const items = [
+    { at: 130, slots: 6, tag: 'game', note: '', game: '', show: '', episodes: [], cover: '' },
+    { at: 160, slots: 12, tag: 'sleep', note: '', game: '', show: '', episodes: [], cover: '' },
+  ]
+  const { days } = pasteBlocks({ '2026-10-02': [], '2026-10-03': [] }, items, '2026-10-02', 120)
+  assert.deepStrictEqual(days['2026-10-02'].map((x) => [x.startSlot, x.endSlot]), [[120, 126]])
+  assert.deepStrictEqual(days['2026-10-03'].map((x) => [x.startSlot, x.endSlot]), [[6, 18]])
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

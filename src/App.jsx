@@ -26,9 +26,12 @@ import {
 } from './appearance.js'
 import {
   applyPaint, applyResize, removeBlock, setNote, setGame, setShow,
-  newId, pasteAt, overlapCluster,
+  newId, overlapCluster, snipBlock, moveBlocks, pasteBlocks,
 } from './blocks.js'
-import { todayISO, formatDotted, minutesNow, shiftDate, MINUTES_PER_SLOT } from './time.js'
+import {
+  todayISO, formatDotted, minutesNow, shiftDate, daysBetween, MINUTES_PER_SLOT, SLOTS_PER_DAY,
+} from './time.js'
+import { TOOL_KEYS } from './Tools.jsx'
 
 const zoomKey = (mode) => `daily-documenter:zoom:${mode}`
 
@@ -55,6 +58,38 @@ async function knownCovers() {
  * with it, and Ctrl+C there is about the words in the box.
  */
 const inSettings = (el) => el instanceof Element && Boolean(el.closest('.settings'))
+
+/**
+ * What Ctrl+C keeps of some blocks: everything each one was except when it
+ * happened, and `at` — when it started, counted in ten minutes from the start
+ * of the first of their days — so that a paste can keep them as far apart as
+ * they were. `from` names what was copied, so the note can say "Copied".
+ */
+function copyOf(from, picks, days) {
+  const first = picks.reduce((a, p) => (p.date < a ? p.date : a), picks[0].date)
+  const items = picks
+    .map(({ date, id }) => ({ date, block: days[date]?.blocks.find((b) => b.id === id) }))
+    .filter((p) => p.block)
+    .map(({ date, block }) => ({
+      tag: block.tag,
+      note: block.note ?? '',
+      game: block.game ?? '',
+      show: block.show ?? '',
+      episodes: block.episodes ?? [],
+      cover: block.cover ?? '',
+      slots: block.endSlot - block.startSlot,
+      at: daysBetween(first, date) * SLOTS_PER_DAY + block.startSlot,
+    }))
+  return items.length > 0 ? { from, items } : null
+}
+
+/** Every day that is read in and can be written, as { date: blocks }. */
+const writable = (days) => Object.fromEntries(
+  Object.entries(days).filter(([, d]) => !d.malformed).map(([date, d]) => [date, d.blocks]),
+)
+
+/** Whether the key went to something with a cursor in it. */
+const inBox = (el) => el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement
 
 const sameCovers = (a, b) => a.size === b.size && [...a].every(([key, file]) => b.get(key) === file)
 
@@ -107,10 +142,19 @@ export default function App() {
   const [tagError, setTagError] = useState(null)
   const [armed, setArmed] = useState(null) // { date, tag } — a tag armed for one day
   const [selected, setSelected] = useState(null) // { date, id }
-  // What Ctrl+C took: everything a block was, minus where it was. Held for
-  // the session only — a clipboard that outlived the app would be a thing to
-  // wonder about later rather than a convenience now.
+  // What Ctrl+C took: everything some blocks were, minus where they were (see
+  // copyOf). Held for the session only — a clipboard that outlived the app
+  // would be a thing to wonder about later rather than a convenience now.
   const [copied, setCopied] = useState(null)
+  // Which tool the bar is worked with: move (press, drag, stretch — as it
+  // always was), snip, or select. Always move when the app opens, so a tool
+  // left on from yesterday never turns a click into something unexpected.
+  const [tool, setTool] = useState('move')
+  // What the select tool has gathered up: [{ date, id }], across any days.
+  const [picked, setPicked] = useState([])
+  // Where the pointer is over the bars, for pasting there. Kept in a ref the
+  // list writes to: nothing is drawn from it.
+  const hoverRef = useRef(null)
   const [find, setFind] = useState(null) // { query, hits, at } while the bar is open
   const [jumpTo, setJumpTo] = useState(null)
   const [visible, setVisible] = useState(null) // days currently on screen
@@ -207,16 +251,63 @@ export default function App() {
       if (find) setFind(null)
       else if (settingsOpen) setSettingsOpen(false)
       else if (armed) setArmed(null)
+      else if (picked.length > 0) setPicked([])
       else setSelected(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [armed, find, settingsOpen])
+  }, [armed, find, settingsOpen, picked.length])
+
+  // One key for each tool — see TOOL_KEYS. Only on the Day view, where there
+  // is something to work on, and never while typing.
+  useEffect(() => {
+    if (view !== 'day') return
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return
+      if (inSettings(e.target) || inBox(e.target)) return
+      const next = Object.keys(TOOL_KEYS).find((t) => TOOL_KEYS[t].includes(e.key.toLowerCase()))
+      if (!next) return
+      e.preventDefault()
+      setTool(next)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [view])
+
+  // What was gathered up belongs to the select tool, and goes when it does.
+  useEffect(() => { if (tool !== 'select') setPicked([]) }, [tool])
+
+  // Only what still exists: a delete, an undo, or two picked blocks moved
+  // into one can each leave a pick pointing at nothing.
+  const pickedLive = useMemo(
+    () => picked.filter((p) => days[p.date]?.blocks.some((b) => b.id === p.id)),
+    [picked, days],
+  )
 
   // Delete removes the block whose note is open. Same change the button in the
-  // note makes, so ctrl+z takes it back the same way.
+  // note makes, so ctrl+z takes it back the same way. With blocks gathered up
+  // by the select tool it takes all of them instead, as one change.
   useEffect(() => {
-    if (!selected) return
+    if (pickedLive.length === 0) return
+    const onKey = (e) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      if (inSettings(e.target) || inBox(e.target)) return
+      e.preventDefault()
+      const byDate = new Map()
+      for (const { date, id } of pickedLive) byDate.set(date, [...(byDate.get(date) ?? []), id])
+      editDays([...byDate].map(([date, ids]) => ({
+        date,
+        update: (prev) => prev.filter((b) => !ids.includes(b.id)),
+      })))
+      setSelected((sel) => (sel && pickedLive.some((p) => p.date === sel.date && p.id === sel.id) ? null : sel))
+      setPicked([])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pickedLive, editDays])
+
+  useEffect(() => {
+    if (!selected || pickedLive.length > 0) return
     const onKey = (e) => {
       if (e.key !== 'Delete') return
       if (inSettings(e.target)) return
@@ -233,7 +324,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selected, editDay])
+  }, [selected, editDay, pickedLive.length])
 
   // Ctrl+Z puts the last change back — a mispainted block, a wrong slide, a
   // delete, a whole day cleared. Everything that changes a day goes through
@@ -258,8 +349,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [undo])
 
-  /** Whether the key went to something with a cursor in it. */
-  const inBox = (el) => el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement
 
   /**
    * Whether some of what is in a box is selected.
@@ -279,8 +368,11 @@ export default function App() {
   // watched, which episodes, and whatever was written about it. Everything
   // except when it happened, which is the one thing a paste decides for
   // itself.
+  //
+  // Whatever the select tool has gathered up goes before the open note: all
+  // of it, and how far apart it was.
   useEffect(() => {
-    if (!selected) return
+    if (!selected && pickedLive.length === 0) return
     const onKey = (e) => {
       if (e.key !== 'c' && e.key !== 'C') return
       if (inSettings(e.target)) return
@@ -291,29 +383,26 @@ export default function App() {
       // pressed from nearly every time.
       const el = e.target
       if (inBox(el) ? holding(el) : window.getSelection()?.toString()) return
-      const block = (days[selected.date]?.blocks ?? []).find((b) => b.id === selected.id)
-      if (!block) return
+      const copy = pickedLive.length > 0
+        ? copyOf('picked', pickedLive, days)
+        : copyOf(selected.date + selected.id, [selected], days)
+      if (!copy) return
       e.preventDefault()
       // Let go of the note, so the Ctrl+V that follows is about the block too
       // rather than about the words the cursor is still sitting in.
       if (inBox(el)) el.blur()
-      setCopied({
-        from: selected.date + selected.id,
-        tag: block.tag,
-        note: block.note ?? '',
-        game: block.game ?? '',
-        show: block.show ?? '',
-        episodes: block.episodes ?? [],
-        cover: block.cover ?? '',
-        slots: block.endSlot - block.startSlot,
-      })
+      setCopied(copy)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selected, days])
+  }, [selected, pickedLive, days])
 
   // Ctrl+V puts it down on today, starting at the ten minutes you are in.
   // The same thing again, now: which is what copying a block is for.
+  //
+  // With the select tool it goes where you are pointing instead — that tool
+  // is for putting things exactly — and what lands is what is gathered up
+  // next, ready to be nudged into place.
   useEffect(() => {
     if (!copied) return
     const onKey = (e) => {
@@ -325,15 +414,19 @@ export default function App() {
       if (inBox(e.target)) return
       e.preventDefault()
 
-      const date = todayISO()
-      const landed = pasteAt(copied, Math.floor(minutesNow() / MINUTES_PER_SLOT))
-      if (!landed) return
-      editDay(date, (prev) => applyPaint(prev, landed))
-      setJumpTo(date) // it landed on today, which may be nowhere near the screen
+      const aimed = tool === 'select' && view === 'day' ? hoverRef.current : null
+      const date = aimed?.date ?? todayISO()
+      const slot = aimed?.slot ?? Math.floor(minutesNow() / MINUTES_PER_SLOT)
+      const { days: landed, placed } = pasteBlocks(writable(days), copied.items, date, slot)
+      const changes = Object.entries(landed).map(([day, blocks]) => ({ date: day, update: blocks }))
+      if (changes.length === 0) return
+      editDays(changes)
+      if (aimed) setPicked(placed)
+      else setJumpTo(date) // it landed on today, which may be nowhere near the screen
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [copied, editDay])
+  }, [copied, editDays, days, tool, view])
 
   // Ctrl+F opens the find bar, or refocuses it if it is already open — the
   // second press selects what is in it, so a new search replaces the old one.
@@ -456,6 +549,20 @@ export default function App() {
   const handleResize = useCallback((date, id, startSlot, endSlot, at) =>
     editDay(date, (prev) => applyResize(prev, id, startSlot, endSlot, at)), [editDay])
 
+  const handleSnip = useCallback((date, id, slot) =>
+    editDay(date, (prev) => snipBlock(prev, id, slot)), [editDay])
+
+  // Read from a ref, so the list is handed one function for good: see below.
+  const daysRef = useRef(days)
+  daysRef.current = days
+  /** Everything picked, moved by the same amount — see moveBlocks. */
+  const handleMoveMany = useCallback((picks, by) => {
+    const out = moveBlocks(writable(daysRef.current), picks, by)
+    if (!out) return
+    editDays(Object.entries(out).map(([date, blocks]) => ({ date, update: blocks })))
+    setPicked(picks.map(({ date, id }) => ({ date: shiftDate(date, by.days ?? 0), id })))
+  }, [editDays])
+
   // The list is told what to do through these, made once: a new one each time
   // the app redraws would have the whole list — every day, every tag — built
   // again with it, which is what made scrolling stutter. See DayList's memo.
@@ -559,14 +666,12 @@ export default function App() {
             aria-expanded={settingsOpen}
             title="Settings"
           >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path
-                d="M10 6.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm7.2 4.6.1-1.2-.1-1.2 1.6-1.3-1.6-2.8-2 .7a6.6 6.6 0 0 0-2-1.2L12.8 2H9.6l-.4 2.1a6.6 6.6 0 0 0-2 1.2l-2-.7L3.6 7.4l1.6 1.3-.1 1.3.1 1.2-1.6 1.3 1.6 2.8 2-.7c.6.5 1.3.9 2 1.2l.4 2.1h3.2l.4-2.1a6.6 6.6 0 0 0 2-1.2l2 .7 1.6-2.8z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinejoin="round"
-              />
+            {/* Eight teeth worked out around the middle of the box, and the
+                hole on that same middle — the old one was drawn by hand,
+                and its teeth sat off to one side of the hole. */}
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round">
+              <path d="M8.32 3.72L8.51 1.53L11.49 1.53L11.68 3.72A6.5 6.5 0 0 1 13.25 4.37L14.93 2.96L17.04 5.07L15.63 6.75A6.5 6.5 0 0 1 16.28 8.32L18.47 8.51L18.47 11.49L16.28 11.68A6.5 6.5 0 0 1 15.63 13.25L17.04 14.93L14.93 17.04L13.25 15.63A6.5 6.5 0 0 1 11.68 16.28L11.49 18.47L8.51 18.47L8.32 16.28A6.5 6.5 0 0 1 6.75 15.63L5.07 17.04L2.96 14.93L4.37 13.25A6.5 6.5 0 0 1 3.72 11.68L1.53 11.49L1.53 8.51L3.72 8.32A6.5 6.5 0 0 1 4.37 6.75L2.96 5.07L5.07 2.96L6.75 4.37A6.5 6.5 0 0 1 8.32 3.72Z" />
+              <circle cx="10" cy="10" r="2.8" />
             </svg>
           </button>
         </div>
@@ -608,6 +713,13 @@ export default function App() {
         ensure={ensure}
         armed={view === 'day' ? armed : null}
         onArm={handleArm}
+        tool={tool}
+        onTool={setTool}
+        picked={pickedLive}
+        onPick={setPicked}
+        onSnip={handleSnip}
+        onMoveMany={handleMoveMany}
+        hoverRef={hoverRef}
         selected={selected}
         barHeight={zoom[view]}
         onZoom={handleZoom}
@@ -640,16 +752,7 @@ export default function App() {
           block={selectedBlock}
           cluster={selectedCluster}
           copied={copied?.from === selected.date + selected.id}
-          onCopy={() => setCopied({
-            from: selected.date + selected.id,
-            tag: selectedBlock.tag,
-            note: selectedBlock.note ?? '',
-            game: selectedBlock.game ?? '',
-            show: selectedBlock.show ?? '',
-            episodes: selectedBlock.episodes ?? [],
-            cover: selectedBlock.cover ?? '',
-            slots: selectedBlock.endSlot - selectedBlock.startSlot,
-          })}
+          onCopy={() => setCopied(copyOf(selected.date + selected.id, [selected], days))}
           date={selected.date}
           tags={tags}
           onNote={(id, note) => editDay(selected.date, (prev) => setNote(prev, id, note))}

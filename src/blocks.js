@@ -1,4 +1,4 @@
-import { slotToTime, timeToSlot, SLOTS_PER_DAY } from './time.js'
+import { slotToTime, timeToSlot, shiftDate, SLOTS_PER_DAY } from './time.js'
 
 let seq = 0
 export const newId = () => `b${Date.now().toString(36)}${(seq++).toString(36)}`
@@ -50,6 +50,31 @@ function placeFor(blocks, atSlot, lane) {
 const sameThing = (a, b) =>
   a.tag === b.tag && (a.game ?? '') === (b.game ?? '') && (a.show ?? '') === (b.show ?? '')
 
+/** What a block is, as one word: its tag and whatever was played or watched. */
+const thingOf = (b) => `${b.tag}|${b.game ?? ''}|${b.show ?? ''}`
+
+/**
+ * Every place a block was snipped in two: each moment where one block ends
+ * and a twin of it — the same thing, see sameThing — starts.
+ *
+ * Nothing records a cut but the two blocks themselves, written down side by
+ * side. Two stretches of the same thing touching end to end are never made
+ * any other way, because any other way of bringing them together joins them
+ * into one; so two that touch are two because somebody said so, and they
+ * stay two. Read back from a note they are still touching, and still two.
+ *
+ * Returned as a set of "thing@slot".
+ */
+export function cutsOf(blocks) {
+  const cuts = new Set()
+  for (const a of blocks) {
+    for (const b of blocks) {
+      if (a !== b && a.endSlot === b.startSlot && sameThing(a, b)) cuts.add(`${thingOf(a)}@${a.endSlot}`)
+    }
+  }
+  return cuts
+}
+
 /**
  * Fold a block together with every block of the same activity it meets.
  *
@@ -59,15 +84,32 @@ const sameThing = (a, b) =>
  * against it all end in the same place.
  *
  * Ends that merely touch count: a block ending at 14:00 and one starting at
- * 14:00 are not two things.
+ * 14:00 are not two things — unless that is where it was snipped. `cuts`
+ * (see cutsOf) are the places that were cut before this change, and two ends
+ * meeting at one of them stay apart. Something laid across a cut, overlapping
+ * both sides of it, still joins them: painting over a cut heals it.
  *
  * The survivor is the earliest of them in the list and keeps its place, so
  * joining two blocks is not a reason to restack anything around them.
  */
-function mergeSameTag(blocks, block) {
-  const touching = blocks.filter(
-    (b) => sameThing(b, block) && b.endSlot >= block.startSlot && b.startSlot <= block.endSlot,
-  )
+function mergeSameTag(blocks, block, cuts = new Set()) {
+  const twins = blocks.filter((b) => sameThing(b, block))
+  const meet = (a, b) => {
+    if (a.startSlot < b.endSlot && a.endSlot > b.startSlot) return true
+    const at = a.endSlot === b.startSlot ? a.endSlot : b.endSlot === a.startSlot ? a.startSlot : null
+    return at !== null && !cuts.has(`${thingOf(block)}@${at}`)
+  }
+  // Everything it reaches, and everything those reach in turn.
+  const reached = new Set([block])
+  for (let grew = true; grew;) {
+    grew = false
+    for (const b of twins) {
+      if (reached.has(b) || ![...reached].some((r) => meet(r, b))) continue
+      reached.add(b)
+      grew = true
+    }
+  }
+  const touching = blocks.filter((b) => reached.has(b))
   if (touching.length < 2) return blocks
 
   const keep = touching[0]
@@ -88,6 +130,16 @@ function mergeSameTag(blocks, block) {
     .map((b) => (b === keep ? merged : b))
 }
 
+/** Fold each of `arrived` into whatever of the same thing it meets in `blocks`. */
+function settle(blocks, arrived, cuts) {
+  let next = blocks
+  for (const a of arrived) {
+    const still = next.find((b) => b.id === a.id)
+    if (still) next = mergeSameTag(next, still, cuts)
+  }
+  return next
+}
+
 /**
  * Add a painted range. Different tags are allowed to overlap — they stack in
  * lanes when drawn. Painting a tag over itself merges instead of stacking.
@@ -97,7 +149,7 @@ function mergeSameTag(blocks, block) {
  */
 export function applyPaint(blocks, painted, at) {
   const index = at ? placeFor(blocks, at.slot, at.lane) : blocks.length
-  return mergeSameTag([...blocks.slice(0, index), painted, ...blocks.slice(index)], painted)
+  return mergeSameTag([...blocks.slice(0, index), painted, ...blocks.slice(index)], painted, cutsOf(blocks))
 }
 
 /**
@@ -116,18 +168,42 @@ export function applyPaint(blocks, painted, at) {
  * two others keeps its exact place in the order, since that is the only
  * record of where it sits. One that isn't overlapping anything has no height
  * to keep, so it tucks under, the same as painting it there would.
+ *
+ * An edge that sits where the block was snipped (see cutsOf) is the cut
+ * itself, and dragging it moves the cut: the other half follows, longer or
+ * shorter, and the two still meet. Never so far that the other half is gone —
+ * the edge stops ten minutes short of its far end.
  */
 export function applyResize(blocks, id, startSlot, endSlot, at) {
   if (endSlot <= startSlot) return blocks
   const target = blocks.find((b) => b.id === id)
   if (!target) return blocks
+  const cuts = cutsOf(blocks)
+
+  if (!at) {
+    const edge = startSlot !== target.startSlot ? 'start' : endSlot !== target.endSlot ? 'end' : null
+    const partner = edge && cutPartner(blocks, id, edge)
+    if (partner) {
+      let follows
+      if (edge === 'start') {
+        startSlot = Math.max(startSlot, partner.startSlot + 1)
+        follows = { ...partner, endSlot: startSlot }
+      } else {
+        endSlot = Math.min(endSlot, partner.endSlot - 1)
+        follows = { ...partner, startSlot: endSlot }
+      }
+      if (endSlot <= startSlot) return blocks
+      cuts.add(`${thingOf(target)}@${edge === 'start' ? startSlot : endSlot}`)
+      blocks = blocks.map((b) => (b === partner ? follows : b))
+    }
+  }
 
   const moved = { ...target, startSlot, endSlot }
   const rest = blocks.filter((b) => b.id !== id)
 
   if (at) {
     const index = placeFor(rest, at.slot, at.lane)
-    return mergeSameTag([...rest.slice(0, index), moved, ...rest.slice(index)], moved)
+    return mergeSameTag([...rest.slice(0, index), moved, ...rest.slice(index)], moved, cuts)
   }
 
   // Which of its pieces says where the block stands. A stretch it has to
@@ -145,7 +221,143 @@ export function applyResize(blocks, id, startSlot, endSlot, at) {
     : drawn.lane === 0
       ? [moved, ...rest]
       : blocks.map((b) => (b.id === id ? moved : b))
-  return mergeSameTag(placed, moved)
+  return mergeSameTag(placed, moved, cuts)
+}
+
+/**
+ * The other half of a cut at one edge of a block: the twin that ends where
+ * this block starts (`edge` 'start') or starts where it ends ('end'). Null
+ * where that edge is not a cut.
+ */
+export function cutPartner(blocks, id, edge) {
+  const block = blocks.find((b) => b.id === id)
+  if (!block) return null
+  return blocks.find((b) => b !== block && sameThing(b, block)
+    && (edge === 'start' ? b.endSlot === block.startSlot : b.startSlot === block.endSlot)) ?? null
+}
+
+/**
+ * Snip a block in two at `slot`: the same thing either side, one ending and
+ * the other starting right there.
+ *
+ * Both halves are all of what the block was — what was played or watched,
+ * the episodes, the cover, what was written about it — since there is no
+ * telling which half any of it belonged to. Say so on each half afterwards;
+ * paint back over the cut and they are one block again, with nothing written
+ * twice.
+ *
+ * The second half sits right after the first in the list, so it stacks
+ * exactly where the block did. A cut at either end, or outside the block,
+ * cuts nothing.
+ */
+export function snipBlock(blocks, id, slot) {
+  const target = blocks.find((b) => b.id === id)
+  if (!target || slot <= target.startSlot || slot >= target.endSlot) return blocks
+  const first = { ...target, endSlot: slot, episodes: [...(target.episodes ?? [])] }
+  const second = { ...target, id: newId(), startSlot: slot, episodes: [...(target.episodes ?? [])] }
+  return blocks.flatMap((b) => (b === target ? [first, second] : [b]))
+}
+
+/**
+ * Move several blocks at once, every one of them by the same amount: `slots`
+ * along the day, and `days` from one day to another.
+ *
+ * `byDate` holds the blocks of every day involved, where they come from and
+ * where they land. `picks` is [{ date, id }]. Returns { date: blocks } for
+ * the days that changed, or null if a day they would land on isn't there.
+ *
+ * The shift is held so that every block stays inside its own day: a group
+ * slid against midnight stops there as a whole rather than being squashed.
+ *
+ * Moving within a day, each keeps its place in the list, and so its height.
+ * Moving to another day they go in underneath what is there, the way
+ * anything painted there would without a height asked for.
+ *
+ * Blocks moved together that were cut stay cut. A moved block that comes to
+ * meet the same thing where it lands joins it, the way one block would.
+ */
+export function moveBlocks(byDate, picks, { days = 0, slots = 0 }) {
+  const moving = picks
+    .map(({ date, id }) => ({ date, block: byDate[date]?.find((b) => b.id === id) }))
+    .filter((m) => m.block)
+  if (moving.length === 0) return {}
+  const shift = clampShift(moving.map((m) => m.block), slots)
+  const shifted = (b) => ({ ...b, startSlot: b.startSlot + shift, endSlot: b.endSlot + shift })
+  const sources = [...new Set(moving.map((m) => m.date))]
+  const pickedOn = (date) => new Set(moving.filter((m) => m.date === date).map((m) => m.block.id))
+
+  const out = {}
+  if (days === 0) {
+    for (const date of sources) {
+      const ids = pickedOn(date)
+      const kept = byDate[date].filter((b) => !ids.has(b.id))
+      const arrived = byDate[date].filter((b) => ids.has(b.id)).map(shifted)
+      const cuts = new Set([...cutsOf(kept), ...cutsOf(arrived)])
+      out[date] = settle(byDate[date].map((b) => (ids.has(b.id) ? shifted(b) : b)), arrived, cuts)
+    }
+    return out
+  }
+
+  const targets = sources.map((date) => shiftDate(date, days))
+  if (targets.some((date) => !byDate[date])) return null
+  for (const date of new Set([...sources, ...targets])) {
+    const ids = pickedOn(date)
+    const kept = byDate[date].filter((b) => !ids.has(b.id))
+    const arrived = moving.filter((m) => shiftDate(m.date, days) === date).map((m) => shifted(m.block))
+    const cuts = new Set([...cutsOf(kept), ...cutsOf(arrived)])
+    out[date] = settle([...kept, ...arrived], arrived, cuts)
+  }
+  return out
+}
+
+/** How far a group can go along the day, toward `slots`, with all of it still inside it. */
+export function clampShift(blocks, slots) {
+  const lowest = Math.min(...blocks.map((b) => b.startSlot))
+  const highest = Math.max(...blocks.map((b) => b.endSlot))
+  return Math.max(-lowest, Math.min(SLOTS_PER_DAY - highest, slots))
+}
+
+/**
+ * Put copied blocks down, keeping how they sat with one another.
+ *
+ * `items` are what was copied: everything each block was, `slots` for how
+ * long it ran, and `at` for when it started counted in slots from the start
+ * of the first copied day — so a copy of an evening that ran past midnight
+ * still runs past it. The earliest of them lands at `slot` on `date`, and the
+ * rest follow at the same distances.
+ *
+ * Each one keeps its length up to the end of the day it lands on, as a single
+ * pasted block does (see pasteAt). One landing on a day that isn't there is
+ * left out.
+ *
+ * Returns { days: { date: blocks }, placed: [{ date, id }] }.
+ */
+export function pasteBlocks(byDate, items, date, slot) {
+  if (items.length === 0) return { days: {}, placed: [] }
+  const first = Math.min(...items.map((item) => item.at))
+  const landing = {}
+  for (const item of items) {
+    const when = slot + item.at - first
+    const ahead = Math.floor(when / SLOTS_PER_DAY)
+    const day = shiftDate(date, ahead)
+    if (!byDate[day]) continue
+    const block = pasteAt(item, when - ahead * SLOTS_PER_DAY)
+    if (block) (landing[day] ??= []).push(block)
+  }
+  const days = {}
+  const placed = []
+  for (const [day, arrived] of Object.entries(landing)) {
+    const cuts = new Set([...cutsOf(byDate[day]), ...cutsOf(arrived)])
+    const next = settle([...byDate[day], ...arrived], arrived, cuts)
+    days[day] = next
+    // What became of each: itself, or whatever it was folded into.
+    for (const a of arrived) {
+      const into = next.find((b) => b.id === a.id)
+        ?? next.find((b) => sameThing(b, a) && b.startSlot <= a.startSlot && b.endSlot >= a.endSlot)
+      if (into && !placed.some((p) => p.date === day && p.id === into.id)) placed.push({ date: day, id: into.id })
+    }
+  }
+  return { days, placed }
 }
 
 /**
@@ -166,9 +378,10 @@ export function applyResize(blocks, id, startSlot, endSlot, at) {
 export function pasteAt(copied, slot) {
   const endSlot = Math.min(SLOTS_PER_DAY, slot + copied.slots)
   if (endSlot <= slot) return null
-  // `slots` is how long it was and `from` is which block it came off — both
-  // are about the copy, not about the block, and neither is written down.
-  const { slots, from, ...was } = copied
+  // `slots` is how long it was, `from` is which block it came off and `at`
+  // is when it started — all about the copy, not about the block, and none
+  // of them is written down.
+  const { slots, from, at, ...was } = copied
   return { id: newId(), ...was, startSlot: slot, endSlot }
 }
 
@@ -193,7 +406,7 @@ export function setGame(blocks, id, game) {
     b.id === id ? { ...b, game: game?.name ?? '', cover: game?.cover ?? '' } : b
   ))
   const target = named.find((b) => b.id === id)
-  return target ? mergeSameTag(named, target) : named
+  return target ? mergeSameTag(named, target, cutsOf(blocks)) : named
 }
 
 /**
@@ -217,7 +430,10 @@ export function setShow(blocks, id, show) {
     }
     : b))
   const target = named.find((b) => b.id === id)
-  return target ? mergeSameTag(named, target) : named
+  // Cut halves of a show stay halves while their episodes are said one half
+  // at a time: the cuts are the ones there were before, and a half that is
+  // still the same show still meets its other half at one.
+  return target ? mergeSameTag(named, target, cutsOf(blocks)) : named
 }
 
 /**

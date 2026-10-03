@@ -122,6 +122,24 @@ the format and naming.
 - Blocks may overlap: paint one over another and they share the bar's height
   for the stretch they have in common.
 
+### Tools
+
+Three tools sit at the right above the list. Each has a key, so switching is
+one press:
+
+- **Move** (`V` or `1`) — how the bar has always worked: click a block for
+  its note, drag it to move it, drag an edge to stretch it.
+- **Snip** (`S` or `2`) — click a block to cut it in two where the line is.
+  An hour of anime cut at the half hour is two half hours of the same show,
+  side by side, and each can say its own episodes. Two of the same thing that
+  touch would otherwise join into one; a cut keeps them apart, survives a
+  reload (it is just two entries in the note), and moves if you drag the edge
+  where they meet. Paint back across it and they are one block again.
+- **Select** (`M` or `3`) — drag a box over blocks, across as many days as it
+  reaches (shift adds more). Then drag any of them to move them all, press
+  Delete to remove them, or ctrl+c and ctrl+v to copy them to wherever the
+  pointer is. Double-click a block to open its note.
+
 ### Games
 
 A **Game** block can say which game. Open its note and a search box is there
